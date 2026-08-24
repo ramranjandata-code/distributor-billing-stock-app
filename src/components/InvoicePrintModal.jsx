@@ -211,7 +211,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </tbody>
           </table>
 
-          {/* Bottom Summary Section */}
+          {/* Bottom Summary Section (Terms & Conditions Removed) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', fontSize: '0.82rem' }}>
             
             <div>
