@@ -75,22 +75,23 @@ export const initDataStorage = () => {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   }
 
-  // Auto-clean legacy sample data for user
-  const isCleaned = localStorage.getItem('distro_sample_cleaned_v2');
-  if (!isCleaned) {
-    const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []);
-    const cleanProds = existingProds.filter(p => !['prod_1', 'prod_2', 'prod_3', 'prod_4', 'prod_5', 'prod_6', 'prod_7', 'prod_8'].includes(p.id));
-    setStorageData(STORAGE_KEYS.PRODUCTS, cleanProds);
-
-    const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []);
-    const cleanParties = existingParties.filter(p => !['party_1', 'party_2', 'party_3', 'party_4'].includes(p.id));
-    setStorageData(STORAGE_KEYS.PARTIES, cleanParties);
-
-    const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
-    const cleanInvoices = existingInvoices.filter(i => !['inv_1001', 'inv_1002'].includes(i.id));
-    setStorageData(STORAGE_KEYS.INVOICES, cleanInvoices);
-
+  // Force Hard Clean of all sample data
+  const isHardCleaned = localStorage.getItem('distro_v3_hard_cleaned');
+  if (!isHardCleaned) {
+    setStorageData(STORAGE_KEYS.PRODUCTS, []);
+    setStorageData(STORAGE_KEYS.PARTIES, []);
+    setStorageData(STORAGE_KEYS.INVOICES, []);
+    setStorageData(STORAGE_KEYS.PURCHASES, []);
+    localStorage.setItem('distro_v3_hard_cleaned', 'true');
     localStorage.setItem('distro_sample_cleaned_v2', 'true');
+
+    // Wipe Cloud DB as well
+    const client = getSupabaseClient();
+    if (client) {
+      client.from('products').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
+      client.from('parties').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
+      client.from('invoices').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
+    }
   } else {
     if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) setStorageData(STORAGE_KEYS.PRODUCTS, []);
     if (!localStorage.getItem(STORAGE_KEYS.PARTIES)) setStorageData(STORAGE_KEYS.PARTIES, []);
