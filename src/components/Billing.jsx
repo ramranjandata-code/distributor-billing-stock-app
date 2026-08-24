@@ -29,6 +29,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   
   // Party Search & Add Party Modal State
   const [partySearchTerm, setPartySearchTerm] = useState('');
+  const [showPartySuggestions, setShowPartySuggestions] = useState(false);
   const [partyModalOpen, setPartyModalOpen] = useState(false);
   const initialNewPartyState = {
     name: '',
@@ -55,12 +56,31 @@ export default function Billing({ products, parties, business, refreshAllData, h
   // Selected party object
   const selectedParty = parties.find(p => p.id === selectedPartyId);
 
-  // Filter parties for search input in billing
-  const filteredParties = parties.filter(p => 
-    p.name.toLowerCase().includes(partySearchTerm.toLowerCase()) ||
-    (p.phone && p.phone.includes(partySearchTerm)) ||
-    (p.contactPerson && p.contactPerson.toLowerCase().includes(partySearchTerm.toLowerCase()))
-  );
+  // Filter parties for live search suggestions inside Customer Name input
+  const filteredParties = parties.filter(p => {
+    const term = (partySearchTerm || customerName).toLowerCase();
+    if (!term) return true;
+    return (
+      p.name.toLowerCase().includes(term) ||
+      (p.phone && p.phone.includes(term)) ||
+      (p.contactPerson && p.contactPerson.toLowerCase().includes(term))
+    );
+  });
+
+  const handleSelectPartyFromList = (p) => {
+    if (p) {
+      setSelectedPartyId(p.id);
+      setCustomerName(p.name);
+      setCustomerPhone(p.phone);
+      setPartySearchTerm(p.name);
+    } else {
+      setSelectedPartyId('');
+      setCustomerName('');
+      setCustomerPhone('');
+      setPartySearchTerm('');
+    }
+    setShowPartySuggestions(false);
+  };
 
   const handleSaveNewParty = (e) => {
     e.preventDefault();
@@ -79,14 +99,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
     refreshAllData();
 
     if (savedParty && savedParty.id) {
-      setSelectedPartyId(savedParty.id);
-      setCustomerName(savedParty.name);
-      setCustomerPhone(savedParty.phone);
+      handleSelectPartyFromList(savedParty);
     }
 
     setPartyModalOpen(false);
     setNewPartyData(initialNewPartyState);
-    setPartySearchTerm('');
   };
 
   // Filter products for quick search
@@ -474,7 +491,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </select>
             </div>
 
-            {/* Retailer/Party Selection */}
+            {/* Retailer/Party Selection Header & Add Retailer Button */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -497,26 +514,23 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 
+                {/* LEFT: Select Dropdown */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <div style={{ position: 'relative', marginBottom: '6px' }}>
-                    <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-                    <input 
-                      type="text"
-                      className="input-field"
-                      placeholder="नाम या नंबर से खोजें..."
-                      style={{ paddingLeft: '30px', fontSize: '0.8rem', padding: '5px 10px 5px 30px' }}
-                      value={partySearchTerm}
-                      onChange={e => setPartySearchTerm(e.target.value)}
-                    />
-                  </div>
-
                   <select 
                     className="input-field select-field"
                     value={selectedPartyId}
-                    onChange={handlePartySelect}
+                    onChange={(e) => {
+                      const pId = e.target.value;
+                      if (pId) {
+                        const p = parties.find(pt => pt.id === pId);
+                        handleSelectPartyFromList(p);
+                      } else {
+                        handleSelectPartyFromList(null);
+                      }
+                    }}
                   >
                     <option value="">-- नकद ग्राहक (Cash Sale) --</option>
-                    {filteredParties.map(party => (
+                    {parties.map(party => (
                       <option key={party.id} value={party.id}>
                         {party.name} {party.phone ? `(${party.phone})` : ''} {party.balance > 0 ? `[उधार: ₹${party.balance}]` : ''}
                       </option>
@@ -524,26 +538,110 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   </select>
                 </div>
 
+                {/* RIGHT: Customer Name & Live Search Bar */}
                 {!selectedPartyId ? (
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.78rem' }}>ग्राहक का नाम (Customer Name)</label>
-                    <input 
-                      type="text"
-                      className="input-field"
-                      placeholder="उदा. नकद वाक-इन कस्टमर"
-                      value={customerName}
-                      onChange={e => setCustomerName(e.target.value)}
-                    />
+                  <div className="form-group" style={{ marginBottom: 0, position: 'relative' }}>
+                    <div style={{ position: 'relative' }}>
+                      <Search size={15} color="var(--primary)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                      <input 
+                        type="text"
+                        className="input-field"
+                        placeholder="उदा. नकद वाक-इन कस्टमर (या नाम/नंबर से खोजें...)"
+                        style={{ paddingLeft: '32px' }}
+                        value={customerName}
+                        onFocus={() => setShowPartySuggestions(true)}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setCustomerName(val);
+                          setPartySearchTerm(val);
+                          setShowPartySuggestions(true);
+                        }}
+                      />
+                    </div>
+
+                    {/* Live Search Suggestions Dropdown Popup */}
+                    {showPartySuggestions && customerName.trim().length > 0 && (
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 999,
+                          background: '#ffffff',
+                          borderRadius: '8px',
+                          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                          border: '1px solid var(--border-color)',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          marginTop: '4px'
+                        }}
+                      >
+                        <div style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', background: '#f8fafc', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>🔍 रिटेलर खोज परिणाम ({filteredParties.length})</span>
+                          <span onClick={() => setShowPartySuggestions(false)} style={{ cursor: 'pointer', color: '#c2410c' }}>✕ बंद करें</span>
+                        </div>
+
+                        {filteredParties.length === 0 ? (
+                          <div style={{ padding: '12px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                            कोई रिटेलर नहीं मिला ('{customerName}' को नकद ग्राहक माना जाएगा)
+                          </div>
+                        ) : (
+                          filteredParties.map(p => (
+                            <div 
+                              key={p.id}
+                              onClick={() => handleSelectPartyFromList(p)}
+                              style={{
+                                padding: '10px 12px',
+                                borderBottom: '1px solid #f1f5f9',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{p.name}</strong>
+                                {p.balance > 0 && (
+                                  <span style={{ fontSize: '0.75rem', color: '#c2410c', background: '#fff7ed', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                                    उधार: ₹{p.balance}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '12px' }}>
+                                <span>संपर्क: {p.contactPerson || 'N/A'}</span>
+                                <span>फ़ोन: {p.phone || 'N/A'}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
-                    <div style={{ fontWeight: '700', color: 'var(--text-main)', marginBottom: '2px' }}>
-                      {selectedParty?.contactPerson ? `संपर्क: ${selectedParty.contactPerson}` : selectedParty?.name}
+                  /* Selected Party Summary Card with Reset Button */
+                  <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: '800', color: 'var(--primary)', marginBottom: '2px' }}>
+                        {selectedParty?.name}
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        संपर्क: {selectedParty?.contactPerson || 'N/A'} | GSTIN: {selectedParty?.gstin || 'Unregistered'}
+                      </p>
+                      <p style={{ fontSize: '0.8rem', fontWeight: '800', color: selectedParty?.balance > 0 ? '#c2410c' : '#10b981', marginTop: '2px' }}>
+                        मौजूदा बकाया उधार: ₹{selectedParty?.balance || 0}
+                      </p>
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GSTIN: {selectedParty?.gstin || 'Unregistered'}</p>
-                    <p style={{ fontSize: '0.8rem', fontWeight: '800', color: selectedParty?.balance > 0 ? '#c2410c' : '#10b981', marginTop: '2px' }}>
-                      मौजूदा उधार: ₹{selectedParty?.balance || 0}
-                    </p>
+
+                    <button 
+                      type="button"
+                      onClick={() => handleSelectPartyFromList(null)}
+                      className="btn btn-sm btn-secondary"
+                      style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#c2410c' }}
+                      title="पार्टी सेलेक्ट रिसेट करें"
+                    >
+                      ✕ बदलें
+                    </button>
                   </div>
                 )}
 
