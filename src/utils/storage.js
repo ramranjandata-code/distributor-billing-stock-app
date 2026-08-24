@@ -74,17 +74,28 @@ export const initDataStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.BUSINESS)) {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   }
-  if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) {
-    setStorageData(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.PARTIES)) {
-    setStorageData(STORAGE_KEYS.PARTIES, DEFAULT_PARTIES);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.INVOICES)) {
-    setStorageData(STORAGE_KEYS.INVOICES, DEFAULT_INVOICES);
-  }
-  if (!localStorage.getItem(STORAGE_KEYS.PURCHASES)) {
-    setStorageData(STORAGE_KEYS.PURCHASES, DEFAULT_PURCHASES);
+
+  // Auto-clean legacy sample data for user
+  const isCleaned = localStorage.getItem('distro_sample_cleaned_v2');
+  if (!isCleaned) {
+    const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+    const cleanProds = existingProds.filter(p => !['prod_1', 'prod_2', 'prod_3', 'prod_4', 'prod_5', 'prod_6', 'prod_7', 'prod_8'].includes(p.id));
+    setStorageData(STORAGE_KEYS.PRODUCTS, cleanProds);
+
+    const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+    const cleanParties = existingParties.filter(p => !['party_1', 'party_2', 'party_3', 'party_4'].includes(p.id));
+    setStorageData(STORAGE_KEYS.PARTIES, cleanParties);
+
+    const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
+    const cleanInvoices = existingInvoices.filter(i => !['inv_1001', 'inv_1002'].includes(i.id));
+    setStorageData(STORAGE_KEYS.INVOICES, cleanInvoices);
+
+    localStorage.setItem('distro_sample_cleaned_v2', 'true');
+  } else {
+    if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) setStorageData(STORAGE_KEYS.PRODUCTS, []);
+    if (!localStorage.getItem(STORAGE_KEYS.PARTIES)) setStorageData(STORAGE_KEYS.PARTIES, []);
+    if (!localStorage.getItem(STORAGE_KEYS.INVOICES)) setStorageData(STORAGE_KEYS.INVOICES, []);
+    if (!localStorage.getItem(STORAGE_KEYS.PURCHASES)) setStorageData(STORAGE_KEYS.PURCHASES, []);
   }
 };
 
