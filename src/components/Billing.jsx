@@ -63,7 +63,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
     return (
       p.name.toLowerCase().includes(term) ||
       (p.phone && p.phone.includes(term)) ||
-      (p.contactPerson && p.contactPerson.toLowerCase().includes(term))
+      (p.contactPerson && p.contactPerson.toLowerCase().includes(term)) ||
+      (p.address && p.address.toLowerCase().includes(term)) ||
+      (p.city && p.city.toLowerCase().includes(term))
     );
   });
 
@@ -608,9 +610,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
                                   </span>
                                 )}
                               </div>
-                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '12px' }}>
-                                <span>संपर्क: {p.contactPerson || 'N/A'}</span>
-                                <span>फ़ोन: {p.phone || 'N/A'}</span>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ color: '#c2410c', fontWeight: '600', flexShrink: 0 }}>📍 पता:</span>
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {p.address || p.city || 'पता दर्ज नहीं है (No Address)'}
+                                </span>
                               </div>
                             </div>
                           ))
@@ -626,7 +630,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         {selectedParty?.name}
                       </div>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        संपर्क: {selectedParty?.contactPerson || 'N/A'} | GSTIN: {selectedParty?.gstin || 'Unregistered'}
+                        📍 पता: {selectedParty?.address || selectedParty?.city || 'N/A'} {selectedParty?.phone ? `| 📞 ${selectedParty.phone}` : ''}
                       </p>
                       <p style={{ fontSize: '0.8rem', fontWeight: '800', color: selectedParty?.balance > 0 ? '#c2410c' : '#10b981', marginTop: '2px' }}>
                         मौजूदा बकाया उधार: ₹{selectedParty?.balance || 0}
