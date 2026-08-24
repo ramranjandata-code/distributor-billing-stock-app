@@ -348,8 +348,8 @@ input[type=number] {
 /* Printable Bill Styling for A4 / Thermal Receipt Printer */
 @media print {
   @page {
-    margin: 5mm;
-    size: auto;
+    margin: 2mm 3mm !important;
+    size: A4 portrait;
   }
   html, body {
     background: #ffffff !important;
@@ -405,9 +405,28 @@ input[type=number] {
     top: 0 !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 10px !important;
+    padding: 0 2px !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
+    font-size: 6px !important;
+    line-height: 1.0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-area table th,
+  .print-area table td {
+    padding: 0.5px 2px !important;
+    font-size: 6px !important;
+    line-height: 1.0 !important;
+    height: 10px !important;
+  }
+
+  .print-summary-signature {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
   }
 }
