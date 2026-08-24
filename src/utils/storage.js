@@ -118,16 +118,157 @@ export const clearAllSampleData = () => {
   }
 };
 
-// Helper for automatic real-time Cloud DB syncing
-const autoCloudSync = async () => {
+// --- LIVE DEFAULT CLOUD SYNC CHANNEL (ZERO CONFIG) ---
+const DEFAULT_SUPABASE_URL = 'https://steiiaxiouvbulxcvvsw.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZWlpYXhpb3V2YnVseGN2dnN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjMyMDYsImV4cCI6MjEwMjczOTIwNn0.-BQl9aLHG5Sb-MEdJSx1WDVa7ukhqDAZKFgbZf6xafU';
+const STORE_DATA_ID = 'distropulse_store_data';
+
+const getCloudHeaders = () => ({
+  'apikey': DEFAULT_SUPABASE_KEY,
+  'Authorization': `Bearer ${DEFAULT_SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+});
+
+export const fetchCloudData = async () => {
+  let hasUpdated = false;
+
   try {
-    await pushLocalDataToCloud();
+    const res = await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
+      headers: getCloudHeaders()
+    });
+
+    if (res.ok) {
+      const rows = await res.json();
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
+        const remote = JSON.parse(rows[0].beat);
+
+        // Sync Invoices
+        if (Array.isArray(remote.invoices)) {
+          const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
+          const invoiceMap = new Map();
+          localInvoices.forEach(i => invoiceMap.set(String(i.id), i));
+          remote.invoices.forEach(i => {
+            if (i && i.id && !SAMPLE_IDS.includes(i.id)) {
+              invoiceMap.set(String(i.id), i);
+            }
+          });
+          setStorageData(STORAGE_KEYS.INVOICES, Array.from(invoiceMap.values()));
+        }
+
+        // Sync Products
+        if (Array.isArray(remote.products) && remote.products.length > 0) {
+          const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
+          const productMap = new Map();
+          localProducts.forEach(p => productMap.set(String(p.id), p));
+          remote.products.forEach(p => {
+            if (p && p.id && !SAMPLE_IDS.includes(p.id)) {
+              productMap.set(String(p.id), p);
+            }
+          });
+          setStorageData(STORAGE_KEYS.PRODUCTS, Array.from(productMap.values()));
+        }
+
+        // Sync Parties
+        if (Array.isArray(remote.parties) && remote.parties.length > 0) {
+          const localParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
+          const partyMap = new Map();
+          localParties.forEach(pt => partyMap.set(String(pt.id), pt));
+          remote.parties.forEach(pt => {
+            if (pt && pt.id && !SAMPLE_IDS.includes(pt.id)) {
+              partyMap.set(String(pt.id), pt);
+            }
+          });
+          setStorageData(STORAGE_KEYS.PARTIES, Array.from(partyMap.values()));
+        }
+
+        // Sync Business Info
+        if (remote.business && remote.business.name) {
+          setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
+        }
+
+        hasUpdated = true;
+      }
+    }
+  } catch (err) {
+    console.warn('Live Cloud Sync fetch error:', err);
+  }
+
+  return hasUpdated;
+};
+
+export const pushLocalDataToCloud = async () => {
+  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
+  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
+  const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
+  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+
+  const payload = {
+    id: STORE_DATA_ID,
+    name: 'DISTROPULSE_SYSTEM_STORE',
+    owner: 'SYSTEM',
+    area: 'SYSTEM',
+    beat: JSON.stringify({
+      business,
+      products,
+      parties,
+      invoices,
+      lastUpdated: Date.now()
+    }),
+    day: 'System',
+    balance: 0,
+    status: 'System',
+    phone: '000',
+    lat: 0,
+    lng: 0
+  };
+
+  try {
+    const patchRes = await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
+      method: 'PATCH',
+      headers: getCloudHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (patchRes.ok) {
+      const resData = await patchRes.json().catch(() => []);
+      if (Array.isArray(resData) && resData.length === 0) {
+        await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops`, {
+          method: 'POST',
+          headers: getCloudHeaders(),
+          body: JSON.stringify(payload)
+        });
+      }
+    } else {
+      await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops`, {
+        method: 'POST',
+        headers: getCloudHeaders(),
+        body: JSON.stringify(payload)
+      });
+    }
+
+    return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
+  } catch (err) {
+    console.error('Live Cloud Sync push error:', err);
+    return { success: false, message: 'Cloud sync error' };
+  }
+};
+
+export const autoCloudSync = async () => {
+  try {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('distro_data_changed'));
     }
+    await pushLocalDataToCloud();
   } catch (e) {
-    console.warn('Auto cloud sync caught:', e);
+    console.warn('Auto cloud sync warning:', e);
   }
+};
+
+export const performFullSync = async () => {
+  await pushLocalDataToCloud();
+  await fetchCloudData();
+  return { success: true, message: 'Zero-Config Cloud Sync Completed!' };
 };
 
 // Operations: Products
@@ -302,148 +443,6 @@ export const saveBusinessInfo = (info) => {
   setStorageData(STORAGE_KEYS.BUSINESS, info);
   autoCloudSync();
   return info;
-};
-
-// --- LIVE DEFAULT CLOUD SYNC CHANNEL (ZERO CONFIG) ---
-const DEFAULT_SUPABASE_URL = 'https://steiiaxiouvbulxcvvsw.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZWlpYXhpb3V2YnVseGN2dnN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjMyMDYsImV4cCI6MjEwMjczOTIwNn0.-BQl9aLHG5Sb-MEdJSx1WDVa7ukhqDAZKFgbZf6xafU';
-const STORE_DATA_ID = 'distropulse_store_data';
-
-const getCloudHeaders = () => ({
-  'apikey': DEFAULT_SUPABASE_KEY,
-  'Authorization': `Bearer ${DEFAULT_SUPABASE_KEY}`,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
-});
-
-export const fetchCloudData = async () => {
-  let hasUpdated = false;
-
-  try {
-    const res = await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
-      headers: getCloudHeaders()
-    });
-
-    if (res.ok) {
-      const rows = await res.json();
-      if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
-        const remote = JSON.parse(rows[0].beat);
-
-        // Sync Invoices
-        if (Array.isArray(remote.invoices)) {
-          const localInvoices = fetchInvoices();
-          const invoiceMap = new Map();
-          localInvoices.forEach(i => invoiceMap.set(String(i.id), i));
-          remote.invoices.forEach(i => {
-            if (i && i.id && !SAMPLE_IDS.includes(i.id)) {
-              invoiceMap.set(String(i.id), i);
-            }
-          });
-          setStorageData(STORAGE_KEYS.INVOICES, Array.from(invoiceMap.values()));
-        }
-
-        // Sync Products
-        if (Array.isArray(remote.products) && remote.products.length > 0) {
-          const localProducts = fetchProducts();
-          const productMap = new Map();
-          localProducts.forEach(p => productMap.set(String(p.id), p));
-          remote.products.forEach(p => {
-            if (p && p.id && !SAMPLE_IDS.includes(p.id)) {
-              productMap.set(String(p.id), p);
-            }
-          });
-          setStorageData(STORAGE_KEYS.PRODUCTS, Array.from(productMap.values()));
-        }
-
-        // Sync Parties
-        if (Array.isArray(remote.parties) && remote.parties.length > 0) {
-          const localParties = fetchParties();
-          const partyMap = new Map();
-          localParties.forEach(pt => partyMap.set(String(pt.id), pt));
-          remote.parties.forEach(pt => {
-            if (pt && pt.id && !SAMPLE_IDS.includes(pt.id)) {
-              partyMap.set(String(pt.id), pt);
-            }
-          });
-          setStorageData(STORAGE_KEYS.PARTIES, Array.from(partyMap.values()));
-        }
-
-        // Sync Business Info
-        if (remote.business && remote.business.name) {
-          setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
-        }
-
-        hasUpdated = true;
-      }
-    }
-  } catch (err) {
-    console.warn('Live Cloud Sync fetch error:', err);
-  }
-
-  return hasUpdated;
-};
-
-export const pushLocalDataToCloud = async () => {
-  const products = fetchProducts();
-  const parties = fetchParties();
-  const invoices = fetchInvoices();
-  const business = fetchBusinessInfo();
-
-  const payload = {
-    id: STORE_DATA_ID,
-    name: 'DISTROPULSE_SYSTEM_STORE',
-    owner: 'SYSTEM',
-    area: 'SYSTEM',
-    beat: JSON.stringify({
-      business,
-      products,
-      parties,
-      invoices,
-      lastUpdated: Date.now()
-    }),
-    day: 'System',
-    balance: 0,
-    status: 'System',
-    phone: '000',
-    lat: 0,
-    lng: 0
-  };
-
-  try {
-    const patchRes = await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
-      method: 'PATCH',
-      headers: getCloudHeaders(),
-      body: JSON.stringify(payload)
-    });
-
-    if (patchRes.ok) {
-      const resData = await patchRes.json().catch(() => []);
-      if (Array.isArray(resData) && resData.length === 0) {
-        await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops`, {
-          method: 'POST',
-          headers: getCloudHeaders(),
-          body: JSON.stringify(payload)
-        });
-      }
-    } else {
-      await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops`, {
-        method: 'POST',
-        headers: getCloudHeaders(),
-        body: JSON.stringify(payload)
-      });
-    }
-
-    return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
-  } catch (err) {
-    console.error('Live Cloud Sync push error:', err);
-    return { success: false, message: 'Cloud sync error' };
-  }
-};
-
-export const performFullSync = async () => {
-  await pushLocalDataToCloud();
-  await fetchCloudData();
-  return { success: true, message: 'Zero-Config Cloud Sync Completed!' };
 };
 
 
