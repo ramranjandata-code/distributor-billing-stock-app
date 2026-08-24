@@ -69,34 +69,39 @@ export const setStorageData = (key, data) => {
   }
 };
 
+const SAMPLE_IDS = [
+  'prod_1', 'prod_2', 'prod_3', 'prod_4', 'prod_5', 'prod_6', 'prod_7', 'prod_8',
+  'party_1', 'party_2', 'party_3', 'party_4',
+  'inv_1001', 'inv_1002', 'pur_1'
+];
+
 // Initialize Storage with Defaults if missing
 export const initDataStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.BUSINESS)) {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   }
 
-  // Force Hard Clean of all sample data
-  const isHardCleaned = localStorage.getItem('distro_v3_hard_cleaned');
-  if (!isHardCleaned) {
-    setStorageData(STORAGE_KEYS.PRODUCTS, []);
-    setStorageData(STORAGE_KEYS.PARTIES, []);
-    setStorageData(STORAGE_KEYS.INVOICES, []);
-    setStorageData(STORAGE_KEYS.PURCHASES, []);
-    localStorage.setItem('distro_v3_hard_cleaned', 'true');
-    localStorage.setItem('distro_sample_cleaned_v2', 'true');
+  // Force Clean of all sample data
+  const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => !SAMPLE_IDS.includes(p?.id));
+  setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
 
-    // Wipe Cloud DB as well
-    const client = getSupabaseClient();
-    if (client) {
-      client.from('products').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
-      client.from('parties').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
-      client.from('invoices').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
-    }
-  } else {
-    if (!localStorage.getItem(STORAGE_KEYS.PRODUCTS)) setStorageData(STORAGE_KEYS.PRODUCTS, []);
-    if (!localStorage.getItem(STORAGE_KEYS.PARTIES)) setStorageData(STORAGE_KEYS.PARTIES, []);
-    if (!localStorage.getItem(STORAGE_KEYS.INVOICES)) setStorageData(STORAGE_KEYS.INVOICES, []);
-    if (!localStorage.getItem(STORAGE_KEYS.PURCHASES)) setStorageData(STORAGE_KEYS.PURCHASES, []);
+  const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => !SAMPLE_IDS.includes(p?.id));
+  setStorageData(STORAGE_KEYS.PARTIES, existingParties);
+
+  const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
+  setStorageData(STORAGE_KEYS.INVOICES, existingInvoices);
+
+  const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
+  setStorageData(STORAGE_KEYS.PURCHASES, existingPurchases);
+
+  // Wipe Cloud DB sample rows as well
+  const client = getSupabaseClient();
+  if (client) {
+    SAMPLE_IDS.forEach(id => {
+      client.from('products').delete().eq('id', id).catch(console.error);
+      client.from('parties').delete().eq('id', id).catch(console.error);
+      client.from('invoices').delete().eq('id', id).catch(console.error);
+    });
   }
 };
 
@@ -107,9 +112,9 @@ export const clearAllSampleData = () => {
   setStorageData(STORAGE_KEYS.PURCHASES, []);
   const client = getSupabaseClient();
   if (client) {
-    client.from('products').delete().neq('id', '0').catch(console.error);
-    client.from('parties').delete().neq('id', '0').catch(console.error);
-    client.from('invoices').delete().neq('id', '0').catch(console.error);
+    client.from('products').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
+    client.from('parties').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
+    client.from('invoices').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
   }
 };
 
@@ -126,7 +131,7 @@ const autoCloudSync = async () => {
 };
 
 // Operations: Products
-export const fetchProducts = () => getStorageData(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
+export const fetchProducts = () => getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
 export const saveProduct = (product) => {
   const products = fetchProducts();
   let updated;
@@ -173,7 +178,7 @@ export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') =>
 };
 
 // Operations: Parties
-export const fetchParties = () => getStorageData(STORAGE_KEYS.PARTIES, DEFAULT_PARTIES);
+export const fetchParties = () => getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
 export const saveParty = (party) => {
   const parties = fetchParties();
   let updated;
@@ -207,7 +212,7 @@ export const updatePartyBalance = (partyId, amountToAdd) => {
 };
 
 // Operations: Invoices
-export const fetchInvoices = () => getStorageData(STORAGE_KEYS.INVOICES, DEFAULT_INVOICES);
+export const fetchInvoices = () => getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
 
 export const saveInvoice = (invoiceData) => {
   const invoices = fetchInvoices();
