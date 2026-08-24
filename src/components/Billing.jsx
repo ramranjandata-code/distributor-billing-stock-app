@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { saveInvoice, formatCartonStock } from '../utils/storage';
+import { saveInvoice, saveParty, formatCartonStock } from '../utils/storage';
 import { 
   Search, 
   Plus, 
@@ -7,6 +7,9 @@ import {
   Trash2, 
   Receipt, 
   User, 
+  UserPlus,
+  X,
+  Save,
   CheckCircle, 
   IndianRupee,
   ShoppingBag,
@@ -24,6 +27,21 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [customerPhone, setCustomerPhone] = useState('');
   const [taxMode, setTaxMode] = useState('INTRA'); // INTRA (CGST+SGST) or INTER (IGST)
   
+  // Party Search & Add Party Modal State
+  const [partySearchTerm, setPartySearchTerm] = useState('');
+  const [partyModalOpen, setPartyModalOpen] = useState(false);
+  const initialNewPartyState = {
+    name: '',
+    contactPerson: '',
+    phone: '',
+    city: '',
+    address: '',
+    gstin: '',
+    creditLimit: 50000,
+    balance: 0
+  };
+  const [newPartyData, setNewPartyData] = useState(initialNewPartyState);
+
   // Overall Bill Discount
   const [discountType, setDiscountType] = useState('AMOUNT'); // 'AMOUNT' (₹) or 'PERCENT' (%)
   const [discountValue, setDiscountValue] = useState(0);
@@ -36,6 +54,40 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   // Selected party object
   const selectedParty = parties.find(p => p.id === selectedPartyId);
+
+  // Filter parties for search input in billing
+  const filteredParties = parties.filter(p => 
+    p.name.toLowerCase().includes(partySearchTerm.toLowerCase()) ||
+    (p.phone && p.phone.includes(partySearchTerm)) ||
+    (p.contactPerson && p.contactPerson.toLowerCase().includes(partySearchTerm.toLowerCase()))
+  );
+
+  const handleSaveNewParty = (e) => {
+    e.preventDefault();
+    if (!newPartyData.name || !newPartyData.phone) {
+      alert('⚠️ कृपया दुकान/रिटेलर का नाम और फ़ोन नंबर दर्ज करें!');
+      return;
+    }
+
+    const payload = {
+      ...newPartyData,
+      creditLimit: Number(newPartyData.creditLimit) || 0,
+      balance: Number(newPartyData.balance) || 0
+    };
+
+    const savedParty = saveParty(payload);
+    refreshAllData();
+
+    if (savedParty && savedParty.id) {
+      setSelectedPartyId(savedParty.id);
+      setCustomerName(savedParty.name);
+      setCustomerPhone(savedParty.phone);
+    }
+
+    setPartyModalOpen(false);
+    setNewPartyData(initialNewPartyState);
+    setPartySearchTerm('');
+  };
 
   // Filter products for quick search
   const filteredProducts = products.filter(p => 
@@ -423,43 +475,79 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
 
             {/* Retailer/Party Selection */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label">रिटेलर / ग्राहक चुनें (Select Party)</label>
-                <select 
-                  className="input-field select-field"
-                  value={selectedPartyId}
-                  onChange={handlePartySelect}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="form-label" style={{ marginBottom: 0 }}>
+                  रिटेलर / ग्राहक चुनें (Select Party)
+                </label>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setNewPartyData(initialNewPartyState);
+                    setPartyModalOpen(true);
+                  }}
+                  className="btn btn-sm btn-primary"
+                  style={{ padding: '3px 10px', fontSize: '0.78rem', gap: '4px' }}
                 >
-                  <option value="">-- नकद ग्राहक (Cash Sale) --</option>
-                  {parties.map(party => (
-                    <option key={party.id} value={party.id}>
-                      {party.name} {party.balance > 0 ? `(उधार: ₹${party.balance})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  <UserPlus size={14} />
+                  <span>+ नया रिटेलर (Add Retailer)</span>
+                </button>
               </div>
 
-              {!selectedPartyId ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">ग्राहक का नाम (Customer Name)</label>
-                  <input 
-                    type="text"
-                    className="input-field"
-                    placeholder="उदा. नकद वाक-इन कस्टमर"
-                    value={customerName}
-                    onChange={e => setCustomerName(e.target.value)}
-                  />
+                  <div style={{ position: 'relative', marginBottom: '6px' }}>
+                    <Search size={14} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input 
+                      type="text"
+                      className="input-field"
+                      placeholder="नाम या नंबर से खोजें..."
+                      style={{ paddingLeft: '30px', fontSize: '0.8rem', padding: '5px 10px 5px 30px' }}
+                      value={partySearchTerm}
+                      onChange={e => setPartySearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <select 
+                    className="input-field select-field"
+                    value={selectedPartyId}
+                    onChange={handlePartySelect}
+                  >
+                    <option value="">-- नकद ग्राहक (Cash Sale) --</option>
+                    {filteredParties.map(party => (
+                      <option key={party.id} value={party.id}>
+                        {party.name} {party.phone ? `(${party.phone})` : ''} {party.balance > 0 ? `[उधार: ₹${party.balance}]` : ''}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>GSTIN: {selectedParty?.gstin || 'Unregistered'}</p>
-                  <p style={{ fontSize: '0.82rem', fontWeight: '700', color: selectedParty?.balance > 0 ? '#fbbf24' : '#34d399' }}>
-                    मौजूदा उधार (Bal): ₹{selectedParty?.balance || 0}
-                  </p>
-                </div>
-              )}
+
+                {!selectedPartyId ? (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.78rem' }}>ग्राहक का नाम (Customer Name)</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      placeholder="उदा. नकद वाक-इन कस्टमर"
+                      value={customerName}
+                      onChange={e => setCustomerName(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem' }}>
+                    <div style={{ fontWeight: '700', color: 'var(--text-main)', marginBottom: '2px' }}>
+                      {selectedParty?.contactPerson ? `संपर्क: ${selectedParty.contactPerson}` : selectedParty?.name}
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GSTIN: {selectedParty?.gstin || 'Unregistered'}</p>
+                    <p style={{ fontSize: '0.8rem', fontWeight: '800', color: selectedParty?.balance > 0 ? '#c2410c' : '#10b981', marginTop: '2px' }}>
+                      मौजूदा उधार: ₹{selectedParty?.balance || 0}
+                    </p>
+                  </div>
+                )}
+
+              </div>
 
             </div>
 
@@ -738,6 +826,135 @@ export default function Billing({ products, parties, business, refreshAllData, h
         </div>
 
       </div>
+
+      {/* Add New Retailer Modal inside Billing */}
+      {partyModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserPlus size={20} color="var(--primary)" />
+                <span>👥 नया रिटेलर / ग्राहक जोड़ें</span>
+              </h3>
+              <button 
+                type="button"
+                onClick={() => setPartyModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewParty}>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">दुकान / रिटेलर का नाम (Shop Name) *</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    required
+                    placeholder="उदा. गुप्ता किराना & जनरल स्टोर"
+                    value={newPartyData.name}
+                    onChange={e => setNewPartyData({...newPartyData, name: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">दुकानदार / संपर्क व्यक्ति (Contact Person)</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="उदा. रमाकांत गुप्ता"
+                    value={newPartyData.contactPerson}
+                    onChange={e => setNewPartyData({...newPartyData, contactPerson: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">फ़ोन नंबर (Mobile No) *</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    required
+                    placeholder="उदा. 9811223344"
+                    value={newPartyData.phone}
+                    onChange={e => setNewPartyData({...newPartyData, phone: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">शहर / क्षेत्र (City / Area)</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="उदा. रोहिणी, दिल्ली"
+                    value={newPartyData.city}
+                    onChange={e => setNewPartyData({...newPartyData, city: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">GSTIN नंबर (यदि उपलब्ध हो)</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="उदा. 07BAPPG4321A1Z2"
+                    value={newPartyData.gstin}
+                    onChange={e => setNewPartyData({...newPartyData, gstin: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">दुकान का पूरा पता (Address)</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="उदा. शॉप नं 4, मेन मार्केट, रोहिणी सेक्टर 7"
+                    value={newPartyData.address}
+                    onChange={e => setNewPartyData({...newPartyData, address: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">क्रेडिट लिमिट (Credit Limit ₹)</label>
+                  <input 
+                    type="number" 
+                    className="input-field"
+                    value={newPartyData.creditLimit}
+                    onChange={e => setNewPartyData({...newPartyData, creditLimit: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">प्रारंभिक बकाया / उधार (Opening Balance ₹)</label>
+                  <input 
+                    type="number" 
+                    className="input-field"
+                    value={newPartyData.balance}
+                    onChange={e => setNewPartyData({...newPartyData, balance: e.target.value})}
+                  />
+                </div>
+
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  onClick={() => setPartyModalOpen(false)}
+                  className="btn btn-secondary"
+                >
+                  रद्द करें
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
+                  <Save size={16} />
+                  <span>खाता सेव करें (Save Party)</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

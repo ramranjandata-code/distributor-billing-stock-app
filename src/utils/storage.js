@@ -182,19 +182,21 @@ export const fetchParties = () => getStorageData(STORAGE_KEYS.PARTIES, []).filte
 export const saveParty = (party) => {
   const parties = fetchParties();
   let updated;
+  let targetParty;
   if (party.id) {
+    targetParty = party;
     updated = parties.map(p => p.id === party.id ? party : p);
   } else {
-    const newParty = {
+    targetParty = {
       ...party,
       id: 'party_' + Date.now(),
       balance: Number(party.balance) || 0
     };
-    updated = [newParty, ...parties];
+    updated = [targetParty, ...parties];
   }
   setStorageData(STORAGE_KEYS.PARTIES, updated);
   autoCloudSync();
-  return updated;
+  return targetParty;
 };
 
 export const updatePartyBalance = (partyId, amountToAdd) => {
