@@ -7,7 +7,32 @@
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
     "preview": "vite preview",
+    "dist-installer": "vite build && electron-builder --win nsis",
     "package-win": "electron-packager . DistroPulse-ERP --platform=win32 --arch=x64 --overwrite --out=dist-desktop --ignore=node_modules"
+  },
+  "build": {
+    "appId": "com.distropulse.erp",
+    "productName": "DistroPulse ERP",
+    "directories": {
+      "output": "output-setup"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DistroPulse ERP"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
@@ -20,6 +45,8 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "electron-installer-windows": "^3.0.0",
     "electron-packager": "^17.1.2",
     "vite": "^5.4.1"
   }
