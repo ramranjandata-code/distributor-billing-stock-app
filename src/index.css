@@ -357,13 +357,48 @@ input[type=number] {
     margin: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    height: auto !important;
   }
+
+  /* Hide app navigation, sidebar, and non-printable headers */
+  .no-print, .sidebar, header, nav, .app-container > *:not(.modal-overlay) {
+    display: none !important;
+  }
+
+  /* Allow modal container to display content during print */
+  .modal-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    z-index: 99999 !important;
+  }
+
+  .modal-content {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
   body * {
-    visibility: hidden !important;
+    visibility: hidden;
   }
+
   .print-area, .print-area * {
     visibility: visible !important;
   }
+
   .print-area {
     position: absolute !important;
     left: 0 !important;
@@ -374,8 +409,5 @@ input[type=number] {
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
-  }
-  .no-print, .modal-overlay, .modal-header, .sidebar, header {
-    display: none !important;
   }
 }
