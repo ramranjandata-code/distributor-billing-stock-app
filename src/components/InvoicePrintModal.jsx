@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, X, CheckCircle, Zap, FileText, Trash2 } from 'lucide-react';
-import { formatCartonStock, deleteInvoice } from '../utils/storage';
+import { Printer, X, CheckCircle, Zap, FileText, Trash2, MapPin } from 'lucide-react';
+import { formatCartonStock, deleteInvoice, fetchParties } from '../utils/storage';
 
 export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData }) {
   const [paperFormat, setPaperFormat] = useState('A4'); // 'A4' or 'THERMAL'
 
   if (!invoice) return null;
+
+  const allParties = fetchParties();
+  const partyObj = invoice.partyId ? allParties.find(p => p.id === invoice.partyId) : null;
+  const displayAddress = invoice.partyAddress || (partyObj ? (partyObj.address || partyObj.city) : '') || 'Local Market / Counter Sale';
 
   // Auto trigger printer dialog on modal load
   useEffect(() => {
@@ -147,13 +151,28 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
           {/* Party Billed To */}
           <div style={{ border: '1px solid #000000', borderRadius: '4px', padding: '10px 14px', marginBottom: '16px', fontSize: '0.84rem' }}>
-            <p style={{ fontWeight: '800', borderBottom: '1px solid #ddd', paddingBottom: '4px', marginBottom: '6px', textTransform: 'uppercase' }}>
-              Billed To (Party Details):
-            </p>
-            <p style={{ fontWeight: '800', fontSize: '0.95rem', margin: 0 }}>{invoice.partyName}</p>
-            {invoice.partyAddress && <p style={{ margin: '2px 0 0 0' }}>Address: {invoice.partyAddress}</p>}
-            {invoice.partyPhone && <p style={{ margin: '2px 0 0 0' }}>Contact: {invoice.partyPhone}</p>}
-            {!isNonGst && invoice.partyGstin && <p style={{ margin: '2px 0 0 0', fontWeight: '700' }}>GSTIN: {invoice.partyGstin}</p>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #ddd', paddingBottom: '4px', marginBottom: '6px' }}>
+              <span style={{ fontWeight: '800', textTransform: 'uppercase' }}>
+                BILLED TO (PARTY DETAILS):
+              </span>
+              <span style={{ fontWeight: '700', fontSize: '0.84rem', color: '#000000' }}>
+                📍 ADDRESS: <span style={{ textTransform: 'uppercase', textDecoration: 'underline' }}>{displayAddress}</span>
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ fontWeight: '800', fontSize: '0.98rem', margin: 0 }}>{invoice.partyName}</p>
+                {invoice.partyPhone && <p style={{ margin: '2px 0 0 0' }}>Contact: {invoice.partyPhone}</p>}
+                {!isNonGst && invoice.partyGstin && <p style={{ margin: '2px 0 0 0', fontWeight: '700' }}>GSTIN: {invoice.partyGstin}</p>}
+              </div>
+
+              <div style={{ textAlign: 'right', maxWidth: '50%' }}>
+                <p style={{ margin: 0, fontWeight: '700', color: '#1e293b', fontSize: '0.88rem' }}>
+                  {displayAddress}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Items Table */}

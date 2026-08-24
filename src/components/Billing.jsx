@@ -335,7 +335,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     const partyNameFinal = selectedParty ? selectedParty.name : (customerName || 'Cash Customer');
     const partyPhoneFinal = selectedParty ? selectedParty.phone : customerPhone;
     const partyGstinFinal = selectedParty ? selectedParty.gstin : '';
-    const partyAddressFinal = selectedParty ? selectedParty.address : '';
+    const partyAddressFinal = selectedParty ? (selectedParty.address || selectedParty.city || '') : '';
 
     let actualPaid = grandTotal;
     let balanceAmt = 0;
