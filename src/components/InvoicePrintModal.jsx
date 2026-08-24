@@ -215,12 +215,8 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '20px', fontSize: '0.82rem' }}>
             
             <div>
-              <p style={{ fontWeight: '800', marginBottom: '4px' }}>Terms & Conditions:</p>
-              <p style={{ whiteSpace: 'pre-line', fontSize: '0.76rem', color: '#444' }}>
-                {business?.terms || "1. Goods once sold will not be taken back.\n2. Subject to local jurisdiction."}
-              </p>
               {invoice.notes && (
-                <div style={{ marginTop: '10px', padding: '6px 10px', background: '#f9fafb', border: '1px solid #ddd', borderRadius: '4px' }}>
+                <div style={{ padding: '6px 10px', background: '#f9fafb', border: '1px solid #ddd', borderRadius: '4px' }}>
                   <strong>Note:</strong> {invoice.notes}
                 </div>
               )}
