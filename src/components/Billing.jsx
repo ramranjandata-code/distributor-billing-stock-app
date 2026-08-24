@@ -25,7 +25,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [taxMode, setTaxMode] = useState('INTRA'); // INTRA (CGST+SGST) or INTER (IGST)
+  const [taxMode, setTaxMode] = useState('NONE'); // Default: NONE (Non-GST / Estimate)
   
   // Party Search & Add Party Modal State
   const [partySearchTerm, setPartySearchTerm] = useState('');
@@ -485,9 +485,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 value={taxMode}
                 onChange={e => setTaxMode(e.target.value)}
               >
+                <option value="NONE">बिना GST (Non-GST / Estimate)</option>
                 <option value="INTRA">राज्य के भीतर (CGST + SGST)</option>
                 <option value="INTER">राज्य के बाहर (IGST)</option>
-                <option value="NONE">बिना GST (Non-GST / Estimate)</option>
               </select>
             </div>
 
