@@ -98,9 +98,9 @@ export const initDataStorage = () => {
   const client = getSupabaseClient();
   if (client) {
     SAMPLE_IDS.forEach(id => {
-      client.from('products').delete().eq('id', id).catch(console.error);
-      client.from('parties').delete().eq('id', id).catch(console.error);
-      client.from('invoices').delete().eq('id', id).catch(console.error);
+      client.from('products').delete().eq('id', id).then(() => {}).catch(console.error);
+      client.from('parties').delete().eq('id', id).then(() => {}).catch(console.error);
+      client.from('invoices').delete().eq('id', id).then(() => {}).catch(console.error);
     });
   }
 };
@@ -157,7 +157,7 @@ export const deleteProduct = (id) => {
   
   const client = getSupabaseClient();
   if (client) {
-    client.from('products').delete().eq('id', id).catch(console.error);
+    client.from('products').delete().eq('id', id).then(() => {}).catch(console.error);
   }
   return products;
 };
