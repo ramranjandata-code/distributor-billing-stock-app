@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { saveBusinessInfo, saveProduct, deleteProduct, setStorageData, formatCartonStock, pushLocalDataToCloud, fetchCloudData } from '../utils/storage';
+import { saveBusinessInfo, saveProduct, deleteProduct, setStorageData, formatCartonStock, pushLocalDataToCloud, fetchCloudData, clearAllSampleData } from '../utils/storage';
 import { getSupabaseConfig, updateSupabaseCredentials, isSupabaseConnected } from '../utils/supabaseClient';
 import { 
   Store, 
@@ -122,10 +122,10 @@ export default function Settings({ business, products, refreshAllData }) {
   };
 
   const handleClearSampleProducts = () => {
-    if (window.confirm('⚠️ क्या आप सभी टेस्ट/सैंपल प्रोडक्ट्स को हटाकर अपनी पसंद के नए प्रोडक्ट्स जोड़ना चाहते हैं?')) {
-      setStorageData('distro_products', []);
+    if (window.confirm('⚠️ क्या आप सभी टेस्ट/सैंपल डेटा (Products, Retailers, Bills) को हटाकर बिल्कुल नया और साफ ऐप शुरू करना चाहते हैं?')) {
+      clearAllSampleData();
       refreshAllData();
-      alert('🗑️ सभी सैंपल प्रोडक्ट्स हटा दिए गए हैं! अब आप अपने खुद के Wafers, Chocolates, Snacks इत्यादि जोड़ सकते हैं।');
+      alert('🗑️ सभी सैंपल प्रोडक्ट्स, रिटेलर्स एवं बिल डेटा पूरी तरह से डिलीट कर दिया गया है!');
     }
   };
 
@@ -429,14 +429,35 @@ export default function Settings({ business, products, refreshAllData }) {
             </span>
           </div>
 
-          {/* Sync Actions Bar */}
+          {/* Realtime Sync Status Banner */}
+          <div style={{ marginBottom: '20px', padding: '14px 18px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h4 style={{ fontSize: '0.96rem', fontWeight: '700', color: '#047857' }}>
+                ⚡ ऑटोमैटिक रीअल-टाइम सिंक एक्टिवेट है (Real-Time Auto-Sync Active)
+              </h4>
+              <p style={{ fontSize: '0.82rem', color: '#065f46', marginTop: '2px' }}>
+                आप जब भी नया बिल बनाएंगे, स्टॉक अपडेट करेंगे या नया रिटेलर जोड़ेंगे, डेटा अपने-आप तुरंत Supabase Cloud DB में सेव हो जाएगा।
+              </p>
+            </div>
+            
+            <button 
+              onClick={handleClearSampleProducts}
+              className="btn btn-secondary btn-sm"
+              style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', gap: '6px' }}
+            >
+              <Trash2 size={15} />
+              <span>🗑️ डिलीट ऑल सैंपल डेटा (Clear All Demo Data)</span>
+            </button>
+          </div>
+
+          {/* Sync Actions Bar (Backup / Restore) */}
           <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h4 style={{ fontSize: '0.96rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                🔄 1-क्लिक डेटा सिंक (Cloud Data Sync)
+                🔄 1-क्लिक मैनुअल बैकअप व रिस्टोर (Manual Backup & Restore)
               </h4>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                लोकल डेटा को क्लाउड पर भेजें या ऑनलाइन क्लाउड से ताजा डेटा डाउनलोड करें।
+                ऑटो-सिंक के अलावा यदि आप चाहें तो किसी भी समय 1-क्लिक में क्लाउड पर पूरा बैकअप भेज या डाउनलोड कर सकते हैं।
               </p>
             </div>
 

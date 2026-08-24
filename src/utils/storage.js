@@ -25,136 +25,10 @@ const DEFAULT_BUSINESS = {
   terms: "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged on overdue payments.\n3. Subject to local jurisdiction."
 };
 
-const DEFAULT_PRODUCTS = [
-  {
-    id: 'prod_1',
-    name: 'Parle-G Gold Biscuit (100g Box of 24 Pcs)',
-    category: 'Biscuits & Confectionery',
-    brand: 'Parle',
-    sku: 'PRL-G-100G-BOX',
-    hsn: '19053100',
-    mrp: 360,
-    salePrice: 310,
-    purchasePrice: 280,
-    gstRate: 18,
-    pcsPerCarton: 24,
-    currentStock: 48,
-    unit: 'Box',
-    minStockLimit: 15
-  },
-  {
-    id: 'prod_2',
-    name: 'Britannia Good Day Butter (600g Family Pack)',
-    category: 'Biscuits & Confectionery',
-    brand: 'Britannia',
-    sku: 'BRT-GD-600G',
-    hsn: '19053100',
-    mrp: 120,
-    salePrice: 102,
-    purchasePrice: 90,
-    gstRate: 18,
-    pcsPerCarton: 24,
-    currentStock: 117,
-    unit: 'Pcs',
-    minStockLimit: 20
-  },
-  {
-    id: 'prod_3',
-    name: 'Tata Salt Vacuum Evaporated (1kg Pouch)',
-    category: 'Staples & Grocery',
-    brand: 'Tata Consumer',
-    sku: 'TATA-SALT-1KG',
-    hsn: '25010090',
-    mrp: 28,
-    salePrice: 24.5,
-    purchasePrice: 21.5,
-    gstRate: 5,
-    pcsPerCarton: 50,
-    currentStock: 250,
-    unit: 'Pcs',
-    minStockLimit: 50
-  },
-  {
-    id: 'prod_4',
-    name: 'Fortune Sunlite Refined Sunflower Oil (1L Pouch)',
-    category: 'Edible Oils',
-    brand: 'Fortune Adani Wilmar',
-    sku: 'FRT-SUN-1L',
-    hsn: '15121910',
-    mrp: 155,
-    salePrice: 138,
-    purchasePrice: 126,
-    gstRate: 5,
-    pcsPerCarton: 12,
-    currentStock: 8,
-    unit: 'Pcs',
-    minStockLimit: 25
-  },
-  {
-    id: 'prod_5',
-    name: 'Surf Excel Easy Wash Detergent Powder (1kg)',
-    category: 'Home Care',
-    brand: 'HUL',
-    sku: 'SURF-EW-1KG',
-    hsn: '34022090',
-    mrp: 145,
-    salePrice: 128,
-    purchasePrice: 112,
-    gstRate: 18,
-    pcsPerCarton: 20,
-    currentStock: 62,
-    unit: 'Pcs',
-    minStockLimit: 15
-  },
-  {
-    id: 'prod_6',
-    name: 'Dettol Original Bathing Soap (125g Pack of 4)',
-    category: 'Personal Care',
-    brand: 'Reckitt Benckiser',
-    sku: 'DTL-SOP-4P',
-    hsn: '34011110',
-    mrp: 210,
-    salePrice: 184,
-    purchasePrice: 162,
-    gstRate: 18,
-    pcsPerCarton: 24,
-    currentStock: 16,
-    unit: 'Pack',
-    minStockLimit: 10
-  },
-  {
-    id: 'prod_7',
-    name: 'Amul Taaza Toned Milk (1L Tetra Pack)',
-    category: 'Dairy & Beverages',
-    brand: 'Amul',
-    sku: 'AML-TZ-1L',
-    hsn: '04012000',
-    mrp: 72,
-    salePrice: 66,
-    purchasePrice: 60,
-    gstRate: 0,
-    pcsPerCarton: 12,
-    currentStock: 90,
-    unit: 'Pcs',
-    minStockLimit: 30
-  },
-  {
-    id: 'prod_8',
-    name: 'Cadbury Dairy Milk Silk Chocolate (150g)',
-    category: 'Biscuits & Confectionery',
-    brand: 'Mondelez',
-    sku: 'CDB-SILK-150G',
-    hsn: '18069020',
-    mrp: 180,
-    salePrice: 160,
-    purchasePrice: 140,
-    gstRate: 18,
-    pcsPerCarton: 24,
-    currentStock: 35,
-    unit: 'Pcs',
-    minStockLimit: 10
-  }
-];
+const DEFAULT_PRODUCTS = [];
+const DEFAULT_PARTIES = [];
+const DEFAULT_INVOICES = [];
+const DEFAULT_PURCHASES = [];
 
 export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24) => {
   const pcs = Number(pcsPerCarton) || 1;
@@ -175,170 +49,6 @@ export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24) => {
     return `${loosePcs} Pcs`;
   }
 };
-
-const DEFAULT_PARTIES = [
-  {
-    id: 'party_1',
-    name: 'Gupta Kirana & General Store',
-    contactPerson: 'Ramakant Gupta',
-    phone: '9811223344',
-    city: 'Rohini, Sector 7',
-    address: 'Shop No. 4, Main Market, Rohini Sector 7, Delhi',
-    gstin: '07BAPPG4321A1Z2',
-    creditLimit: 50000,
-    balance: 14200 // Positive = Customer owes us money (Udhar)
-  },
-  {
-    id: 'party_2',
-    name: 'Sharma Supermarket & Departmental Store',
-    contactPerson: 'Suresh Sharma',
-    phone: '9877112233',
-    city: 'Pitampura',
-    address: 'Plot 45, FD Block, Near Metro Station, Pitampura, Delhi',
-    gstin: '07AAPPS9988C1Z5',
-    creditLimit: 100000,
-    balance: 28500
-  },
-  {
-    id: 'party_3',
-    name: 'Verma Daily Needs & Provision Store',
-    contactPerson: 'Vikas Verma',
-    phone: '9866554433',
-    city: 'Shalimar Bagh',
-    address: '12-B Central Market, Shalimar Bagh, Delhi',
-    gstin: '07CCPVV8877B1Z4',
-    creditLimit: 30000,
-    balance: 0 // Settled
-  },
-  {
-    id: 'party_4',
-    name: 'Aggarwal Traders (Wholesale & Retail)',
-    contactPerson: 'Sunil Aggarwal',
-    phone: '9910022334',
-    city: 'Kamla Nagar',
-    address: '88-A Spark Mall Lane, Kamla Nagar, Delhi',
-    gstin: '07AAAPA1122D1Z9',
-    creditLimit: 150000,
-    balance: 42000
-  }
-];
-
-const DEFAULT_INVOICES = [
-  {
-    id: 'inv_1001',
-    invoiceNo: 'SGA/26-27/1001',
-    date: '2026-08-23T10:30:00.000Z',
-    partyId: 'party_1',
-    partyName: 'Gupta Kirana & General Store',
-    partyPhone: '9811223344',
-    partyGstin: '07BAPPG4321A1Z2',
-    partyAddress: 'Shop No. 4, Main Market, Rohini Sector 7, Delhi',
-    items: [
-      {
-        productId: 'prod_1',
-        name: 'Parle-G Gold Biscuit (100g Box of 24 Pcs)',
-        sku: 'PRL-G-100G-BOX',
-        hsn: '19053100',
-        qty: 10,
-        unit: 'Box',
-        price: 310,
-        mrp: 360,
-        gstRate: 18,
-        total: 3100
-      },
-      {
-        productId: 'prod_3',
-        name: 'Tata Salt Vacuum Evaporated (1kg Pouch)',
-        sku: 'TATA-SALT-1KG',
-        hsn: '25010090',
-        qty: 50,
-        unit: 'Pcs',
-        price: 24.5,
-        mrp: 28,
-        gstRate: 5,
-        total: 1225
-      }
-    ],
-    subTotal: 4325,
-    taxTotal: 619.25,
-    cgst: 309.63,
-    sgst: 309.63,
-    igst: 0,
-    discount: 100,
-    grandTotal: 4844.25,
-    paymentStatus: 'UNPAID', // UNPAID, PAID, PARTIAL
-    paidAmount: 0,
-    balanceAmount: 4844.25,
-    notes: 'Standard 14 days credit invoice.'
-  },
-  {
-    id: 'inv_1002',
-    invoiceNo: 'SGA/26-27/1002',
-    date: '2026-08-24T04:15:00.000Z',
-    partyId: 'party_2',
-    partyName: 'Sharma Supermarket & Departmental Store',
-    partyPhone: '9877112233',
-    partyGstin: '07AAPPS9988C1Z5',
-    partyAddress: 'Plot 45, FD Block, Near Metro Station, Pitampura, Delhi',
-    items: [
-      {
-        productId: 'prod_2',
-        name: 'Britannia Good Day Butter (600g Family Pack)',
-        sku: 'BRT-GD-600G',
-        hsn: '19053100',
-        qty: 20,
-        unit: 'Pcs',
-        price: 102,
-        mrp: 120,
-        gstRate: 18,
-        total: 2040
-      },
-      {
-        productId: 'prod_5',
-        name: 'Surf Excel Easy Wash Detergent Powder (1kg)',
-        sku: 'SURF-EW-1KG',
-        hsn: '34022090',
-        qty: 15,
-        unit: 'Pcs',
-        price: 128,
-        mrp: 145,
-        gstRate: 18,
-        total: 1920
-      }
-    ],
-    subTotal: 3960,
-    taxTotal: 712.80,
-    cgst: 356.40,
-    sgst: 356.40,
-    igst: 0,
-    discount: 0,
-    grandTotal: 4672.80,
-    paymentStatus: 'PAID',
-    paidAmount: 4672.80,
-    balanceAmount: 0,
-    notes: 'Paid via UPI Transfer.'
-  }
-];
-
-const DEFAULT_PURCHASES = [
-  {
-    id: 'pur_1',
-    purchaseNo: 'PUR-2026-089',
-    date: '2026-08-20T09:00:00.000Z',
-    supplierName: 'Parle Products Pvt Ltd Depot',
-    items: [
-      {
-        productId: 'prod_1',
-        name: 'Parle-G Gold Biscuit (100g Box of 24 Pcs)',
-        qty: 50,
-        purchasePrice: 280,
-        total: 14000
-      }
-    ],
-    grandTotal: 14000,
-    notes: 'Direct Factory Depot stock receipt.'
-  }
-];
 
 // LocalStorage Helpers
 export const getStorageData = (key, defaultVal) => {
@@ -378,27 +88,60 @@ export const initDataStorage = () => {
   }
 };
 
+export const clearAllSampleData = () => {
+  setStorageData(STORAGE_KEYS.PRODUCTS, []);
+  setStorageData(STORAGE_KEYS.PARTIES, []);
+  setStorageData(STORAGE_KEYS.INVOICES, []);
+  setStorageData(STORAGE_KEYS.PURCHASES, []);
+  const client = getSupabaseClient();
+  if (client) {
+    client.from('products').delete().neq('id', '0').catch(console.error);
+    client.from('parties').delete().neq('id', '0').catch(console.error);
+    client.from('invoices').delete().neq('id', '0').catch(console.error);
+  }
+};
+
+// Helper for automatic real-time Cloud DB syncing
+const autoCloudSync = async () => {
+  try {
+    const client = getSupabaseClient();
+    if (client) {
+      pushLocalDataToCloud().catch(err => console.warn('Auto cloud sync warning:', err));
+    }
+  } catch (e) {
+    console.warn('Auto cloud sync caught:', e);
+  }
+};
+
 // Operations: Products
 export const fetchProducts = () => getStorageData(STORAGE_KEYS.PRODUCTS, DEFAULT_PRODUCTS);
 export const saveProduct = (product) => {
   const products = fetchProducts();
   let updated;
+  let targetProd;
   if (product.id) {
+    targetProd = product;
     updated = products.map(p => p.id === product.id ? product : p);
   } else {
-    const newProd = {
+    targetProd = {
       ...product,
       id: 'prod_' + Date.now()
     };
-    updated = [newProd, ...products];
+    updated = [targetProd, ...products];
   }
   setStorageData(STORAGE_KEYS.PRODUCTS, updated);
+  autoCloudSync();
   return updated;
 };
 
 export const deleteProduct = (id) => {
   const products = fetchProducts().filter(p => p.id !== id);
   setStorageData(STORAGE_KEYS.PRODUCTS, products);
+  
+  const client = getSupabaseClient();
+  if (client) {
+    client.from('products').delete().eq('id', id).catch(console.error);
+  }
   return products;
 };
 
@@ -413,6 +156,7 @@ export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') =>
     return p;
   });
   setStorageData(STORAGE_KEYS.PRODUCTS, updated);
+  autoCloudSync();
   return updated;
 };
 
@@ -432,6 +176,7 @@ export const saveParty = (party) => {
     updated = [newParty, ...parties];
   }
   setStorageData(STORAGE_KEYS.PARTIES, updated);
+  autoCloudSync();
   return updated;
 };
 
@@ -445,6 +190,7 @@ export const updatePartyBalance = (partyId, amountToAdd) => {
     return p;
   });
   setStorageData(STORAGE_KEYS.PARTIES, updated);
+  autoCloudSync();
   return updated;
 };
 
@@ -486,6 +232,7 @@ export const saveInvoice = (invoiceData) => {
   // 3. Save Invoice
   const updatedInvoices = [newInvoice, ...invoices];
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  autoCloudSync();
   return newInvoice;
 };
 
@@ -493,12 +240,7 @@ export const saveInvoice = (invoiceData) => {
 export const fetchBusinessInfo = () => getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
 export const saveBusinessInfo = (info) => {
   setStorageData(STORAGE_KEYS.BUSINESS, info);
-  
-  // Async push to Supabase if connected
-  const client = getSupabaseClient();
-  if (client) {
-    client.from('business_info').upsert({ id: 'default_business', ...info }).catch(console.error);
-  }
+  autoCloudSync();
   return info;
 };
 
