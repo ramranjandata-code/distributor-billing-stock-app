@@ -192,7 +192,7 @@ export default function InvoicePrintModal({ invoice, business, onClose }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Subtotal:</td>
+                    <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>Total Amount (Incl. GST):</td>
                     <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>₹{(Number(invoice.subTotal) || 0).toFixed(2)}</td>
                   </tr>
                   {Boolean(invoice.discount) && (
@@ -201,22 +201,22 @@ export default function InvoicePrintModal({ invoice, business, onClose }) {
                       <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>- ₹{(Number(invoice.discount) || 0).toFixed(2)}</td>
                     </tr>
                   )}
-                  {Boolean(invoice.cgst) && (
+                  {!isNonGst && Boolean(invoice.cgst) && (
                     <tr>
-                      <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>CGST:</td>
-                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>₹{(Number(invoice.cgst) || 0).toFixed(2)}</td>
+                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', fontSize: '0.78rem', color: '#555' }}>Incl. CGST:</td>
+                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right', fontSize: '0.78rem', color: '#555' }}>₹{(Number(invoice.cgst) || 0).toFixed(2)}</td>
                     </tr>
                   )}
-                  {Boolean(invoice.sgst) && (
+                  {!isNonGst && Boolean(invoice.sgst) && (
                     <tr>
-                      <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>SGST:</td>
-                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>₹{(Number(invoice.sgst) || 0).toFixed(2)}</td>
+                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', fontSize: '0.78rem', color: '#555' }}>Incl. SGST:</td>
+                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right', fontSize: '0.78rem', color: '#555' }}>₹{(Number(invoice.sgst) || 0).toFixed(2)}</td>
                     </tr>
                   )}
-                  {Boolean(invoice.igst) && (
+                  {!isNonGst && Boolean(invoice.igst) && (
                     <tr>
-                      <td style={{ padding: '4px 8px', border: '1px solid #ddd' }}>IGST:</td>
-                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right' }}>₹{(Number(invoice.igst) || 0).toFixed(2)}</td>
+                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', fontSize: '0.78rem', color: '#555' }}>Incl. IGST:</td>
+                      <td style={{ padding: '4px 8px', border: '1px solid #ddd', textAlign: 'right', fontSize: '0.78rem', color: '#555' }}>₹{(Number(invoice.igst) || 0).toFixed(2)}</td>
                     </tr>
                   )}
                   <tr style={{ background: '#f3f4f6', fontWeight: '800' }}>

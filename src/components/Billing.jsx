@@ -168,7 +168,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setCart(cart.filter((_, i) => i !== index));
   };
 
-  // Billing Math Calculations per item
+  // Billing Math Calculations per item (Rates entered are GST INCLUSIVE / Added GST)
   const getItemDetails = (item) => {
     const grossTotal = (Number(item.price) || 0) * (Number(item.qty) || 1);
     let itemDiscAmount = 0;
@@ -180,15 +180,20 @@ export default function Billing({ products, parties, business, refreshAllData, h
       itemDiscAmount = dVal * (Number(item.qty) || 1); // ₹ dVal per unit
     }
 
-    const netTaxable = Math.max(0, grossTotal - itemDiscAmount);
-    const gstVal = (netTaxable * (Number(item.gstRate) || 0)) / 100;
+    const netInclusiveTotal = Math.max(0, grossTotal - itemDiscAmount);
+    const gstRate = Number(item.gstRate) || 0;
+    
+    // Back-calculate taxable base and GST portion included in the rate
+    const netTaxable = taxMode === 'NONE' ? netInclusiveTotal : (netInclusiveTotal / (1 + gstRate / 100));
+    const gstVal = taxMode === 'NONE' ? 0 : (netInclusiveTotal - netTaxable);
 
     return {
       grossTotal,
       itemDiscAmount,
+      netInclusiveTotal,
       netTaxable,
       gstVal,
-      finalItemTotal: netTaxable + gstVal
+      finalItemTotal: netInclusiveTotal
     };
   };
 
@@ -206,7 +211,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
     return {
       ...item,
-      total: calc.netTaxable, // Taxable subtotal for this item
+      total: calc.netInclusiveTotal, // Inclusive total for this item
+      taxableAmount: calc.netTaxable,
       discAmount: calc.itemDiscAmount,
       itemGstAmount: itemGst
     };
@@ -223,8 +229,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
     overallDiscountAmt = overallDVal;
   }
 
-  const finalTaxableTotal = Math.max(0, netSubTotal - overallDiscountAmt);
-  const grandTotal = finalTaxableTotal + taxTotal;
+  // Grand Total is GST Inclusive (no extra GST added on top)
+  const grandTotal = Math.max(0, netSubTotal - overallDiscountAmt);
 
   let cgst = 0, sgst = 0, igst = 0;
   if (taxMode === 'INTRA') {
@@ -581,7 +587,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         </td>
 
                         <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)' }}>
-                          ₹{calc.netTaxable.toFixed(2)}
+                          ₹{calc.netInclusiveTotal.toFixed(2)}
                         </td>
 
                         <td style={{ padding: '8px 2px', textAlign: 'right' }}>
@@ -657,18 +663,18 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
             ) : taxMode === 'INTRA' ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                  <span>CGST टैक्स:</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  <span>CGST (दर में शामिल / Included):</span>
                   <span>₹{cgst.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                  <span>SGST टैक्स:</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  <span>SGST (दर में शामिल / Included):</span>
                   <span>₹{sgst.toFixed(2)}</span>
                 </div>
               </>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                <span>IGST टैक्स:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                <span>IGST (दर में शामिल / Included):</span>
                 <span>₹{igst.toFixed(2)}</span>
               </div>
             )}

@@ -1,4 +1,4 @@
-$SourceApp = "C:\Users\Administrator\.gemini\antigravity\scratch\distributor_billing_stock_app\dist-exe-setup\win-unpacked"
+$SourceApp = "C:\Users\Administrator\.gemini\antigravity\scratch\distributor_billing_stock_app\output-setup\win-unpacked"
 $TargetInstaller = "C:\Users\Administrator\.gemini\antigravity\scratch\distributor_billing_stock_app\DistroPulse-ERP-Setup-Package"
 
 # 1. Ensure target directory exists

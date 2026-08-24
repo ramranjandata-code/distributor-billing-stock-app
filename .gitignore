@@ -12,13 +12,13 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Build installer outputs
+output-setup/
+DistroPulse-ERP-Setup-Package/
+dist-exe-setup/
+dist-setup-installer/
+*.exe
+*.zip
+*.sed
+*.DDF
+

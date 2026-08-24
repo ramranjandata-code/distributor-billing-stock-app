@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { saveBusinessInfo, saveProduct, deleteProduct, setStorageData, formatCartonStock, pushLocalDataToCloud, fetchCloudData, clearAllSampleData } from '../utils/storage';
-import { getSupabaseConfig, updateSupabaseCredentials, isSupabaseConnected } from '../utils/supabaseClient';
+import { saveBusinessInfo, saveProduct, deleteProduct, setStorageData, formatCartonStock, pushLocalDataToCloud, fetchCloudData, clearAllSampleData, performFullSync } from '../utils/storage';
+import { getSupabaseConfig, updateSupabaseCredentials, isSupabaseConnected, testSupabaseConnection } from '../utils/supabaseClient';
 import { 
   Store, 
   Plus, 
@@ -129,11 +129,25 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     }
   };
 
-  const handleSaveSupabaseConfig = (e) => {
+  const handleTestConnection = async () => {
+    setCloudSyncStatus({ loading: true, msg: 'Testing Supabase Cloud DB Connection...' });
+    const res = await testSupabaseConnection();
+    setCloudSyncStatus({ loading: false, msg: res.message });
+    if (res.success) {
+      alert('🎉 ' + res.message);
+    } else {
+      alert('⚠️ ' + res.message);
+    }
+  };
+
+  const handleSaveSupabaseConfig = async (e) => {
     e.preventDefault();
     updateSupabaseCredentials(supabaseConfig.url, supabaseConfig.key);
+    setCloudSyncStatus({ loading: true, msg: 'Saving & Syncing Cloud Database...' });
+    const syncRes = await performFullSync();
     refreshAllData();
-    alert('✅ Supabase Cloud DB क्रेडेंशियल्स सफलतापूर्वक अपडेट हो गए हैं!');
+    setCloudSyncStatus({ loading: false, msg: syncRes.message });
+    alert('✅ Supabase Cloud DB क्रेडेंशियल्स सफलतापूर्वक अपडेट और सिंक हो गए हैं!');
   };
 
   const handlePushToCloud = async () => {
@@ -608,8 +622,18 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
             </div>
 
-            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" className="btn btn-primary" style={{ gap: '8px' }}>
+            <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                type="button" 
+                onClick={handleTestConnection}
+                className="btn btn-secondary" 
+                style={{ gap: '8px' }}
+                disabled={cloudSyncStatus.loading}
+              >
+                <RefreshCw size={16} className={cloudSyncStatus.loading ? 'spin' : ''} />
+                <span>टेस्ट कनेक्शन (Test Connection)</span>
+              </button>
+              <button type="submit" className="btn btn-primary" style={{ gap: '8px' }} disabled={cloudSyncStatus.loading}>
                 <Save size={18} />
                 <span>क्रेडेंशियल्स सेव करें (Save Credentials)</span>
               </button>

@@ -5,7 +5,9 @@ import {
   fetchProducts, 
   fetchParties, 
   fetchInvoices,
-  saveBusinessInfo 
+  saveBusinessInfo,
+  performFullSync,
+  fetchCloudData
 } from './utils/storage';
 
 import Navigation from './components/Navigation';
@@ -18,8 +20,9 @@ import Reports from './components/Reports';
 import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 
-import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe } from 'lucide-react';
+import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2 } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
+import { isSupabaseConnected } from './utils/supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -35,6 +38,11 @@ export default function App() {
   const [editSettingsModal, setEditSettingsModal] = useState(false);
   const [settingsFormData, setSettingsFormData] = useState(null);
 
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedTime, setLastSyncedTime] = useState(null);
+  const [cloudConnected, setCloudConnected] = useState(isSupabaseConnected());
+
   const translate = (key) => t(key, lang);
 
   const changeLanguage = (newLang) => {
@@ -42,10 +50,51 @@ export default function App() {
     setLang(newLang);
   };
 
-  // Initialize data on mount
+  const triggerManualSync = async () => {
+    setIsSyncing(true);
+    await performFullSync();
+    refreshAllData();
+    setLastSyncedTime(new Date().toLocaleTimeString());
+    setCloudConnected(true);
+    setIsSyncing(false);
+  };
+
+  // Initialize data and setup Auto-Sync on mount
   useEffect(() => {
     initDataStorage();
     refreshAllData();
+
+    // Trigger initial pull on mount
+    fetchCloudData().then(() => {
+      refreshAllData();
+      setLastSyncedTime(new Date().toLocaleTimeString());
+      setCloudConnected(true);
+    });
+
+    // Listen for local changes to refresh UI instantly
+    const handleDataChange = () => {
+      refreshAllData();
+      setLastSyncedTime(new Date().toLocaleTimeString());
+    };
+    window.addEventListener('distro_data_changed', handleDataChange);
+    window.addEventListener('storage', handleDataChange);
+
+    // Set up auto sync polling every 2 seconds across all devices
+    const interval = setInterval(() => {
+      fetchCloudData().then((updated) => {
+        if (updated) {
+          refreshAllData();
+          setLastSyncedTime(new Date().toLocaleTimeString());
+        }
+        setCloudConnected(true);
+      }).catch(err => console.warn('Auto polling warning:', err));
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('distro_data_changed', handleDataChange);
+      window.removeEventListener('storage', handleDataChange);
+    };
   }, []);
 
   const refreshAllData = () => {
@@ -59,6 +108,7 @@ export default function App() {
     setParties(prt);
     setInvoices(inv);
     setSettingsFormData(b);
+    setCloudConnected(isSupabaseConnected());
   };
 
   const lowStockProducts = products.filter(p => p.currentStock <= (p.minStockLimit || 10));
@@ -97,7 +147,9 @@ export default function App() {
           justifyContent: 'space-between', 
           marginBottom: '24px',
           paddingBottom: '16px',
-          borderBottom: '1px solid var(--border-color)'
+          borderBottom: '1px solid var(--border-color)',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <button 
@@ -124,7 +176,31 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Live Cloud Sync Status Badge */}
+            {cloudConnected ? (
+              <div 
+                onClick={triggerManualSync}
+                className="badge badge-success"
+                title="Click to trigger manual sync with Web & Cloud DB"
+                style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Cloud size={14} />
+                <span>Cloud Synced {lastSyncedTime ? `(${lastSyncedTime})` : ''}</span>
+                <RefreshCw size={12} className={isSyncing ? 'spin' : ''} style={{ marginLeft: '2px' }} />
+              </div>
+            ) : (
+              <div 
+                onClick={() => setActiveTab('settings')}
+                className="badge badge-warning"
+                title="Click to setup Supabase Cloud Database credentials"
+                style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <CloudOff size={14} />
+                <span>Offline Mode (Setup Cloud)</span>
+              </div>
+            )}
+
             {/* Quick Language Dropdown in Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px 10px' }}>
               <Globe size={16} color="var(--primary-color)" />
@@ -162,12 +238,12 @@ export default function App() {
             )}
 
             <button 
-              onClick={refreshAllData}
+              onClick={triggerManualSync}
               className="btn btn-secondary"
-              title="Refresh Data"
+              title="Sync with Cloud DB Now"
               style={{ padding: '10px' }}
             >
-              <RefreshCw size={18} color="var(--text-muted)" />
+              <RefreshCw size={18} className={isSyncing ? 'spin' : ''} color="var(--text-muted)" />
             </button>
           </div>
         </header>
@@ -229,6 +305,7 @@ export default function App() {
             invoices={invoices}
             products={products}
             parties={parties}
+            business={business}
             t={translate}
           />
         )}
