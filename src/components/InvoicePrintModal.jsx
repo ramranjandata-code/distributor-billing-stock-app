@@ -1,9 +1,19 @@
-import React from 'react';
-import { Printer, X, Download, CheckCircle, ShieldCheck } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Printer, X, CheckCircle, Zap, FileText } from 'lucide-react';
 import { formatCartonStock } from '../utils/storage';
 
 export default function InvoicePrintModal({ invoice, business, onClose }) {
+  const [paperFormat, setPaperFormat] = useState('A4'); // 'A4' or 'THERMAL'
+
   if (!invoice) return null;
+
+  // Auto trigger printer dialog on modal load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.print();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -19,21 +29,53 @@ export default function InvoicePrintModal({ invoice, business, onClose }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1000 }}>
-      <div className="modal-content" style={{ maxWidth: '850px', background: '#ffffff', color: '#000000', padding: 0 }}>
+      <div className="modal-content" style={{ maxWidth: paperFormat === 'THERMAL' ? '400px' : '850px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
         
         {/* Top Control Bar (Hidden on Print) */}
-        <div className="modal-header no-print" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--text-main)' }}>
+        <div className="modal-header no-print" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--text-main)', padding: '12px 18px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Printer size={20} color="var(--primary)" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>
-              {isNonGst ? 'बिना GST बिल / Cash Memo (Print Preview)' : 'GST टैक्स इनवॉइस (Print Preview)'}
+            <Zap size={20} color="var(--primary)" />
+            <h3 style={{ fontSize: '1rem', fontWeight: '700' }}>
+              Instant Direct Printer Ready
             </h3>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '6px' }}>
+            {/* Paper Size Format Switcher */}
+            <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '6px', padding: '2px' }}>
+              <button
+                onClick={() => setPaperFormat('A4')}
+                style={{
+                  padding: '4px 10px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: paperFormat === 'A4' ? '#ffffff' : 'transparent',
+                  fontWeight: paperFormat === 'A4' ? '700' : '500',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer'
+                }}
+              >
+                📄 Standard A4
+              </button>
+              <button
+                onClick={() => setPaperFormat('THERMAL')}
+                style={{
+                  padding: '4px 10px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: paperFormat === 'THERMAL' ? '#ffffff' : 'transparent',
+                  fontWeight: paperFormat === 'THERMAL' ? '700' : '500',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer'
+                }}
+              >
+                🧾 POS Thermal (3-inch)
+              </button>
+            </div>
+
+            <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '6px', padding: '8px 16px' }}>
               <Printer size={16} />
-              <span>प्रिंट करें (Print / PDF)</span>
+              <span>🖨️ Print Now</span>
             </button>
             <button onClick={onClose} className="btn btn-secondary" style={{ padding: '8px' }}>
               <X size={20} />
@@ -42,7 +84,13 @@ export default function InvoicePrintModal({ invoice, business, onClose }) {
         </div>
 
         {/* PRINTABLE BILL CANVAS */}
-        <div className="print-area" style={{ padding: '30px', background: '#ffffff', color: '#000000', fontFamily: 'Inter, sans-serif' }}>
+        <div className="print-area" style={{ 
+          padding: paperFormat === 'THERMAL' ? '12px' : '30px', 
+          background: '#ffffff', 
+          color: '#000000', 
+          fontFamily: 'Inter, sans-serif',
+          fontSize: paperFormat === 'THERMAL' ? '0.75rem' : '0.85rem'
+        }}>
           
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000000', paddingBottom: '14px', marginBottom: '16px' }}>
