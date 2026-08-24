@@ -14,7 +14,7 @@ import {
   Clock
 } from 'lucide-react';
 
-export default function Dashboard({ products, parties, invoices, business, setActiveTab, handlePrintInvoice }) {
+export default function Dashboard({ products, parties, invoices, business, setActiveTab, handlePrintInvoice, t }) {
   // KPI Calculations
   const todayStr = new Date().toISOString().split('T')[0];
   const todayInvoices = invoices.filter(inv => inv.date?.startsWith(todayStr));
@@ -47,10 +47,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
       }}>
         <div>
           <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-main)', marginBottom: '4px' }}>
-            नमस्ते {business?.proprietor || business?.name}! 👋
+            {t('welcome')} {business?.proprietor || business?.name}! 👋
           </h2>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-            आज की बिक्री, इन्वेंट्री स्टॉक एवं ग्राहकों के बकाया उधार का संक्षिप्त विवरण:
+            {t('dashboard_title')}
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             style={{ gap: '8px' }}
           >
             <Receipt size={18} />
-            <span>त्वरित बिल बनाएं</span>
+            <span>{t('quick_bill')}</span>
           </button>
 
           <button 
@@ -70,7 +70,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             style={{ gap: '8px' }}
           >
             <Boxes size={18} />
-            <span>स्टॉक अपडेट करें</span>
+            <span>{t('update_stock')}</span>
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
         {/* Today's Sales */}
         <div className="glass-card glass-card-interactive" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>आज की बिक्री (Today Sales)</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('today_sales')}</span>
             <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <TrendingUp size={20} color="#10b981" />
             </div>
@@ -93,14 +93,14 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             ₹{todaySales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </h3>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            आज {todayInvoices.length} इनवॉइस काटे गए
+            {todayInvoices.length} {t('invoices_cut')}
           </p>
         </div>
 
         {/* Total Stock Value */}
         <div className="glass-card glass-card-interactive" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>स्टॉक वैल्यू (Stock Value)</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('stock_value')}</span>
             <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Boxes size={20} color="#6366f1" />
             </div>
@@ -109,14 +109,14 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             ₹{totalStockValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </h3>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            कुल {totalStockItems} यूनिट्स & {products.length} प्रोडक्ट्स
+            {totalStockItems} {t('total_units')} • {products.length} {t('total_products')}
           </p>
         </div>
 
         {/* Total Khata Outstanding */}
         <div className="glass-card glass-card-interactive" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>कुल मार्केट उधार (Khata Balance)</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('khata_balance')}</span>
             <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IndianRupee size={20} color="#f59e0b" />
             </div>
@@ -125,14 +125,14 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             ₹{totalOutstandingBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </h3>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {parties.filter(p => p.balance > 0).length} रिटेलर्स पर बकाया रकम
+            {parties.filter(p => p.balance > 0).length} {t('due_on_retailers')}
           </p>
         </div>
 
         {/* Low Stock Warning Card */}
         <div className="glass-card glass-card-interactive" style={{ padding: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>कम स्टॉक वाले सामान (Low Stock)</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('low_stock_items')}</span>
             <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(244, 63, 94, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <AlertTriangle size={20} color="#f43f5e" />
             </div>

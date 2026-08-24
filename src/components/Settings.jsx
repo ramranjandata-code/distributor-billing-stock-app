@@ -20,9 +20,9 @@ import {
   Globe
 } from 'lucide-react';
 
-export default function Settings({ business, products, refreshAllData }) {
-  const [activeSubTab, setActiveSubTab] = useState('profile'); // 'profile', 'items', or 'cloud'
-  
+export default function Settings({ business, products, refreshAllData, lang, changeLanguage, t }) {
+  const [activeSubTab, setActiveSubTab] = useState('profile'); // 'profile', 'items', 'cloud', 'language'
+
   // Supabase State
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
   const [cloudSyncStatus, setCloudSyncStatus] = useState({ loading: false, msg: '' });
@@ -189,9 +189,95 @@ export default function Settings({ business, products, refreshAllData }) {
           style={{ gap: '6px' }}
         >
           <Cloud size={16} />
-          <span>☁️ क्लाउड डेटाबेस (Supabase DB)</span>
+          <span>☁️ {t('cloud_db_settings')}</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveSubTab('language')}
+          className={`btn btn-sm ${activeSubTab === 'language' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ gap: '6px' }}
+        >
+          <Globe size={16} />
+          <span>🌐 {t('app_language')}</span>
         </button>
       </div>
+
+      {/* SUB-TAB 0: Language Selection */}
+      {activeSubTab === 'language' && (
+        <div className="glass-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+            <Globe size={24} color="var(--primary)" />
+            <div>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>🌐 {t('app_language')}</h2>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                {t('select_language')}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            <div 
+              onClick={() => changeLanguage('en')}
+              style={{
+                padding: '18px',
+                borderRadius: '12px',
+                border: lang === 'en' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                background: lang === 'en' ? '#ecfdf5' : '#f8fafc',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)' }}>🇬🇧 English</h3>
+                {lang === 'en' && <CheckCircle2 size={20} color="var(--primary-color)" />}
+              </div>
+              <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>
+                Default professional business language (Clean & Clear).
+              </p>
+            </div>
+
+            <div 
+              onClick={() => changeLanguage('hinglish')}
+              style={{
+                padding: '18px',
+                borderRadius: '12px',
+                border: lang === 'hinglish' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                background: lang === 'hinglish' ? '#ecfdf5' : '#f8fafc',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)' }}>🇮🇳 Hinglish</h3>
+                {lang === 'hinglish' && <CheckCircle2 size={20} color="var(--primary-color)" />}
+              </div>
+              <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>
+                Easy mix of Hindi & English words (Sabse simple aur aasan).
+              </p>
+            </div>
+
+            <div 
+              onClick={() => changeLanguage('hi')}
+              style={{
+                padding: '18px',
+                borderRadius: '12px',
+                border: lang === 'hi' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                background: lang === 'hi' ? '#ecfdf5' : '#f8fafc',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)' }}>🇮🇳 हिंदी (Hindi)</h3>
+                {lang === 'hi' && <CheckCircle2 size={20} color="var(--primary-color)" />}
+              </div>
+              <p style={{ fontSize: '0.83rem', color: 'var(--text-muted)' }}>
+                शुद्ध हिंदी भाषा में सभी विवरण व रिपोर्ट।
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SUB-TAB 1: Firm Settings */}
       {activeSubTab === 'profile' && (

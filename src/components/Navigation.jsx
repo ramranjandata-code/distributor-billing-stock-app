@@ -13,15 +13,15 @@ import {
   ShieldCheck
 } from 'lucide-react';
 
-export default function Navigation({ activeTab, setActiveTab, business, mobileOpen, setMobileOpen, lowStockCount }) {
+export default function Navigation({ activeTab, setActiveTab, business, mobileOpen, setMobileOpen, lowStockCount, t }) {
   const navItems = [
-    { id: 'dashboard', label: 'डैशबोर्ड (Dashboard)', icon: LayoutDashboard },
-    { id: 'billing', label: 'नया बिल (Quick Billing)', icon: Receipt, badge: 'POS' },
-    { id: 'inventory', label: 'स्टॉक (Stock & Inventory)', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'badge-danger' },
-    { id: 'parties', label: 'ग्राहक खाता (Parties & Khata)', icon: Users },
-    { id: 'invoices', label: 'बिल इतिहास (Bill History)', icon: FileText },
-    { id: 'reports', label: 'रिपोर्ट्स (Reports)', icon: TrendingUp },
-    { id: 'settings', label: 'फर्म सेटिंग्स (Settings)', icon: Settings }
+    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
+    { id: 'billing', label: t('billing'), icon: Receipt, badge: 'POS' },
+    { id: 'inventory', label: t('inventory'), icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'badge-danger' },
+    { id: 'parties', label: t('parties'), icon: Users },
+    { id: 'invoices', label: t('invoices'), icon: FileText },
+    { id: 'reports', label: t('reports'), icon: TrendingUp },
+    { id: 'settings', label: t('settings'), icon: Settings }
   ];
 
   return (

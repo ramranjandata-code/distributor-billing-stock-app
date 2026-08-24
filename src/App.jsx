@@ -18,11 +18,13 @@ import Reports from './components/Reports';
 import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 
-import { Menu, Plus, Bell, Store, Save, RefreshCw } from 'lucide-react';
+import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe } from 'lucide-react';
+import { getAppLanguage, setAppLanguage, t } from './utils/translations';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [lang, setLang] = useState(getAppLanguage());
 
   const [business, setBusiness] = useState(null);
   const [products, setProducts] = useState([]);
@@ -32,6 +34,13 @@ export default function App() {
   const [selectedInvoiceForPrint, setSelectedInvoiceForPrint] = useState(null);
   const [editSettingsModal, setEditSettingsModal] = useState(false);
   const [settingsFormData, setSettingsFormData] = useState(null);
+
+  const translate = (key) => t(key, lang);
+
+  const changeLanguage = (newLang) => {
+    setAppLanguage(newLang);
+    setLang(newLang);
+  };
 
   // Initialize data on mount
   useEffect(() => {
@@ -76,6 +85,7 @@ export default function App() {
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
         lowStockCount={lowStockProducts.length}
+        t={translate}
       />
 
       {/* Main Container */}
@@ -100,13 +110,13 @@ export default function App() {
             </button>
             <div>
               <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>
-                {activeTab === 'dashboard' && '📊 डैशबोर्ड & ओवरव्यू'}
-                {activeTab === 'billing' && '🧾 नया बिल बनाएं (Quick POS Billing)'}
-                {activeTab === 'inventory' && '📦 इन्वेंट्री & स्टॉक मैनेजमेंट'}
-                {activeTab === 'parties' && '👥 ग्राहक खाता (Retailers & Khata)'}
-                {activeTab === 'invoices' && '📑 बिल इतिहास & इनवॉइस रिकॉर्ड'}
-                {activeTab === 'reports' && '📈 बिक्री व लाभ रिपोर्ट्स (Analytics)'}
-                {activeTab === 'settings' && '⚙️ व्यापार सेटिंग्स (Firm Settings)'}
+                {activeTab === 'dashboard' && translate('dashboard_title')}
+                {activeTab === 'billing' && translate('create_bill')}
+                {activeTab === 'inventory' && translate('inventory_title')}
+                {activeTab === 'parties' && translate('parties_title')}
+                {activeTab === 'invoices' && translate('history_title')}
+                {activeTab === 'reports' && translate('reports_title')}
+                {activeTab === 'settings' && translate('settings_title')}
               </h1>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {business?.name} • {business?.city || 'Distributor HQ'}
@@ -115,6 +125,20 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Quick Language Dropdown in Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px 10px' }}>
+              <Globe size={16} color="var(--primary-color)" />
+              <select
+                value={lang}
+                onChange={(e) => changeLanguage(e.target.value)}
+                style={{ border: 'none', background: 'transparent', fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-main)', cursor: 'pointer', outline: 'none' }}
+              >
+                <option value="en">English</option>
+                <option value="hinglish">Hinglish</option>
+                <option value="hi">हिंदी (Hindi)</option>
+              </select>
+            </div>
+
             {lowStockProducts.length > 0 && (
               <button 
                 onClick={() => setActiveTab('inventory')}
@@ -122,7 +146,7 @@ export default function App() {
                 style={{ cursor: 'pointer', padding: '8px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
                 <Bell size={14} />
-                <span>{lowStockProducts.length} Low Stock Alert</span>
+                <span>{lowStockProducts.length} {translate('low_stock_alert')}</span>
               </button>
             )}
 
@@ -133,7 +157,7 @@ export default function App() {
                 style={{ gap: '6px' }}
               >
                 <Plus size={18} />
-                <span>नया बिल (+)</span>
+                <span>{translate('new_bill_btn')}</span>
               </button>
             )}
 
@@ -157,6 +181,7 @@ export default function App() {
             business={business}
             setActiveTab={setActiveTab}
             handlePrintInvoice={handlePrintInvoice}
+            t={translate}
           />
         )}
 
@@ -168,6 +193,7 @@ export default function App() {
             refreshAllData={refreshAllData}
             handlePrintInvoice={handlePrintInvoice}
             setActiveTab={setActiveTab}
+            t={translate}
           />
         )}
 
@@ -175,6 +201,7 @@ export default function App() {
           <Inventory 
             products={products}
             refreshAllData={refreshAllData}
+            t={translate}
           />
         )}
 
@@ -184,6 +211,7 @@ export default function App() {
             invoices={invoices}
             refreshAllData={refreshAllData}
             setActiveTab={setActiveTab}
+            t={translate}
           />
         )}
 
@@ -192,6 +220,7 @@ export default function App() {
             invoices={invoices}
             handlePrintInvoice={handlePrintInvoice}
             refreshAllData={refreshAllData}
+            t={translate}
           />
         )}
 
@@ -200,6 +229,7 @@ export default function App() {
             invoices={invoices}
             products={products}
             parties={parties}
+            t={translate}
           />
         )}
 
@@ -208,6 +238,9 @@ export default function App() {
             business={business}
             products={products}
             refreshAllData={refreshAllData}
+            lang={lang}
+            changeLanguage={changeLanguage}
+            t={translate}
           />
         )}
       </main>
