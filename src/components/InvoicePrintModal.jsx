@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, X, CheckCircle, Zap, FileText } from 'lucide-react';
-import { formatCartonStock } from '../utils/storage';
+import { Printer, X, CheckCircle, Zap, FileText, Trash2 } from 'lucide-react';
+import { formatCartonStock, deleteInvoice } from '../utils/storage';
 
-export default function InvoicePrintModal({ invoice, business, onClose }) {
+export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData }) {
   const [paperFormat, setPaperFormat] = useState('A4'); // 'A4' or 'THERMAL'
 
   if (!invoice) return null;
@@ -17,6 +17,14 @@ export default function InvoicePrintModal({ invoice, business, onClose }) {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(`⚠️ क्या आप सचमुच इनवॉइस #${invoice.invoiceNo} को डिलीट करना चाहते हैं?\n\n• इस इनवॉइस के सभी स्टॉक आइटम्स गोदाम में वापस जुड़ जाएंगे।\n• रिटेलर का बकाया उधार स्वतः एडजस्ट हो जाएगा।`)) {
+      deleteInvoice(invoice.id);
+      if (refreshAllData) refreshAllData();
+      onClose();
+    }
   };
 
   const formattedDate = new Date(invoice.date).toLocaleDateString('en-IN', {
@@ -77,6 +85,17 @@ export default function InvoicePrintModal({ invoice, business, onClose }) {
               <Printer size={16} />
               <span>🖨️ Print Now</span>
             </button>
+
+            <button 
+              onClick={handleDelete}
+              className="btn btn-sm"
+              style={{ gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px 12px' }}
+              title="यह इनवॉइस डिलीट करें"
+            >
+              <Trash2 size={16} />
+              <span>हटाएं</span>
+            </button>
+
             <button onClick={onClose} className="btn btn-secondary" style={{ padding: '8px' }}>
               <X size={20} />
             </button>

@@ -328,6 +328,7 @@ export default function App() {
           invoice={selectedInvoiceForPrint} 
           business={business}
           onClose={() => setSelectedInvoiceForPrint(null)}
+          refreshAllData={refreshAllData}
         />
       )}
     </div>

@@ -255,6 +255,47 @@ export const saveInvoice = (invoiceData) => {
   return newInvoice;
 };
 
+export const deleteInvoice = (invoiceId) => {
+  const invoices = fetchInvoices();
+  const targetInv = invoices.find(i => i.id === invoiceId);
+  if (!targetInv) return invoices;
+
+  // 1. Restore Stock for billed items
+  if (targetInv.items && Array.isArray(targetInv.items)) {
+    const products = fetchProducts();
+    const restoredProducts = products.map(p => {
+      const billedItem = targetInv.items.find(item => item.productId === p.id);
+      if (billedItem) {
+        const newStock = (Number(p.currentStock) || 0) + (Number(billedItem.qty) || 0);
+        return { ...p, currentStock: newStock };
+      }
+      return p;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, restoredProducts);
+  }
+
+  // 2. Revert Party Ledger balance if invoice was unpaid/partial
+  if (targetInv.partyId) {
+    const uncollectedAmount = targetInv.balanceAmount || (targetInv.grandTotal - (targetInv.paidAmount || 0));
+    if (uncollectedAmount > 0) {
+      updatePartyBalance(targetInv.partyId, -uncollectedAmount);
+    }
+  }
+
+  // 3. Delete from Local Storage
+  const updatedInvoices = invoices.filter(i => i.id !== invoiceId);
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+  // 4. Delete from Supabase Cloud
+  const client = getSupabaseClient();
+  if (client) {
+    client.from('invoices').delete().eq('id', invoiceId).then(() => {}).catch(console.error);
+  }
+
+  autoCloudSync();
+  return updatedInvoices;
+};
+
 // Operations: Business Settings
 export const fetchBusinessInfo = () => getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
 export const saveBusinessInfo = (info) => {

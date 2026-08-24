@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, Search, Printer, Calendar, Filter, User } from 'lucide-react';
+import { FileText, Search, Printer, Calendar, Filter, User, Trash2 } from 'lucide-react';
+import { deleteInvoice } from '../utils/storage';
 
-export default function InvoiceHistory({ invoices, handlePrintInvoice }) {
+export default function InvoiceHistory({ invoices, handlePrintInvoice, refreshAllData }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
@@ -13,6 +14,13 @@ export default function InvoiceHistory({ invoices, handlePrintInvoice }) {
   });
 
   const sortedInvoices = [...filteredInvoices].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const handleDelete = (inv) => {
+    if (window.confirm(`⚠️ क्या आप सचमुच इनवॉइस #${inv.invoiceNo} (${inv.partyName}) को डिलीट करना चाहते हैं?\n\n• इस इनवॉइस के सभी स्टॉक आइटम्स गोदाम में वापस जुड़ जाएंगे।\n• रिटेलर का बकाया उधार स्वतः एडजस्ट हो जाएगा।`)) {
+      deleteInvoice(inv.id);
+      if (refreshAllData) refreshAllData();
+    }
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -116,14 +124,26 @@ export default function InvoiceHistory({ invoices, handlePrintInvoice }) {
                         </span>
                       </td>
                       <td style={{ padding: '12px 10px', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => handlePrintInvoice(inv)}
-                          className="btn btn-secondary btn-sm"
-                          style={{ gap: '4px' }}
-                        >
-                          <Printer size={14} />
-                          <span>प्रिंट</span>
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                          <button 
+                            onClick={() => handlePrintInvoice(inv)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ gap: '4px' }}
+                          >
+                            <Printer size={14} />
+                            <span>प्रिंट</span>
+                          </button>
+
+                          <button 
+                            onClick={() => handleDelete(inv)}
+                            className="btn btn-sm"
+                            style={{ gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                            title="इनवॉइस डिलीट करें"
+                          >
+                            <Trash2 size={14} />
+                            <span>हटाएं</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
