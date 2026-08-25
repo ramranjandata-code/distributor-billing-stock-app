@@ -123,17 +123,18 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             border: '1.5px solid #000000', 
             padding: '4px 8px', 
             marginBottom: '4px',
-            textAlign: 'center'
+            textAlign: 'center',
+            position: 'relative'
           }}>
-            {/* Top Bar: GSTIN (Left), Inv & Date stacked on Top Right */}
+            {/* Top Bar: GSTIN (Left), Date (Top Right) */}
             <div style={{ 
               display: 'flex', 
               justify: 'space-between', 
               alignItems: 'center', 
-              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem',
-              fontWeight: '600',
+              fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem',
+              fontWeight: '700',
               borderBottom: '1px solid #cbd5e1',
-              paddingBottom: '2px',
+              paddingBottom: '3px',
               marginBottom: '4px',
               color: '#000000'
             }}>
@@ -141,12 +142,9 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 {!isNonGst && business?.gstin ? `GSTIN: ${business.gstin}` : (business?.phone ? `Ph: ${business.phone}` : '')}
               </div>
 
-              {/* Fixed Top Right: Date & Inv No */}
-              <div style={{ textAlign: 'right', fontWeight: '700', fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem' }}>
-                <div>Date: <strong>{formattedDate}</strong></div>
-                <div style={{ fontSize: paperFormat === 'THERMAL' ? '0.66rem' : '0.74rem', marginTop: '1px' }}>
-                  Inv No: <strong>{invoice.invoiceNo}</strong>
-                </div>
+              {/* Top Right: Date ONLY */}
+              <div style={{ fontWeight: '800' }}>
+                Date: {formattedDate}
               </div>
             </div>
 
@@ -173,17 +171,29 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               {business?.address || business?.city || 'Main Wholesale Market, Transport Nagar'}
             </p>
 
-            {/* Phone Number & Email on the Same Horizontal Line (Normal Weight) */}
-            <p style={{ 
-              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.76rem', 
-              margin: '2px 0 0 0', 
-              fontWeight: '400', 
-              color: '#000000' 
+            {/* Bottom Row inside Box: Centered Phone & Email, Right Corner Inv No */}
+            <div style={{ 
+              display: 'flex', 
+              justify: 'space-between', 
+              alignItems: 'center', 
+              marginTop: '3px',
+              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.76rem',
+              fontWeight: '400',
+              color: '#000000'
             }}>
-              {business?.phone ? `Ph: ${business.phone}` : ''}
-              {business?.phone && (business?.email || true) ? '  |  ' : ''}
-              Email: {business?.email || 'sales@distributor.com'}
-            </p>
+              <div style={{ minWidth: '100px' }}></div>
+
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                {business?.phone ? `Ph: ${business.phone}` : ''}
+                {business?.phone && (business?.email || true) ? '  |  ' : ''}
+                Email: {business?.email || 'sales@distributor.com'}
+              </div>
+
+              {/* Bottom Right Corner of Header Box: Inv No */}
+              <div style={{ minWidth: '100px', textAlign: 'right', fontWeight: '800', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem' }}>
+                Inv No: {invoice.invoiceNo}
+              </div>
+            </div>
           </div>
 
           {/* 1-Line Party Details */}
