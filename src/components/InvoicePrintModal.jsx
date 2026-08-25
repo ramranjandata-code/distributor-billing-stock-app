@@ -118,50 +118,40 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           breakInside: 'avoid'
         }}>
           
-          {/* Boxed Classic FMCG Distributor Header (As per sample) */}
+          {/* Boxed Classic FMCG Distributor Header (User Requested Layout) */}
           <div style={{ 
             border: '1.5px solid #000000', 
             padding: '4px 8px', 
             marginBottom: '4px',
             textAlign: 'center'
           }}>
-            {/* Top Bar: GSTIN (Left), Centered Underlined Title (TAX INVOICE), Inv & Date (Right) */}
+            {/* Top Bar: GSTIN (Left), Inv & Date (Right) - TAX INVOICE removed as requested */}
             <div style={{ 
               display: 'flex', 
               justify: 'space-between', 
               alignItems: 'center', 
               fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem',
-              fontWeight: '700',
+              fontWeight: '600',
               borderBottom: '1px solid #cbd5e1',
               paddingBottom: '2px',
-              marginBottom: '3px',
+              marginBottom: '4px',
               color: '#000000'
             }}>
               <div>
-                {!isNonGst && business?.gstin ? `GSTIN : ${business.gstin}` : `Ph : ${business?.phone || ''}`}
+                {!isNonGst && business?.gstin ? `GSTIN: ${business.gstin}` : (business?.phone ? `Ph: ${business.phone}` : '')}
               </div>
 
-              <div style={{ 
-                fontWeight: '900', 
-                textDecoration: 'underline', 
-                textTransform: 'uppercase',
-                fontSize: paperFormat === 'THERMAL' ? '0.75rem' : '0.92rem',
-                letterSpacing: '0.5px',
-                color: '#000000'
-              }}>
-                {isNonGst ? 'TAX INVOICE / CASH MEMO' : 'TAX INVOICE'}
-              </div>
-
-              <div>
+              {/* Fixed Top Right: Inv No & Date */}
+              <div style={{ fontWeight: '700', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem' }}>
                 Inv: <strong>{invoice.invoiceNo}</strong> • Date: <strong>{formattedDate}</strong>
               </div>
             </div>
 
-            {/* Business/Firm Name */}
+            {/* Business / Firm Name (BOLD) */}
             <h2 style={{ 
               fontSize: paperFormat === 'THERMAL' ? '1.05rem' : '1.35rem', 
               fontWeight: '900', 
-              margin: '2px 0 1px 0', 
+              margin: '3px 0 2px 0', 
               textTransform: 'uppercase', 
               letterSpacing: '0.6px',
               color: '#000000',
@@ -170,26 +160,26 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               {business?.name || 'SHREE GANESH SALES AGENCY'}
             </h2>
 
-            {/* Address */}
+            {/* Address (Normal Weight) */}
             {business?.address && (
               <p style={{ 
                 fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem', 
-                margin: '1px 0', 
-                fontWeight: '600', 
+                margin: '2px 0', 
+                fontWeight: '400', 
                 color: '#000000' 
               }}>
                 {business.address}
               </p>
             )}
 
-            {/* Phones & Email */}
+            {/* Phone Number & Email on the Same Horizontal Line (Normal Weight) */}
             <p style={{ 
               fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.76rem', 
-              margin: '1px 0 0 0', 
-              fontWeight: '600', 
+              margin: '2px 0 0 0', 
+              fontWeight: '400', 
               color: '#000000' 
             }}>
-              Ph : {business?.phone || ''} {business?.email ? ` email : ${business.email}` : ''}
+              Ph: {business?.phone || ''}{business?.email ? `  |  Email: ${business.email}` : ''}
             </p>
           </div>
 
