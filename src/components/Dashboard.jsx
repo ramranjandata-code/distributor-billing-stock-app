@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   TrendingUp, 
   IndianRupee, 
@@ -11,10 +11,18 @@ import {
   Printer, 
   Boxes,
   CheckCircle2,
-  Clock
+  Clock,
+  Search,
+  X,
+  MessageCircle,
+  Phone,
+  ChevronRight
 } from 'lucide-react';
 
 export default function Dashboard({ products, parties, invoices, business, setActiveTab, handlePrintInvoice, t }) {
+  const [udharModalOpen, setUdharModalOpen] = useState(false);
+  const [udharSearchTerm, setUdharSearchTerm] = useState('');
+
   // KPI Calculations
   const todayStr = new Date().toISOString().split('T')[0];
   const todayInvoices = invoices.filter(inv => inv.date?.startsWith(todayStr));
@@ -26,6 +34,21 @@ export default function Dashboard({ products, parties, invoices, business, setAc
   const totalStockItems = products.reduce((sum, p) => sum + (p.currentStock || 0), 0);
 
   const totalOutstandingBalance = parties.reduce((sum, prt) => sum + (prt.balance || 0), 0);
+  const dueParties = parties.filter(p => (p.balance || 0) > 0);
+
+  const filteredDueParties = dueParties.filter(p => 
+    p.name?.toLowerCase().includes(udharSearchTerm.toLowerCase()) ||
+    p.phone?.includes(udharSearchTerm) ||
+    (p.city && p.city.toLowerCase().includes(udharSearchTerm.toLowerCase())) ||
+    (p.address && p.address.toLowerCase().includes(udharSearchTerm.toLowerCase()))
+  );
+
+  const sendWhatsAppReminder = (party) => {
+    const cleanPhone = party.phone ? party.phone.replace(/[^0-9]/g, '') : '';
+    const message = `नमस्ते ${party.name} जी,\n\n${business?.name || 'DistroPulse Distributor'} से आपका कुल बकाया उधार (Khata Balance) ₹${party.balance?.toLocaleString('en-IN')} है।\n\nकृपया जल्द से जल्द भुगतान करने की कृपा करें।\nधन्यवाद!`;
+    const url = `https://api.whatsapp.com/send?phone=${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}&text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
 
   const lowStockProducts = products.filter(p => p.currentStock <= (p.minStockLimit || 10));
 
@@ -113,20 +136,36 @@ export default function Dashboard({ products, parties, invoices, business, setAc
           </p>
         </div>
 
-        {/* Total Khata Outstanding */}
-        <div className="glass-card glass-card-interactive" style={{ padding: '20px' }}>
+        {/* Total Khata Outstanding Card */}
+        <div 
+          onClick={() => setUdharModalOpen(true)}
+          className="glass-card glass-card-interactive" 
+          style={{ 
+            padding: '20px', 
+            cursor: 'pointer', 
+            border: '2px solid rgba(245, 158, 11, 0.4)',
+            position: 'relative',
+            transition: 'all 0.2s ease-in-out'
+          }}
+          title="उधार रिटेलर्स की सूची देखने के लिए क्लिक करें"
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)' }}>{t('khata_balance')}</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-muted)' }}>{t('khata_balance')}</span>
             <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IndianRupee size={20} color="#f59e0b" />
             </div>
           </div>
-          <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#c2410c' }}>
+          <h3 style={{ fontSize: '1.65rem', fontWeight: '800', color: '#c2410c' }}>
             ₹{totalOutstandingBalance.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </h3>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {parties.filter(p => p.balance > 0).length} {t('due_on_retailers')}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+            <p style={{ fontSize: '0.78rem', color: '#d97706', fontWeight: '600' }}>
+              {dueParties.length} {t('due_on_retailers')}
+            </p>
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '2px' }}>
+              सूची देखें <ChevronRight size={14} />
+            </span>
+          </div>
         </div>
 
         {/* Low Stock Warning Card */}
@@ -272,6 +311,178 @@ export default function Dashboard({ products, parties, invoices, business, setAc
 
       </div>
 
+      {/* Retailers Market Udhar / Due List Modal */}
+      {udharModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1000 }}>
+          <div className="modal-content" style={{ maxWidth: '780px', width: '92vw', padding: '0', overflow: 'hidden' }}>
+            
+            {/* Modal Header */}
+            <div style={{ 
+              padding: '20px 24px', 
+              background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', 
+              borderBottom: '1px solid #fed7aa',
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'space-between'
+            }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#9a3412', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <IndianRupee size={22} color="#c2410c" />
+                  <span>💳 बाजार बकाया / उधार रिटेलर्स लिस्ट (Market Udhar Summary)</span>
+                </h3>
+                <p style={{ fontSize: '0.86rem', color: '#ea580c', marginTop: '3px', fontWeight: '600' }}>
+                  कुल मार्केट बकाया (Total Market Udhar): <strong style={{ fontSize: '1.05rem', color: '#9a3412' }}>₹{totalOutstandingBalance.toLocaleString('en-IN')}</strong> ({dueParties.length} रिटेलर्स पर बाकी)
+                </p>
+              </div>
+              <button 
+                onClick={() => setUdharModalOpen(false)}
+                style={{ 
+                  background: '#ffffff', 
+                  border: '1px solid #fdba74', 
+                  borderRadius: '50%', 
+                  width: '32px', 
+                  height: '32px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  color: '#9a3412', 
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search Filter Bar */}
+            <div style={{ padding: '14px 24px', background: '#ffffff', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="दुकान का नाम, फोन नंबर या एरिया लिखकर खोजें..." 
+                  style={{ paddingLeft: '38px', width: '100%', fontSize: '0.88rem' }}
+                  value={udharSearchTerm}
+                  onChange={e => setUdharSearchTerm(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Modal Body / Table */}
+            <div style={{ padding: '20px 24px', maxHeight: '60vh', overflowY: 'auto' }}>
+              {filteredDueParties.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
+                  <CheckCircle2 size={44} color="#10b981" style={{ margin: '0 auto 12px auto' }} />
+                  <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                    {udharSearchTerm ? 'कोई मैचिंग बकाया रिटेलर नहीं मिला' : 'कोई बकाया उधार नहीं है! 🎉'}
+                  </h4>
+                  <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>
+                    {udharSearchTerm ? 'कृपया खोज शब्द बदलें' : 'सभी रिटेलर्स का खाता चुकता है।'}
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {filteredDueParties.map((party, idx) => (
+                    <div 
+                      key={party.id || idx}
+                      style={{
+                        padding: '16px',
+                        borderRadius: '12px',
+                        background: '#fff7ed',
+                        border: '1px solid #ffedd5',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '14px'
+                      }}
+                    >
+                      {/* Left Details */}
+                      <div style={{ minWidth: '220px', flex: '1 1 220px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.8rem', fontWeight: '800', background: '#ea580c', color: '#ffffff', padding: '2px 8px', borderRadius: '12px' }}>
+                            #{idx + 1}
+                          </span>
+                          <h4 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#1e293b' }}>
+                            {party.name}
+                          </h4>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px', fontSize: '0.82rem', color: '#64748b' }}>
+                          <span>संपर्क: <strong style={{ color: '#334155' }}>{party.contactPerson || 'N/A'}</strong></span>
+                          {party.phone && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#0284c7', fontWeight: '600' }}>
+                              <Phone size={13} />
+                              {party.phone}
+                            </span>
+                          )}
+                          {party.city && (
+                            <span style={{ color: '#475569' }}>📍 {party.city}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Center Balance Amount */}
+                      <div style={{ textAlign: 'right', minWidth: '130px' }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#9a3412' }}>कुल बकाया उधार:</span>
+                        <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#c2410c' }}>
+                          ₹{party.balance?.toLocaleString('en-IN')}
+                        </div>
+                      </div>
+
+                      {/* Right Action Buttons */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {party.phone && (
+                          <button
+                            onClick={() => sendWhatsAppReminder(party)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontWeight: '700', gap: '5px' }}
+                            title="WhatsApp पेमेंट रिमाइंडर भेजें"
+                          >
+                            <MessageCircle size={14} color="#16a34a" />
+                            <span>WhatsApp रिमाइंडर</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setUdharModalOpen(false);
+                            setActiveTab('parties');
+                          }}
+                          className="btn btn-primary btn-sm"
+                          style={{ gap: '4px', fontWeight: '700' }}
+                          title="खाते में जाएं"
+                        >
+                          <Eye size={14} />
+                          <span>खाता देखें</span>
+                        </button>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                कुल {filteredDueParties.length} रिटेलर्स सूची में प्रदर्शित हैं
+              </span>
+              <button 
+                onClick={() => setUdharModalOpen(false)}
+                className="btn btn-secondary"
+              >
+                बंद करें (Close)
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+
