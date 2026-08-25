@@ -246,7 +246,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </tbody>
           </table>
 
-          {/* Bottom Summary Section */}
+          {/* Bottom Summary Section (Notes on Left, Totals Table on Right) */}
           <div className="print-summary-signature" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '12px', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem', pageBreakInside: 'avoid', breakInside: 'avoid', marginTop: '6px' }}>
             
             <div>
@@ -300,48 +300,50 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
           </div>
 
-          {/* Dual Signature Section (Receiver on Far Left, Official on Far Right with Space) */}
+          {/* DUAL SIGNATURE SECTION - FULL PAPER WIDTH (100% WIDTH OUTSIDE SUMMARY GRID) */}
           <div style={{ 
             display: 'flex', 
             justify: 'space-between', 
             alignItems: 'flex-end', 
-            marginTop: '24px', 
-            padding: '0 8px',
             width: '100%',
+            marginTop: '32px', 
+            padding: '0 4px',
             boxSizing: 'border-box',
             pageBreakInside: 'avoid',
             breakInside: 'avoid'
           }}>
-            {/* Left: Receiver's Signature */}
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ height: '28px' }}></div>
+            {/* EXTREME FULL LEFT: Receiver's Signature */}
+            <div style={{ textAlign: 'left', minWidth: '180px' }}>
+              <div style={{ height: '30px' }}></div>
               <p style={{ 
-                fontSize: '0.8rem', 
+                fontSize: '0.82rem', 
                 margin: 0, 
                 borderTop: '1.5px solid #000000', 
                 display: 'inline-block', 
-                padding: '3px 24px 0 0', 
+                padding: '3px 20px 0 0', 
                 fontWeight: '800', 
-                color: '#000000' 
+                color: '#000000',
+                whiteSpace: 'nowrap'
               }}>
                 Receiver's Signature
               </p>
             </div>
 
-            {/* Right: Official Authorized Signatory */}
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontWeight: '800', margin: '0 0 2px 0', fontSize: '0.8rem', color: '#000000' }}>
+            {/* EXTREME FULL RIGHT: Official Authorized Signatory */}
+            <div style={{ textAlign: 'right', minWidth: '220px' }}>
+              <p style={{ fontWeight: '800', margin: '0 0 4px 0', fontSize: '0.82rem', color: '#000000' }}>
                 For {business?.name || 'Distributor Agency'}
               </p>
-              <div style={{ height: '22px' }}></div>
+              <div style={{ height: '24px' }}></div>
               <p style={{ 
-                fontSize: '0.8rem', 
+                fontSize: '0.82rem', 
                 margin: 0, 
                 borderTop: '1.5px solid #000000', 
                 display: 'inline-block', 
-                padding: '3px 0 0 24px', 
+                padding: '3px 0 0 20px', 
                 fontWeight: '800', 
-                color: '#000000' 
+                color: '#000000',
+                whiteSpace: 'nowrap'
               }}>
                 Authorized Signatory
               </p>
