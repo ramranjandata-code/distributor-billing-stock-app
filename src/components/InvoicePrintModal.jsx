@@ -125,7 +125,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             marginBottom: '4px',
             textAlign: 'center'
           }}>
-            {/* Top Bar: GSTIN (Left), Inv & Date (Right) - TAX INVOICE removed as requested */}
+            {/* Top Bar: GSTIN (Left), Inv & Date stacked on Top Right */}
             <div style={{ 
               display: 'flex', 
               justify: 'space-between', 
@@ -141,9 +141,12 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 {!isNonGst && business?.gstin ? `GSTIN: ${business.gstin}` : (business?.phone ? `Ph: ${business.phone}` : '')}
               </div>
 
-              {/* Fixed Top Right: Inv No & Date */}
-              <div style={{ fontWeight: '700', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem' }}>
-                Inv: <strong>{invoice.invoiceNo}</strong> • Date: <strong>{formattedDate}</strong>
+              {/* Fixed Top Right: Date & Inv No */}
+              <div style={{ textAlign: 'right', fontWeight: '700', fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem' }}>
+                <div>Date: <strong>{formattedDate}</strong></div>
+                <div style={{ fontSize: paperFormat === 'THERMAL' ? '0.66rem' : '0.74rem', marginTop: '1px' }}>
+                  Inv No: <strong>{invoice.invoiceNo}</strong>
+                </div>
               </div>
             </div>
 
@@ -282,18 +285,54 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   </tr>
                 </tbody>
               </table>
-
-              <div style={{ textAlign: 'right', marginTop: '12px', paddingRight: '4px' }}>
-                <p style={{ fontWeight: '800', margin: 0, fontSize: '0.8rem', color: '#000000' }}>
-                  For {business?.name || 'Distributor Agency'}
-                </p>
-                <div style={{ height: '26px' }}></div>
-                <p style={{ fontSize: '0.78rem', margin: 0, borderTop: '1.5px solid #000000', display: 'inline-block', padding: '2px 14px 0 14px', fontWeight: '800', color: '#000000' }}>
-                  Authorized Signatory
-                </p>
-              </div>
             </div>
 
+          </div>
+
+          {/* Dual Signature Section (Receiver on Left, Official on Right) */}
+          <div style={{ 
+            display: 'flex', 
+            justify: 'space-between', 
+            alignItems: 'flex-end', 
+            marginTop: '18px', 
+            padding: '0 4px',
+            pageBreakInside: 'avoid',
+            breakInside: 'avoid'
+          }}>
+            {/* Left: Receiver's Signature */}
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ height: '22px' }}></div>
+              <p style={{ 
+                fontSize: '0.76rem', 
+                margin: 0, 
+                borderTop: '1.5px solid #000000', 
+                display: 'inline-block', 
+                padding: '2px 14px 0 0', 
+                fontWeight: '800', 
+                color: '#000000' 
+              }}>
+                Receiver's Signature (प्राप्तकर्ता के हस्ताक्षर)
+              </p>
+            </div>
+
+            {/* Right: Official Authorized Signatory */}
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontWeight: '800', margin: 0, fontSize: '0.78rem', color: '#000000' }}>
+                For {business?.name || 'Distributor Agency'}
+              </p>
+              <div style={{ height: '18px' }}></div>
+              <p style={{ 
+                fontSize: '0.76rem', 
+                margin: 0, 
+                borderTop: '1.5px solid #000000', 
+                display: 'inline-block', 
+                padding: '2px 0 0 14px', 
+                fontWeight: '800', 
+                color: '#000000' 
+              }}>
+                Authorized Signatory (अधिकृत हस्ताक्षर)
+              </p>
+            </div>
           </div>
 
         </div>
