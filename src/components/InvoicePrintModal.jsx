@@ -126,11 +126,12 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             textAlign: 'center',
             position: 'relative'
           }}>
-            {/* Top Bar: GSTIN (Left), Date (Top Right) */}
+            {/* Top Bar: GSTIN (Far Left), Date (Far Right) */}
             <div style={{ 
               display: 'flex', 
               justify: 'space-between', 
               alignItems: 'center', 
+              width: '100%',
               fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem',
               fontWeight: '700',
               borderBottom: '1px solid #cbd5e1',
@@ -138,12 +139,12 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               marginBottom: '4px',
               color: '#000000'
             }}>
-              <div>
+              <div style={{ textAlign: 'left' }}>
                 {!isNonGst && business?.gstin ? `GSTIN: ${business.gstin}` : (business?.phone ? `Ph: ${business.phone}` : '')}
               </div>
 
-              {/* Top Right: Date ONLY */}
-              <div style={{ fontWeight: '800' }}>
+              {/* Far Right Corner: Date ONLY */}
+              <div style={{ textAlign: 'right', fontWeight: '800', marginLeft: 'auto' }}>
                 Date: {formattedDate}
               </div>
             </div>
