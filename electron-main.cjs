@@ -19,12 +19,23 @@ function createWindow() {
     }
   });
 
-  // Load production build dist/index.html or live web app
-  const indexPath = path.join(__dirname, 'dist', 'index.html');
-  mainWindow.loadFile(indexPath).catch(err => {
-    console.error('Failed to load local file, loading fallback online URL:', err);
+  // Robust local file loading with multiple path resolution
+  const fs = require('fs');
+  const possiblePaths = [
+    path.join(__dirname, 'dist', 'index.html'),
+    path.join(__dirname, 'index.html'),
+    path.join(process.resourcesPath, 'app', 'dist', 'index.html'),
+    path.join(process.resourcesPath, 'app', 'index.html')
+  ];
+  const targetPath = possiblePaths.find(p => fs.existsSync(p));
+
+  if (targetPath) {
+    console.log('Loading local production build:', targetPath);
+    mainWindow.loadFile(targetPath);
+  } else {
+    console.log('Local build not found, loading fallback online URL');
     mainWindow.loadURL('https://legendary-tapioca-1f9bbc.netlify.app/');
-  });
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null;

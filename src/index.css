@@ -345,10 +345,10 @@ input[type=number] {
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Printable Bill Styling for A4 / Thermal Receipt Printer */
+/* Printable Bill Styling for A4 / Thermal Receipt Printer (Optimized for 40 Items on 1 A4 Sheet) */
 @media print {
   @page {
-    margin: 4mm 6mm !important;
+    margin: 3mm 5mm !important;
     size: A4 portrait;
   }
   
@@ -407,8 +407,8 @@ input[type=number] {
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
-    font-size: 12.5px !important;
-    line-height: 1.3 !important;
+    font-size: 11.5px !important;
+    line-height: 1.2 !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     -webkit-print-color-adjust: exact !important;
@@ -421,9 +421,9 @@ input[type=number] {
 
   .print-area table th,
   .print-area table td {
-    padding: 3.5px 6px !important;
-    font-size: 12.5px !important;
-    line-height: 1.25 !important;
+    padding: 2px 5px !important;
+    font-size: 11.5px !important;
+    line-height: 1.18 !important;
     color: #000000 !important;
   }
 
