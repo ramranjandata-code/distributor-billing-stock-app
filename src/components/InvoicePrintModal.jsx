@@ -118,31 +118,79 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           breakInside: 'avoid'
         }}>
           
-          {/* Header Section */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #000000', paddingBottom: '3px', marginBottom: '4px' }}>
-            <div>
-              <h2 style={{ fontSize: paperFormat === 'THERMAL' ? '0.95rem' : '1.25rem', fontWeight: '800', margin: 0, textTransform: 'uppercase', lineHeight: '1.1', letterSpacing: '0.2px', color: '#000000' }}>
-                {business?.name || 'SHREE GANESH SALES AGENCY'}
-              </h2>
-              <p style={{ fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem', margin: '2px 0 0 0', fontWeight: '700', color: '#000000' }}>
-                {isNonGst ? `Ph: ${business?.phone}` : `GSTIN: ${business?.gstin} • Ph: ${business?.phone}`}
-              </p>
-            </div>
+          {/* Boxed Classic FMCG Distributor Header (As per sample) */}
+          <div style={{ 
+            border: '1.5px solid #000000', 
+            padding: '4px 8px', 
+            marginBottom: '4px',
+            textAlign: 'center'
+          }}>
+            {/* Top Bar: GSTIN (Left), Centered Underlined Title (TAX INVOICE), Inv & Date (Right) */}
+            <div style={{ 
+              display: 'flex', 
+              justify: 'space-between', 
+              alignItems: 'center', 
+              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem',
+              fontWeight: '700',
+              borderBottom: '1px solid #cbd5e1',
+              paddingBottom: '2px',
+              marginBottom: '3px',
+              color: '#000000'
+            }}>
+              <div>
+                {!isNonGst && business?.gstin ? `GSTIN : ${business.gstin}` : `Ph : ${business?.phone || ''}`}
+              </div>
 
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ 
+              <div style={{ 
                 fontWeight: '900', 
-                fontSize: paperFormat === 'THERMAL' ? '0.75rem' : '0.98rem', 
-                textTransform: 'uppercase', 
-                marginRight: '8px',
+                textDecoration: 'underline', 
+                textTransform: 'uppercase',
+                fontSize: paperFormat === 'THERMAL' ? '0.75rem' : '0.92rem',
+                letterSpacing: '0.5px',
                 color: '#000000'
               }}>
-                {isNonGst ? 'ESTIMATE / CASH MEMO' : 'TAX INVOICE'}
-              </span>
-              <div style={{ fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem', fontWeight: '800', marginTop: '2px', color: '#000000' }}>
-                Inv: <strong style={{ color: '#000000' }}>{invoice.invoiceNo}</strong> • Date: <strong>{formattedDate}</strong>
+                {isNonGst ? 'TAX INVOICE / CASH MEMO' : 'TAX INVOICE'}
+              </div>
+
+              <div>
+                Inv: <strong>{invoice.invoiceNo}</strong> • Date: <strong>{formattedDate}</strong>
               </div>
             </div>
+
+            {/* Business/Firm Name */}
+            <h2 style={{ 
+              fontSize: paperFormat === 'THERMAL' ? '1.05rem' : '1.35rem', 
+              fontWeight: '900', 
+              margin: '2px 0 1px 0', 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.6px',
+              color: '#000000',
+              lineHeight: '1.1'
+            }}>
+              {business?.name || 'SHREE GANESH SALES AGENCY'}
+            </h2>
+
+            {/* Address */}
+            {business?.address && (
+              <p style={{ 
+                fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem', 
+                margin: '1px 0', 
+                fontWeight: '600', 
+                color: '#000000' 
+              }}>
+                {business.address}
+              </p>
+            )}
+
+            {/* Phones & Email */}
+            <p style={{ 
+              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.76rem', 
+              margin: '1px 0 0 0', 
+              fontWeight: '600', 
+              color: '#000000' 
+            }}>
+              Ph : {business?.phone || ''} {business?.email ? ` email : ${business.email}` : ''}
+            </p>
           </div>
 
           {/* 1-Line Party Details */}
