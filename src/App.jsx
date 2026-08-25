@@ -59,10 +59,23 @@ export default function App() {
     setIsSyncing(false);
   };
 
+  const handleAppReload = () => {
+    window.location.reload();
+  };
+
   // Initialize data and setup Auto-Sync on mount
   useEffect(() => {
     initDataStorage();
     refreshAllData();
+
+    // Keyboard shortcut for reload: F5 or Ctrl+R
+    const handleKeyDown = (e) => {
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r')) {
+        e.preventDefault();
+        window.location.reload();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     // Trigger initial pull on mount
     fetchCloudData().then(() => {
@@ -92,6 +105,7 @@ export default function App() {
 
     return () => {
       clearInterval(interval);
+      window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('distro_data_changed', handleDataChange);
       window.removeEventListener('storage', handleDataChange);
     };
@@ -177,6 +191,28 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* App Reload Button */}
+            <button
+              onClick={handleAppReload}
+              className="btn btn-secondary"
+              title="ऐप रिफ्रेश करें (Press F5 or Ctrl+R)"
+              style={{
+                gap: '6px',
+                padding: '6px 12px',
+                fontSize: '0.82rem',
+                fontWeight: '700',
+                background: '#f1f5f9',
+                borderColor: '#cbd5e1',
+                color: '#1e293b',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              <RefreshCw size={14} color="#0284c7" />
+              <span>🔄 App Reload (F5)</span>
+            </button>
+
             {/* Live Cloud Sync Status Badge */}
             {cloudConnected ? (
               <div 

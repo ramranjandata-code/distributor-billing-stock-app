@@ -19,6 +19,16 @@ function createWindow() {
     }
   });
 
+  // Enable F5, Ctrl+R, Ctrl+Shift+R reload shortcuts in Desktop App
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type === 'keyDown') {
+      if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r')) {
+        mainWindow.reload();
+        event.preventDefault();
+      }
+    }
+  });
+
   // Robust local file loading with multiple path resolution
   const fs = require('fs');
   const possiblePaths = [
