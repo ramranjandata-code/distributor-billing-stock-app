@@ -348,7 +348,7 @@ input[type=number] {
 /* Printable Bill Styling for A4 / Thermal Receipt Printer */
 @media print {
   @page {
-    margin: 2mm 3mm !important;
+    margin: 4mm 6mm !important;
     size: A4 portrait;
   }
   html, body {
@@ -358,6 +358,8 @@ input[type=number] {
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Hide app navigation, sidebar, and non-printable headers */
@@ -405,22 +407,24 @@ input[type=number] {
     top: 0 !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 0 2px !important;
+    padding: 0 4px !important;
     background: #ffffff !important;
     color: #000000 !important;
     box-shadow: none !important;
-    font-size: 6px !important;
-    line-height: 1.0 !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .print-area table th,
   .print-area table td {
-    padding: 0.5px 2px !important;
-    font-size: 6px !important;
-    line-height: 1.0 !important;
-    height: 10px !important;
+    padding: 3px 6px !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    color: #000000 !important;
   }
 
   .print-summary-signature {

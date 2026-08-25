@@ -27,12 +27,12 @@ echo [1/3] Copying application files...
 xcopy "%~dp0files\*" "%LOCALAPPDATA%\Programs\DistroPulse ERP\" /E /Y /I /Q >nul
 
 echo [2/3] Registering Windows Start Menu & Desktop Shortcuts...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "`$w = New-Object -ComObject WScript.Shell; `$s = `$w.CreateShortcut([System.Environment]::GetFolderPath('Desktop') + '\DistroPulse ERP.lnk'); `$s.TargetPath = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\distributor-billing-stock-app.exe'; `$s.IconLocation = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\distributor-billing-stock-app.exe,0'; `$s.Save()"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "`$w = New-Object -ComObject WScript.Shell; `$s = `$w.CreateShortcut([System.Environment]::GetFolderPath('StartMenu') + '\Programs\DistroPulse ERP.lnk'); `$s.TargetPath = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\distributor-billing-stock-app.exe'; `$s.IconLocation = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\distributor-billing-stock-app.exe,0'; `$s.Save()"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "`$w = New-Object -ComObject WScript.Shell; `$s = `$w.CreateShortcut([System.Environment]::GetFolderPath('Desktop') + '\DistroPulse ERP.lnk'); `$s.TargetPath = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\DistroPulse ERP.exe'; `$s.IconLocation = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\DistroPulse ERP.exe,0'; `$s.Save()"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "`$w = New-Object -ComObject WScript.Shell; `$s = `$w.CreateShortcut([System.Environment]::GetFolderPath('StartMenu') + '\Programs\DistroPulse ERP.lnk'); `$s.TargetPath = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\DistroPulse ERP.exe'; `$s.IconLocation = [System.Environment]::GetFolderPath('LocalApplicationData') + '\Programs\DistroPulse ERP\DistroPulse ERP.exe,0'; `$s.Save()"
 
 echo [3/3] Registering App in Windows Control Panel (Add/Remove Programs)...
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP" /v "DisplayName" /d "DistroPulse ERP - Distributor Billing & Stock Manager" /f >nul
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP" /v "DisplayIcon" /d "%LOCALAPPDATA%\Programs\DistroPulse ERP\distributor-billing-stock-app.exe" /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP" /v "DisplayIcon" /d "%LOCALAPPDATA%\Programs\DistroPulse ERP\DistroPulse ERP.exe" /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP" /v "InstallLocation" /d "%LOCALAPPDATA%\Programs\DistroPulse ERP" /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP" /v "Publisher" /d "DistroPulse Team" /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP" /v "UninstallString" /d "cmd /c rmdir /s /q \"%LOCALAPPDATA%\Programs\DistroPulse ERP\" & reg delete HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\DistroPulseERP /f" /f >nul
@@ -44,7 +44,7 @@ echo ===================================================================
 echo.
 echo Launching DistroPulse ERP...
 timeout /t 2 >nul
-start "" "%LOCALAPPDATA%\Programs\DistroPulse ERP\distributor-billing-stock-app.exe"
+start "" "%LOCALAPPDATA%\Programs\DistroPulse ERP\DistroPulse ERP.exe"
 exit
 "@
 
