@@ -300,48 +300,50 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
           </div>
 
-          {/* Dual Signature Section (Receiver on Left, Official on Right) */}
+          {/* Dual Signature Section (Receiver on Far Left, Official on Far Right with Space) */}
           <div style={{ 
             display: 'flex', 
             justify: 'space-between', 
             alignItems: 'flex-end', 
-            marginTop: '18px', 
-            padding: '0 4px',
+            marginTop: '24px', 
+            padding: '0 8px',
+            width: '100%',
+            boxSizing: 'border-box',
             pageBreakInside: 'avoid',
             breakInside: 'avoid'
           }}>
             {/* Left: Receiver's Signature */}
             <div style={{ textAlign: 'left' }}>
-              <div style={{ height: '22px' }}></div>
+              <div style={{ height: '28px' }}></div>
               <p style={{ 
-                fontSize: '0.76rem', 
+                fontSize: '0.8rem', 
                 margin: 0, 
                 borderTop: '1.5px solid #000000', 
                 display: 'inline-block', 
-                padding: '2px 14px 0 0', 
+                padding: '3px 24px 0 0', 
                 fontWeight: '800', 
                 color: '#000000' 
               }}>
-                Receiver's Signature (प्राप्तकर्ता के हस्ताक्षर)
+                Receiver's Signature
               </p>
             </div>
 
             {/* Right: Official Authorized Signatory */}
             <div style={{ textAlign: 'right' }}>
-              <p style={{ fontWeight: '800', margin: 0, fontSize: '0.78rem', color: '#000000' }}>
+              <p style={{ fontWeight: '800', margin: '0 0 2px 0', fontSize: '0.8rem', color: '#000000' }}>
                 For {business?.name || 'Distributor Agency'}
               </p>
-              <div style={{ height: '18px' }}></div>
+              <div style={{ height: '22px' }}></div>
               <p style={{ 
-                fontSize: '0.76rem', 
+                fontSize: '0.8rem', 
                 margin: 0, 
                 borderTop: '1.5px solid #000000', 
                 display: 'inline-block', 
-                padding: '2px 0 0 14px', 
+                padding: '3px 0 0 24px', 
                 fontWeight: '800', 
                 color: '#000000' 
               }}>
-                Authorized Signatory (अधिकृत हस्ताक्षर)
+                Authorized Signatory
               </p>
             </div>
           </div>
