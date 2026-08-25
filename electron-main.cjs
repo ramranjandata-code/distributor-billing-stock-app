@@ -34,7 +34,7 @@ function createWindow() {
     mainWindow.loadFile(targetPath);
   } else {
     console.log('Local build not found, loading fallback online URL');
-    mainWindow.loadURL('https://legendary-tapioca-1f9bbc.netlify.app/');
+    mainWindow.loadURL('https://ramranjandata-code.github.io/distributor-billing-stock-app/');
   }
 
   mainWindow.on('closed', () => {
