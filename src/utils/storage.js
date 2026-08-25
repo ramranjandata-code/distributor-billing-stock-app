@@ -145,41 +145,20 @@ export const fetchCloudData = async () => {
 
         // Sync Invoices
         if (Array.isArray(remote.invoices)) {
-          const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
-          const invoiceMap = new Map();
-          localInvoices.forEach(i => invoiceMap.set(String(i.id), i));
-          remote.invoices.forEach(i => {
-            if (i && i.id && !SAMPLE_IDS.includes(i.id)) {
-              invoiceMap.set(String(i.id), i);
-            }
-          });
-          setStorageData(STORAGE_KEYS.INVOICES, Array.from(invoiceMap.values()));
+          const cleanInvoices = remote.invoices.filter(i => i && i.id && !SAMPLE_IDS.includes(i.id));
+          setStorageData(STORAGE_KEYS.INVOICES, cleanInvoices);
         }
 
         // Sync Products
-        if (Array.isArray(remote.products) && remote.products.length > 0) {
-          const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
-          const productMap = new Map();
-          localProducts.forEach(p => productMap.set(String(p.id), p));
-          remote.products.forEach(p => {
-            if (p && p.id && !SAMPLE_IDS.includes(p.id)) {
-              productMap.set(String(p.id), p);
-            }
-          });
-          setStorageData(STORAGE_KEYS.PRODUCTS, Array.from(productMap.values()));
+        if (Array.isArray(remote.products)) {
+          const cleanProducts = remote.products.filter(p => p && p.id && !SAMPLE_IDS.includes(p.id));
+          setStorageData(STORAGE_KEYS.PRODUCTS, cleanProducts);
         }
 
         // Sync Parties
-        if (Array.isArray(remote.parties) && remote.parties.length > 0) {
-          const localParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
-          const partyMap = new Map();
-          localParties.forEach(pt => partyMap.set(String(pt.id), pt));
-          remote.parties.forEach(pt => {
-            if (pt && pt.id && !SAMPLE_IDS.includes(pt.id)) {
-              partyMap.set(String(pt.id), pt);
-            }
-          });
-          setStorageData(STORAGE_KEYS.PARTIES, Array.from(partyMap.values()));
+        if (Array.isArray(remote.parties)) {
+          const cleanParties = remote.parties.filter(pt => pt && pt.id && !SAMPLE_IDS.includes(pt.id));
+          setStorageData(STORAGE_KEYS.PARTIES, cleanParties);
         }
 
         // Sync Business Info
@@ -293,13 +272,14 @@ export const saveProduct = (product) => {
 };
 
 export const deleteProduct = (id) => {
-  const products = fetchProducts().filter(p => p.id !== id);
+  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
   setStorageData(STORAGE_KEYS.PRODUCTS, products);
   
   const client = getSupabaseClient();
   if (client) {
     client.from('products').delete().eq('id', id).then(() => {}).catch(console.error);
   }
+  autoCloudSync();
   return products;
 };
 
