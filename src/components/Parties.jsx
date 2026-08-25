@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { saveParty, updatePartyBalance } from '../utils/storage';
+import { saveParty, updatePartyBalance, deleteParty } from '../utils/storage';
 import { 
   Users, 
   Plus, 
@@ -15,7 +15,9 @@ import {
   FileText,
   CheckCircle2,
   List,
-  LayoutGrid
+  LayoutGrid,
+  Trash2,
+  ArrowUpRight
 } from 'lucide-react';
 
 export default function Parties({ parties, invoices, refreshAllData, setActiveTab }) {
@@ -31,6 +33,12 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
   const [receivedAmount, setReceivedAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [paymentNotes, setPaymentNotes] = useState('Payment Received');
+
+  // Udhar / Credit Entry Modal State
+  const [udharModalOpen, setUdharModalOpen] = useState(false);
+  const [selectedPartyForUdhar, setSelectedPartyForUdhar] = useState(null);
+  const [udharAmount, setUdharAmount] = useState('');
+  const [udharNotes, setUdharNotes] = useState('सामान/पुराना उधार (Manual Credit Entry)');
 
   const initialForm = {
     name: '',
@@ -86,11 +94,34 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
     e.preventDefault();
     if (!selectedPartyForPayment || !receivedAmount || Number(receivedAmount) <= 0) return;
 
-    // Deduct amount from balance (negative delta)
     updatePartyBalance(selectedPartyForPayment.id, -Math.abs(Number(receivedAmount)));
     refreshAllData();
     setPaymentModalOpen(false);
     alert(`₹${receivedAmount} की भुगतान प्रविष्टि सफलतापूर्वक दर्ज कर ली गई है!`);
+  };
+
+  const handleOpenAddUdhar = (p) => {
+    setSelectedPartyForUdhar(p);
+    setUdharAmount('');
+    setUdharModalOpen(true);
+  };
+
+  const handleSaveUdhar = (e) => {
+    e.preventDefault();
+    if (!selectedPartyForUdhar || !udharAmount || Number(udharAmount) <= 0) return;
+
+    updatePartyBalance(selectedPartyForUdhar.id, Math.abs(Number(udharAmount)));
+    refreshAllData();
+    setUdharModalOpen(false);
+    alert(`₹${udharAmount} का नया उधार ${selectedPartyForUdhar.name} के खाते में दर्ज कर दिया गया है!`);
+  };
+
+  const handleDeleteRetailer = (party) => {
+    if (window.confirm(`क्या आप वाकई रिटेलर "${party.name}" को सिस्टम से डिलीट करना चाहते हैं?`)) {
+      deleteParty(party.id);
+      refreshAllData();
+      alert(`रिटेलर "${party.name}" को सफलतापूर्वक डिलीट कर दिया गया है!`);
+    }
   };
 
   return (
@@ -198,7 +229,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   padding: '16px 20px', 
                   display: 'flex', 
                   alignItems: 'center', 
-                  justify: 'space-between',
+                  justifyContent: 'space-between',
                   flexWrap: 'wrap',
                   gap: '16px' 
                 }}
@@ -246,6 +277,17 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* Add Udhar / Credit Entry Button */}
+                    <button 
+                      onClick={() => handleOpenAddUdhar(party)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', gap: '4px', fontWeight: '700' }}
+                      title="नया उधार / क्रेडिट दर्ज करें"
+                    >
+                      <ArrowUpRight size={14} />
+                      <span>+ उधार</span>
+                    </button>
+
                     {hasDebt && (
                       <button 
                         onClick={() => handleOpenCollectPayment(party)}
@@ -264,6 +306,15 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       title="एडिट करें"
                     >
                       <Edit3 size={14} />
+                    </button>
+
+                    <button 
+                      onClick={() => handleDeleteRetailer(party)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '7px 10px', background: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }}
+                      title="रिटेलर डिलीट करें"
+                    >
+                      <Trash2 size={14} />
                     </button>
                   </div>
 
@@ -330,14 +381,24 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     कुल बिल: {partyInvoicesCount}
                   </span>
 
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button 
+                      onClick={() => handleOpenAddUdhar(party)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', gap: '4px', fontWeight: '700', padding: '5px 8px', fontSize: '0.75rem' }}
+                      title="नया उधार / क्रेडिट दर्ज करें"
+                    >
+                      <ArrowUpRight size={13} />
+                      <span>+ उधार</span>
+                    </button>
+
                     {hasDebt && (
                       <button 
                         onClick={() => handleOpenCollectPayment(party)}
                         className="btn btn-secondary btn-sm"
-                        style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', gap: '4px', fontWeight: '700' }}
+                        style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', gap: '4px', fontWeight: '700', padding: '5px 8px', fontSize: '0.75rem' }}
                       >
-                        <ArrowDownRight size={14} />
+                        <ArrowDownRight size={13} />
                         <span>पेमेंट लें</span>
                       </button>
                     )}
@@ -345,10 +406,19 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     <button 
                       onClick={() => handleOpenEdit(party)}
                       className="btn btn-secondary btn-sm"
-                      style={{ padding: '6px 8px' }}
+                      style={{ padding: '5px 8px' }}
                       title="एडिट करें"
                     >
-                      <Edit3 size={14} />
+                      <Edit3 size={13} />
+                    </button>
+
+                    <button 
+                      onClick={() => handleDeleteRetailer(party)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '5px 8px', background: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }}
+                      title="रिटेलर डिलीट करें"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
@@ -486,6 +556,79 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
         </div>
       )}
 
+      {/* Add Udhar / Credit Entry Modal */}
+      {udharModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '480px' }}>
+            <div className="modal-header" style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ArrowUpRight size={20} color="#dc2626" />
+                <span>📝 नया उधार दर्ज करें (Add Udhar Balance)</span>
+              </h3>
+              <button 
+                onClick={() => setUdharModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUdhar}>
+              <div className="modal-body">
+                <div style={{ marginBottom: '16px', padding: '14px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+                  <p style={{ fontWeight: '700', color: '#1e293b' }}>{selectedPartyForUdhar?.name}</p>
+                  <p style={{ fontSize: '0.88rem', color: '#dc2626', marginTop: '2px', fontWeight: '600' }}>
+                    वर्तमान बकाया उधार: <strong>₹{selectedPartyForUdhar?.balance?.toLocaleString('en-IN')}</strong>
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">नया उधार / बकाया रकम (Amount to Add ₹) *</label>
+                  <input 
+                    type="number" 
+                    className="input-field"
+                    required
+                    min="1"
+                    placeholder="उदा. 2500"
+                    value={udharAmount}
+                    onChange={e => setUdharAmount(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">उधार का विवरण (Remarks / Notes)</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="उदा. बकाया बिल भुगतान न करना / सामान का उधार"
+                    value={udharNotes}
+                    onChange={e => setUdharNotes(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button 
+                  type="button" 
+                  onClick={() => setUdharModalOpen(false)}
+                  className="btn btn-secondary"
+                >
+                  रद्द करें
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{ background: '#dc2626', borderColor: '#b91c1c' }}
+                >
+                  उधार जोड़ें (+ ₹{udharAmount || 0})
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Payment Collection Entry Modal */}
       {paymentModalOpen && (
         <div className="modal-overlay">
@@ -569,3 +712,4 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
     </div>
   );
 }
+

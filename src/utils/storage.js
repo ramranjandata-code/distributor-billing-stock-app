@@ -334,6 +334,18 @@ export const updatePartyBalance = (partyId, amountToAdd) => {
   return updated;
 };
 
+export const deleteParty = (id) => {
+  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
+  setStorageData(STORAGE_KEYS.PARTIES, parties);
+  
+  const client = getSupabaseClient();
+  if (client) {
+    client.from('parties').delete().eq('id', id).then(() => {}).catch(console.error);
+  }
+  autoCloudSync();
+  return parties;
+};
+
 // Operations: Invoices
 export const fetchInvoices = () => getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
 
