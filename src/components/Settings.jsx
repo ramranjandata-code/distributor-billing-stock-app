@@ -348,6 +348,17 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 />
               </div>
 
+              <div className="form-group">
+                <label className="form-label">ईमेल आईडी (Firm Email ID)</label>
+                <input 
+                  type="email" 
+                  className="input-field"
+                  placeholder="sales@distributor.com"
+                  value={formData.email || ''} 
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
+
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label">पूरा पता (Distributor Address)</label>
                 <textarea 
