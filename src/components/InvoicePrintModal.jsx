@@ -300,55 +300,51 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
           </div>
 
-          {/* DUAL SIGNATURE SECTION - FULL PAPER WIDTH (100% WIDTH OUTSIDE SUMMARY GRID) */}
-          <div style={{ 
-            display: 'flex', 
-            justify: 'space-between', 
-            alignItems: 'flex-end', 
-            width: '100%',
-            marginTop: '32px', 
-            padding: '0 4px',
-            boxSizing: 'border-box',
+          {/* DUAL SIGNATURE SECTION - BULLETPROOF 100% TABLE LAYOUT */}
+          <table style={{ 
+            width: '100%', 
+            marginTop: '35px', 
+            borderCollapse: 'collapse', 
+            border: 'none',
             pageBreakInside: 'avoid',
             breakInside: 'avoid'
           }}>
-            {/* EXTREME FULL LEFT: Receiver's Signature */}
-            <div style={{ textAlign: 'left', minWidth: '180px' }}>
-              <div style={{ height: '30px' }}></div>
-              <p style={{ 
-                fontSize: '0.82rem', 
-                margin: 0, 
-                borderTop: '1.5px solid #000000', 
-                display: 'inline-block', 
-                padding: '3px 20px 0 0', 
-                fontWeight: '800', 
-                color: '#000000',
-                whiteSpace: 'nowrap'
-              }}>
-                Receiver's Signature
-              </p>
-            </div>
-
-            {/* EXTREME FULL RIGHT: Official Authorized Signatory */}
-            <div style={{ textAlign: 'right', minWidth: '220px' }}>
-              <p style={{ fontWeight: '800', margin: '0 0 4px 0', fontSize: '0.82rem', color: '#000000' }}>
-                For {business?.name || 'Distributor Agency'}
-              </p>
-              <div style={{ height: '24px' }}></div>
-              <p style={{ 
-                fontSize: '0.82rem', 
-                margin: 0, 
-                borderTop: '1.5px solid #000000', 
-                display: 'inline-block', 
-                padding: '3px 0 0 20px', 
-                fontWeight: '800', 
-                color: '#000000',
-                whiteSpace: 'nowrap'
-              }}>
-                Authorized Signatory
-              </p>
-            </div>
-          </div>
+            <tbody>
+              <tr>
+                <td style={{ textAlign: 'left', verticalAlign: 'bottom', border: 'none', padding: '0 0 0 2px', width: '50%' }}>
+                  <div style={{ height: '28px' }}></div>
+                  <div style={{ 
+                    borderTop: '1.5px solid #000000', 
+                    display: 'inline-block', 
+                    paddingTop: '3px', 
+                    paddingRight: '24px',
+                    fontWeight: '800', 
+                    fontSize: '0.84rem',
+                    color: '#000000' 
+                  }}>
+                    Receiver's Signature
+                  </div>
+                </td>
+                <td style={{ textAlign: 'right', verticalAlign: 'bottom', border: 'none', padding: '0 2px 0 0', width: '50%' }}>
+                  <div style={{ fontWeight: '800', fontSize: '0.84rem', marginBottom: '6px', color: '#000000' }}>
+                    For {business?.name || 'Distributor Agency'}
+                  </div>
+                  <div style={{ height: '24px' }}></div>
+                  <div style={{ 
+                    borderTop: '1.5px solid #000000', 
+                    display: 'inline-block', 
+                    paddingTop: '3px', 
+                    paddingLeft: '24px',
+                    fontWeight: '800', 
+                    fontSize: '0.84rem',
+                    color: '#000000' 
+                  }}>
+                    Authorized Signatory
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
 
         </div>
 
