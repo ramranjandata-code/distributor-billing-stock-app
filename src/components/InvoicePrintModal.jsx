@@ -161,16 +161,14 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </h2>
 
             {/* Address (Normal Weight) */}
-            {business?.address && (
-              <p style={{ 
-                fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem', 
-                margin: '2px 0', 
-                fontWeight: '400', 
-                color: '#000000' 
-              }}>
-                {business.address}
-              </p>
-            )}
+            <p style={{ 
+              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem', 
+              margin: '2px 0', 
+              fontWeight: '400', 
+              color: '#000000' 
+            }}>
+              {business?.address || business?.city || 'Main Wholesale Market, Transport Nagar'}
+            </p>
 
             {/* Phone Number & Email on the Same Horizontal Line (Normal Weight) */}
             <p style={{ 
@@ -179,7 +177,9 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               fontWeight: '400', 
               color: '#000000' 
             }}>
-              Ph: {business?.phone || ''}{business?.email ? `  |  Email: ${business.email}` : ''}
+              {business?.phone ? `Ph: ${business.phone}` : ''}
+              {business?.phone && (business?.email || true) ? '  |  ' : ''}
+              Email: {business?.email || 'sales@distributor.com'}
             </p>
           </div>
 
