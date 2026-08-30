@@ -324,6 +324,20 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 );
               })}
 
+              {/* Minimum 10 Rows Grid Filler */}
+              {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, emptyIndex) => (
+                <tr key={`empty-${emptyIndex}`} style={{ borderBottom: '1px solid #cbd5e1', height: '22px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  <td style={{ padding: '2.5px 6px' }}>&nbsp;</td>
+                </tr>
+              ))}
+
               {/* Summary Total Row */}
               <tr style={{ borderTop: '1.5px solid #000000', fontWeight: '800', background: '#f8fafc', color: '#000000' }}>
                 <td colSpan={3} style={{ padding: '3px 8px', borderRight: '1px solid #000000', textAlign: 'right' }}>Total</td>
