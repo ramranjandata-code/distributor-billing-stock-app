@@ -448,13 +448,15 @@ export default function Inventory({ products, refreshAllData }) {
                     placeholder="उदा. 24"
                     value={formData.pcsPerCarton}
                     onChange={e => {
-                      const pcs = Math.max(1, Number(e.target.value) || 1);
+                      const val = e.target.value;
+                      const pcs = val === '' ? '' : val;
+                      const pcsNum = Number(val) || 0;
                       const ctn = Number(formData.cartonsStock) || 0;
                       const loose = Number(formData.loosePcsStock) || 0;
                       setFormData({
                         ...formData,
                         pcsPerCarton: pcs,
-                        currentStock: (ctn * pcs) + loose
+                        currentStock: (ctn * pcsNum) + loose
                       });
                     }}
                   />
@@ -491,13 +493,15 @@ export default function Inventory({ products, refreshAllData }) {
                         placeholder="0"
                         value={formData.cartonsStock}
                         onChange={e => {
-                          const ctn = Number(e.target.value) || 0;
+                          const val = e.target.value;
+                          const ctn = val === '' ? '' : val;
+                          const ctnNum = Number(val) || 0;
                           const pcsPerCtn = Number(formData.pcsPerCarton) || 24;
                           const loose = Number(formData.loosePcsStock) || 0;
                           setFormData({
                             ...formData,
                             cartonsStock: ctn,
-                            currentStock: (ctn * pcsPerCtn) + loose
+                            currentStock: (ctnNum * pcsPerCtn) + loose
                           });
                         }}
                       />
@@ -512,13 +516,15 @@ export default function Inventory({ products, refreshAllData }) {
                         placeholder="0"
                         value={formData.loosePcsStock}
                         onChange={e => {
-                          const loose = Number(e.target.value) || 0;
+                          const val = e.target.value;
+                          const loose = val === '' ? '' : val;
+                          const looseNum = Number(val) || 0;
                           const pcsPerCtn = Number(formData.pcsPerCarton) || 24;
                           const ctn = Number(formData.cartonsStock) || 0;
                           setFormData({
                             ...formData,
                             loosePcsStock: loose,
-                            currentStock: (ctn * pcsPerCtn) + loose
+                            currentStock: (ctn * pcsPerCtn) + looseNum
                           });
                         }}
                       />

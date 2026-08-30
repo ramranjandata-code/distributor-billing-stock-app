@@ -730,13 +730,15 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     placeholder="उदा. 24"
                     value={prodFormData.pcsPerCarton}
                     onChange={e => {
-                      const pcs = Math.max(1, Number(e.target.value) || 1);
+                      const val = e.target.value;
+                      const pcs = val === '' ? '' : val;
+                      const pcsNum = Number(val) || 0;
                       const ctn = Number(prodFormData.cartonsStock) || 0;
                       const loose = Number(prodFormData.loosePcsStock) || 0;
                       setProdFormData({
                         ...prodFormData,
                         pcsPerCarton: pcs,
-                        currentStock: (ctn * pcs) + loose
+                        currentStock: (ctn * pcsNum) + loose
                       });
                     }}
                   />
@@ -772,13 +774,15 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                         placeholder="0"
                         value={prodFormData.cartonsStock}
                         onChange={e => {
-                          const ctn = Number(e.target.value) || 0;
+                          const val = e.target.value;
+                          const ctn = val === '' ? '' : val;
+                          const ctnNum = Number(val) || 0;
                           const pcsPerCtn = Number(prodFormData.pcsPerCarton) || 24;
                           const loose = Number(prodFormData.loosePcsStock) || 0;
                           setProdFormData({
                             ...prodFormData,
                             cartonsStock: ctn,
-                            currentStock: (ctn * pcsPerCtn) + loose
+                            currentStock: (ctnNum * pcsPerCtn) + loose
                           });
                         }}
                       />
@@ -793,13 +797,15 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                         placeholder="0"
                         value={prodFormData.loosePcsStock}
                         onChange={e => {
-                          const loose = Number(e.target.value) || 0;
+                          const val = e.target.value;
+                          const loose = val === '' ? '' : val;
+                          const looseNum = Number(val) || 0;
                           const pcsPerCtn = Number(prodFormData.pcsPerCarton) || 24;
                           const ctn = Number(prodFormData.cartonsStock) || 0;
                           setProdFormData({
                             ...prodFormData,
                             loosePcsStock: loose,
-                            currentStock: (ctn * pcsPerCtn) + loose
+                            currentStock: (ctn * pcsPerCtn) + looseNum
                           });
                         }}
                       />
