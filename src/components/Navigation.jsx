@@ -9,7 +9,6 @@ import {
   Settings, 
   X, 
   Boxes,
-  PhoneCall,
   ShieldCheck
 } from 'lucide-react';
 
@@ -121,16 +120,6 @@ export default function Navigation({ activeTab, setActiveTab, business, mobileOp
           </div>
         </nav>
 
-        {/* Sidebar Footer */}
-        <div style={{ padding: '14px 18px', borderTop: '1px solid var(--border-color)', background: '#f8fafc' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <PhoneCall size={16} color="var(--primary)" />
-            <div>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>Support Helpline</p>
-              <p style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>+91 98765 43210</p>
-            </div>
-          </div>
-        </div>
       </aside>
     </>
   );
