@@ -140,11 +140,10 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             <button 
               onClick={handleDelete}
               className="btn btn-sm"
-              style={{ gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px 12px' }}
-              title="यह इनवॉइस डिलीट करें"
+              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="यह इनवॉइस डिलीट करें (Delete Invoice)"
             >
               <Trash2 size={16} />
-              <span>हटाएं</span>
             </button>
 
             <button onClick={onClose} className="btn btn-secondary" style={{ padding: '8px' }}>
