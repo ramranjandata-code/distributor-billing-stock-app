@@ -1,4 +1,4 @@
-// Multi-language Translation Dictionary for DistroPulse (English, Hinglish, Hindi)
+// English-Only Translation Dictionary for DistroPulse
 
 export const translations = {
   en: {
@@ -122,8 +122,8 @@ export const translations = {
     app_language: "Application Language",
     select_language: "Select Preferred Language",
     lang_en: "English (Default)",
-    lang_hinglish: "Hinglish (Hindi + English mix)",
-    lang_hi: "Hindi (हिंदी)",
+    lang_hinglish: "English",
+    lang_hi: "English",
     save_settings: "Save Business Settings",
     firm_name: "Firm / Business Name",
     tagline: "Tagline / Subtitle",
@@ -142,313 +142,22 @@ export const translations = {
     upload_cloud: "Upload Local Data to Cloud DB",
     download_cloud: "Download Cloud DB Data",
     supabase_url: "Supabase Project URL",
-    supabase_key: "Supabase Anon API Key",
+    supabase_key: "Supabase Anon Key",
     save_cloud_credentials: "Save Cloud Credentials"
-  },
-
-  hinglish: {
-    // Navigation / Tabs
-    dashboard: "Dashboard",
-    billing: "Quick POS Billing",
-    inventory: "Stock & Inventory",
-    parties: "Retailers & Khata",
-    invoices: "Bill History",
-    reports: "Reports & Profit",
-    settings: "Firm Settings",
-    new_bill_btn: "Naya Bill (+)",
-    low_stock_alert: "Low Stock Alert",
-
-    // Dashboard
-    dashboard_title: "Dashboard & Overview",
-    welcome: "Namaste",
-    today_sales: "Aaj ki Sale (Today Sales)",
-    invoices_cut: "bills kate gaye",
-    stock_value: "Stock Value",
-    total_units: "Total units aur",
-    total_products: "products",
-    khata_balance: "Market Udhar (Total Khata)",
-    due_on_retailers: "retailers par baki h",
-    low_stock_items: "Low Stock Items",
-    reorder_urgently: "Turant re-order karein",
-    quick_bill: "Quick Bill Banaye",
-    update_stock: "Stock Update Karein",
-    low_stock_warning: "Low Stock Warnings",
-    view_all: "Sabhi Dekhein",
-    recent_bills: "Hal hi ke Bills",
-    view_all_invoices: "Sabhi Invoices Dekhein",
-    inv_no: "Invoice No",
-    retailer: "Retailer (Party)",
-    amount: "Rakam",
-    status: "Status",
-    print: "Print",
-    no_bills: "Abhi koi bill nahi kata h.",
-    paid: "PAID",
-    unpaid: "UNPAID",
-    partial: "PARTIAL",
-
-    // Billing
-    create_bill: "Naya Tax Invoice / POS Bill Banaye",
-    select_retailer: "Retailer / Party Chunein",
-    add_new_party: "+ Naya Retailer Jodein",
-    walk_in_customer: "Walk-in Retailer / Cash Sale",
-    search_product: "Product name, brand, SKU ya barcode se search karein...",
-    item: "Item Details",
-    stock: "Stock",
-    mrp: "MRP",
-    price: "Rate",
-    qty: "Qty",
-    gst: "GST",
-    tax: "Tax Amt",
-    total: "Total",
-    action: "Action",
-    no_items_added: "Bill me abhi koi item nahi juda h. Search karke + click karein.",
-    subtotal: "Sub Total",
-    gst_total: "Tax Total (CGST + SGST)",
-    discount: "Discount (₹)",
-    grand_total: "Grand Total",
-    payment_mode: "Payment Status",
-    paid_amount: "Diya gaya Cash (₹)",
-    balance_due: "Baki Udhar (Balance)",
-    save_print_bill: "Bill Save & Print Karein",
-    saving: "Save ho raha h...",
-
-    // Inventory
-    inventory_title: "Stock & Inventory Management",
-    add_product: "+ Naya Product Jodein",
-    search_inventory: "Name, category, brand ya HSN se stock dhundhein...",
-    product_name: "Product Ka Naam",
-    category: "Category",
-    brand: "Brand",
-    hsn_sku: "HSN / SKU",
-    prices: "Khareed / Bikri Rate",
-    pcs_ctn: "Pcs / Carton",
-    stock_status: "Abhi Kitna Stock H",
-    min_limit: "Min Limit",
-    actions: "Actions",
-    no_products: "Inventory me abhi koi product nahi h. '+ Naya Product Jodein' par click karein.",
-    edit: "Edit",
-    delete: "Delete",
-    stock_add: "+ Stock In",
-    purchase_price: "Purchase Rate",
-    sale_price: "Sale Rate",
-
-    // Parties / Khata
-    parties_title: "Retailer Khata Book & Accounts",
-    add_party: "+ Naya Retailer Account Jodein",
-    search_parties: "Dukaan naam, phone, city ya GSTIN se khojein...",
-    party_name: "Dukaan / Party Ka Naam",
-    contact: "Maalik & Phone Number",
-    city_address: "City & Address",
-    gstin: "GSTIN Number",
-    credit_limit: "Credit Limit",
-    khata_due: "Udhar Balance",
-    receive_payment: "Payment Jama Karein",
-    clear_due: "Hisaab Clear Karein",
-    no_parties: "Abhi koi retailer nahi h. '+ Naya Retailer' par click karein.",
-
-    // Invoice History
-    history_title: "Bill History & Purane Records",
-    search_invoices: "Bill no, retailer name ya status se search karein...",
-    date: "Date & Time",
-    payment_summary: "Payment Status",
-    no_history: "Abhi koi bill recorded nahi h.",
-
-    // Reports
-    reports_title: "Sales & Margin Analytics Reports",
-    total_revenue: "Total Sales Revenue",
-    total_profit: "Anumanit Net Profit",
-    total_invoices_count: "Total Kate Gaye Bills",
-    top_selling: "Sabse Zyada Bikne Wale Products",
-
-    // Settings
-    settings_title: "Firm & App Settings",
-    general_settings: "Business Info & GST",
-    cloud_db_settings: "Cloud Database (Supabase)",
-    app_language: "App Ki Bhasha (Language)",
-    select_language: "Bhasha Chunein",
-    lang_en: "English (Default)",
-    lang_hinglish: "Hinglish (Hindi + English mix)",
-    lang_hi: "Hindi (हिंदी)",
-    save_settings: "Firm Settings Save Karein",
-    firm_name: "Firm / Business Ka Naam",
-    tagline: "Tagline / Subtitle",
-    proprietor: "Maalik Ka Naam (Proprietor)",
-    phone: "Phone Number",
-    email: "Email Address",
-    address: "Pura Pata (Address)",
-    bank_name: "Bank Ka Naam",
-    account_no: "Account Number",
-    ifsc: "IFSC Code",
-    invoice_prefix: "Bill Prefix (jaise SGA/26-27/)",
-    terms: "Bill Terms & Conditions",
-    cloud_status_active: "Real-Time Auto Cloud Sync Active",
-    cloud_status_desc: "Subhi badlaav apne aap Supabase Cloud DB par save ho jate hain.",
-    clear_sample_data: "Sabhi Demo Data Clean Karein",
-    upload_cloud: "Local Data Cloud Par Bhejein",
-    download_cloud: "Cloud DB Data Download Karein",
-    supabase_url: "Supabase Project URL",
-    supabase_key: "Supabase Anon Key",
-    save_cloud_credentials: "Cloud Credentials Save Karein"
-  },
-
-  hi: {
-    // Navigation / Tabs
-    dashboard: "डैशबोर्ड",
-    billing: "त्वरित बिलिंग (POS)",
-    inventory: "स्टॉक व इन्वेंट्री",
-    parties: "ग्राहक खाता (Parties)",
-    invoices: "बिल इतिहास",
-    reports: "रिपोर्ट्स व लाभ",
-    settings: "फर्म सेटिंग्स",
-    new_bill_btn: "नया बिल (+)",
-    low_stock_alert: "कम स्टॉक चेतावनी",
-
-    // Dashboard
-    dashboard_title: "डैशबोर्ड व ओवरव्यू",
-    welcome: "नमस्ते",
-    today_sales: "आज की बिक्री (Today Sales)",
-    invoices_cut: "बिल काटे गए",
-    stock_value: "स्टॉक वैल्यू",
-    total_units: "कुल यूनिट्स व",
-    total_products: "प्रोडक्ट्स",
-    khata_balance: "कुल मार्केट उधार (Khata)",
-    due_on_retailers: "रिटेलर्स पर बकाया रकम",
-    low_stock_items: "कम स्टॉक वाले सामान",
-    reorder_urgently: "तुरंत री-ऑर्डर करने की आवश्यकता",
-    quick_bill: "त्वरित बिल बनाएं",
-    update_stock: "स्टॉक अपडेट करें",
-    low_stock_warning: "कम स्टॉक चेतावनी",
-    view_all: "सभी देखें",
-    recent_bills: "हाल ही के बिल",
-    view_all_invoices: "सभी इनवॉइस देखें",
-    inv_no: "इनवॉइस नंबर",
-    retailer: "रिटेलर (पार्टी)",
-    amount: "रकम",
-    status: "स्थिति",
-    print: "प्रिंट",
-    no_bills: "अभी तक कोई इनवॉइस नहीं काटा गया है।",
-    paid: "भुगतान हो गया (PAID)",
-    unpaid: "उधार (UNPAID)",
-    partial: "आंशिक (PARTIAL)",
-
-    // Billing
-    create_bill: "नया टैक्स इनवॉइस / POS बिल बनाएं",
-    select_retailer: "रिटेलर / पार्टी चुनें",
-    add_new_party: "+ नया रिटेलर जोड़ें",
-    walk_in_customer: "नकद बिक्री / वॉकिन कस्टमर",
-    search_product: "सामान के नाम, ब्रांड, SKU या बारकोड से खोजें...",
-    item: "सामान विवरण",
-    stock: "उपलब्ध स्टॉक",
-    mrp: "MRP",
-    price: "दर (Rate)",
-    qty: "मात्रा (Qty)",
-    gst: "GST",
-    tax: "टैक्स रकम",
-    total: "कुल योग",
-    action: "कार्रवाई",
-    no_items_added: "बिल में अभी तक कोई सामान नहीं जोड़ा गया है। ऊपर खोजकर + दबाएं।",
-    subtotal: "उप-योग (Sub Total)",
-    gst_total: "कुल टैक्स (CGST + SGST)",
-    discount: "छूट / डिस्काउंट (₹)",
-    grand_total: "कुल देय राशि (Grand Total)",
-    payment_mode: "भुगतान स्थिति",
-    paid_amount: "प्राप्त नकद (₹)",
-    balance_due: "शेष बकाया (Udhar)",
-    save_print_bill: "इनवॉइस सहेजें व प्रिंट करें",
-    saving: "सहेजा जा रहा है...",
-
-    // Inventory
-    inventory_title: "स्टॉक व इन्वेंट्री प्रबंधन",
-    add_product: "+ नया प्रोडक्ट जोड़ें",
-    search_inventory: "नाम, कैटेगरी, ब्रांड या HSN से सामान खोजें...",
-    product_name: "सामान का नाम",
-    category: "कैटेगरी",
-    brand: "ब्रांड",
-    hsn_sku: "HSN / SKU",
-    prices: "खरीद व बिक्री दर",
-    pcs_ctn: "पीस / कार्टन",
-    stock_status: "मौजूदा स्टॉक",
-    min_limit: "न्यूनतम सीमा",
-    actions: "कार्रवाई",
-    no_products: "इवेंट्री में कोई सामान नहीं है। नया प्रोडक्ट जोड़ने के लिए ऊपर क्लिक करें।",
-    edit: "संशोधित करें",
-    delete: "हटाएं",
-    stock_add: "+ स्टॉक आवक",
-    purchase_price: "खरीद मूल्य",
-    sale_price: "बिक्री मूल्य",
-
-    // Parties / Khata
-    parties_title: "रिटेलर खाता बही व लेन-देन",
-    add_party: "+ नया रिटेलर खाता खोलें",
-    search_parties: "दुकान के नाम, संपर्क नंबर, शहर या GSTIN से खोजें...",
-    party_name: "दुकान / पार्टी का नाम",
-    contact: "संपर्क व्यक्ति व फोन",
-    city_address: "शहर व पता",
-    gstin: "GSTIN नंबर",
-    credit_limit: "उधार सीमा",
-    khata_due: "बकाया उधार",
-    receive_payment: "भुगतान जमा करें",
-    clear_due: "खाता चुकता करें",
-    no_parties: "कोई रिटेलर खाता नहीं है। '+ नया रिटेलर' पर क्लिक करें।",
-
-    // Invoice History
-    history_title: "बिल इतिहास व पुराने रिकॉर्ड",
-    search_invoices: "बिल नंबर, दुकान के नाम या स्थिति से खोजें...",
-    date: "दिनांक व समय",
-    payment_summary: "भुगतान विवरण",
-    no_history: "कोई इनवॉइस रिकॉर्ड नहीं मिला।",
-
-    // Reports
-    reports_title: "बिक्री व मार्जिन विश्लेषण रिपोर्ट्स",
-    total_revenue: "कुल कुल बिक्री (Revenue)",
-    total_profit: "अनुमानित शुद्ध लाभ (Margin)",
-    total_invoices_count: "कुल जारी किए गए बिल",
-    top_selling: "सर्वाधिक बिकने वाले सामान",
-
-    // Settings
-    settings_title: "फर्म व ऐप सेटिंग्स",
-    general_settings: "व्यापार विवरण व टैक्स जानकारी",
-    cloud_db_settings: "क्लाउड डेटाबेस (Supabase)",
-    app_language: "ऐप की भाषा (Language)",
-    select_language: "पसंदीदा भाषा चुनें",
-    lang_en: "English (Default)",
-    lang_hinglish: "Hinglish (Hindi + English mix)",
-    lang_hi: "Hindi (हिंदी)",
-    save_settings: "सेटिंग्स सहेजें",
-    firm_name: "फर्म / व्यापार का नाम",
-    tagline: "टैगलाइन / उपशीर्षक",
-    proprietor: "मालिक का नाम",
-    phone: "फोन नंबर",
-    email: "ईमेल पता",
-    address: "पूरा पता",
-    bank_name: "बैंक का नाम",
-    account_no: "खाता संख्या",
-    ifsc: "IFSC कोड",
-    invoice_prefix: "इनवॉइस प्रीफिक्स (उदा. SGA/26-27/)",
-    terms: "बिल की नियम व शर्तें",
-    cloud_status_active: "स्वचालित रीयल-टाइम सिंक सक्रिय है",
-    cloud_status_desc: "सभी बदलाव अपने-आप ऑनलाइन क्लाउड डेटाबेस पर सहेजे जाते हैं।",
-    clear_sample_data: "सभी डेमो डेटा साफ़ करें",
-    upload_cloud: "लोकल डेटा क्लाउड पर भेजें",
-    download_cloud: "क्लाउड डेटा डाउनलोड करें",
-    supabase_url: "Supabase प्रोजेक्ट URL",
-    supabase_key: "Supabase Anon Key",
-    save_cloud_credentials: "क्रेडेंशियल्स सहेजें"
   }
 };
 
+translations.hinglish = translations.en;
+translations.hi = translations.en;
+
 export const getAppLanguage = () => {
-  return localStorage.getItem('distro_app_language') || 'en';
+  return 'en';
 };
 
 export const setAppLanguage = (lang) => {
-  if (['en', 'hinglish', 'hi'].includes(lang)) {
-    localStorage.setItem('distro_app_language', lang);
-  }
+  localStorage.setItem('distro_app_language', 'en');
 };
 
 export const t = (key, currentLang = null) => {
-  const lang = currentLang || getAppLanguage();
-  const langDict = translations[lang] || translations.en;
-  return langDict[key] || translations.en[key] || key;
+  return translations.en[key] || key;
 };
