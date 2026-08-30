@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Search, Printer, Calendar, Filter, User, Trash2 } from 'lucide-react';
+import { FileText, Search, Printer, Calendar, Filter, User, Trash2, Download } from 'lucide-react';
 import { deleteInvoice } from '../utils/storage';
 
 export default function InvoiceHistory({ invoices, handlePrintInvoice, refreshAllData }) {
@@ -124,24 +124,32 @@ export default function InvoiceHistory({ invoices, handlePrintInvoice, refreshAl
                         </span>
                       </td>
                       <td style={{ padding: '12px 10px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                          <button 
+                            onClick={() => handlePrintInvoice(inv)}
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="इनवॉइस डाउनलोड / पीडीएफ (Download Invoice PDF)"
+                          >
+                            <Download size={15} />
+                          </button>
+
                           <button 
                             onClick={() => handlePrintInvoice(inv)}
                             className="btn btn-secondary btn-sm"
-                            style={{ gap: '4px' }}
+                            style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="इनवॉइस प्रिंट करें (Print Invoice)"
                           >
-                            <Printer size={14} />
-                            <span>प्रिंट</span>
+                            <Printer size={15} />
                           </button>
 
                           <button 
                             onClick={() => handleDelete(inv)}
                             className="btn btn-sm"
-                            style={{ gap: '4px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' }}
-                            title="इनवॉइस डिलीट करें"
+                            style={{ padding: '6px 10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                            title="इनवॉइस डिलीट करें (Delete Invoice)"
                           >
-                            <Trash2 size={14} />
-                            <span>हटाएं</span>
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
