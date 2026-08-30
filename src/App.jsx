@@ -250,19 +250,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Quick Language Dropdown in Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '4px 10px' }}>
-              <Globe size={16} color="var(--primary-color)" />
-              <select
-                value={lang}
-                onChange={(e) => changeLanguage(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-main)', cursor: 'pointer', outline: 'none' }}
-              >
-                <option value="en">English</option>
-                <option value="hinglish">Hinglish</option>
-                <option value="hi">हिंदी (Hindi)</option>
-              </select>
-            </div>
+
 
             {lowStockProducts.length > 0 && (
               <button 
