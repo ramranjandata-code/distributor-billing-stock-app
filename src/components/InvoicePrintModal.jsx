@@ -286,15 +286,15 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             marginBottom: '6px' 
           }}>
             <thead>
-              <tr style={{ borderBottom: '1.5px solid #000000', background: '#f1f5f9', fontWeight: '800', textAlign: 'left' }}>
-                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '4%', color: '#000' }}>Sr. No.</th>
-                <th style={{ padding: '3px 6px', borderRight: '1px solid #000000', width: '36%', color: '#000' }}>Name of Product / Service</th>
-                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '9%', color: '#000' }}>HSN / SAC</th>
-                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '10%', color: '#000' }}>Qty</th>
-                <th style={{ padding: '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '9%', color: '#000' }}>Rate</th>
-                <th style={{ padding: '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '10%', color: '#000' }}>Taxable Value</th>
-                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '11%', color: '#000' }}>GST (% | Amt)</th>
-                <th style={{ padding: '3px 6px', textAlign: 'right', width: '11%', color: '#000' }}>Total</th>
+              <tr style={{ borderBottom: '1.5px solid #000000', background: '#f1f5f9', fontWeight: '800', textAlign: 'left', height: '26px' }}>
+                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '4%', color: '#000', whiteSpace: 'nowrap' }}>Sr. No.</th>
+                <th style={{ padding: '3px 6px', borderRight: '1px solid #000000', width: '33%', color: '#000', whiteSpace: 'nowrap' }}>Name of Product / Service</th>
+                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '8%', color: '#000', whiteSpace: 'nowrap' }}>HSN / SAC</th>
+                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '9%', color: '#000', whiteSpace: 'nowrap' }}>Qty</th>
+                <th style={{ padding: '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '10%', color: '#000', whiteSpace: 'nowrap' }}>Rate</th>
+                <th style={{ padding: '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>Taxable Value</th>
+                <th style={{ padding: '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '13%', color: '#000', whiteSpace: 'nowrap' }}>GST (% | Amt)</th>
+                <th style={{ padding: '3px 6px', textAlign: 'right', width: '12%', color: '#000', whiteSpace: 'nowrap' }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -307,16 +307,16 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 const itemTotal = Number(item.total) || (taxableVal + gstAmt);
 
                 return (
-                  <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                  <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', height: '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                     <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '600', color: '#000' }}>{index + 1}</td>
-                    <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>{item.name}</td>
+                    <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>{item.name}</td>
                     <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600' }}>{item.hsn}</td>
                     <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '800', color: '#000' }}>
                       {formatCartonStock(item.qty, item.pcsPerCarton)}
                     </td>
                     <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{itemRate.toFixed(2)}</td>
                     <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{taxableVal.toFixed(2)}</td>
-                    <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600' }}>
+                    <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '8.5px' : '9.5px' }}>
                       {gstRateNum}% {gstAmt > 0 ? `(₹${gstAmt.toFixed(2)})` : ''}
                     </td>
                     <td style={{ padding: '2.5px 6px', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{itemTotal.toFixed(2)}</td>
@@ -326,7 +326,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
               {/* Minimum 10 Rows Grid Filler */}
               {Array.from({ length: Math.max(0, 10 - invoice.items.length) }).map((_, emptyIndex) => (
-                <tr key={`empty-${emptyIndex}`} style={{ borderBottom: '1px solid #cbd5e1', height: '22px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                <tr key={`empty-${emptyIndex}`} style={{ borderBottom: '1px solid #cbd5e1', height: '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                   <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
