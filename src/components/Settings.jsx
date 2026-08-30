@@ -43,7 +43,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     mrp: '',
     salePrice: '',
     purchasePrice: '',
-    gstRate: 18,
+    gstRate: 5,
     pcsPerCarton: 24,
     cartonsStock: '',
     loosePcsStock: '',

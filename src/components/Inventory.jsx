@@ -40,7 +40,7 @@ export default function Inventory({ products, refreshAllData }) {
     mrp: '',
     salePrice: '',
     purchasePrice: '',
-    gstRate: 18,
+    gstRate: 5,
     pcsPerCarton: 24,
     cartonsStock: '',
     loosePcsStock: '',
