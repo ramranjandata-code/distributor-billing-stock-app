@@ -41,7 +41,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1000 }}>
-      <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'THERMAL' ? '400px' : '850px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
+      <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'A5' ? '640px' : '850px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
         
         {/* Top Control Bar (Hidden on Print) */}
         <div className="modal-header no-print" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--text-main)', padding: '12px 18px' }}>
@@ -58,7 +58,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               <button
                 onClick={() => setPaperFormat('A4')}
                 style={{
-                  padding: '4px 10px',
+                  padding: '4px 12px',
                   border: 'none',
                   borderRadius: '4px',
                   background: paperFormat === 'A4' ? '#ffffff' : 'transparent',
@@ -70,18 +70,18 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 📄 Standard A4
               </button>
               <button
-                onClick={() => setPaperFormat('THERMAL')}
+                onClick={() => setPaperFormat('A5')}
                 style={{
-                  padding: '4px 10px',
+                  padding: '4px 12px',
                   border: 'none',
                   borderRadius: '4px',
-                  background: paperFormat === 'THERMAL' ? '#ffffff' : 'transparent',
-                  fontWeight: paperFormat === 'THERMAL' ? '700' : '500',
+                  background: paperFormat === 'A5' ? '#ffffff' : 'transparent',
+                  fontWeight: paperFormat === 'A5' ? '700' : '500',
                   fontSize: '0.78rem',
                   cursor: 'pointer'
                 }}
               >
-                🧾 POS Thermal (3-inch)
+                📜 Compact A5 (Half Page)
               </button>
             </div>
 
@@ -106,13 +106,13 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           </div>
         </div>
 
-        {/* PRINTABLE BILL CANVAS (Guaranteed 40-Item Single A4 Page Layout) */}
+        {/* PRINTABLE BILL CANVAS (A4 / A5 Page Layout) */}
         <div className="print-area" style={{ 
-          padding: paperFormat === 'THERMAL' ? '4px' : '4px 6px', 
+          padding: paperFormat === 'A5' ? '3px 4px' : '4px 6px', 
           background: '#ffffff', 
           color: '#000000', 
           fontFamily: "'Inter', -apple-system, sans-serif",
-          fontSize: paperFormat === 'THERMAL' ? '10px' : '11.5px',
+          fontSize: paperFormat === 'A5' ? '10.5px' : '11.5px',
           lineHeight: '1.2',
           pageBreakInside: 'avoid',
           breakInside: 'avoid'
@@ -132,7 +132,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               justify: 'space-between', 
               alignItems: 'center', 
               width: '100%',
-              fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem',
+              fontSize: paperFormat === 'A5' ? '0.74rem' : '0.8rem',
               fontWeight: '700',
               borderBottom: '1px solid #cbd5e1',
               paddingBottom: '3px',
@@ -151,7 +151,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
             {/* Business / Firm Name (BOLD) */}
             <h2 style={{ 
-              fontSize: paperFormat === 'THERMAL' ? '1.05rem' : '1.35rem', 
+              fontSize: paperFormat === 'A5' ? '1.15rem' : '1.35rem', 
               fontWeight: '900', 
               margin: '3px 0 2px 0', 
               textTransform: 'uppercase', 
@@ -164,7 +164,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
             {/* Address (Normal Weight) */}
             <p style={{ 
-              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.78rem', 
+              fontSize: paperFormat === 'A5' ? '0.72rem' : '0.78rem', 
               margin: '2px 0', 
               fontWeight: '400', 
               color: '#000000' 
@@ -178,7 +178,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               justify: 'space-between', 
               alignItems: 'center', 
               marginTop: '3px',
-              fontSize: paperFormat === 'THERMAL' ? '0.68rem' : '0.76rem',
+              fontSize: paperFormat === 'A5' ? '0.72rem' : '0.76rem',
               fontWeight: '400',
               color: '#000000'
             }}>
@@ -191,14 +191,14 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               </div>
 
               {/* Bottom Right Corner of Header Box: Inv No */}
-              <div style={{ minWidth: '100px', textAlign: 'right', fontWeight: '800', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem' }}>
+              <div style={{ minWidth: '100px', textAlign: 'right', fontWeight: '800', fontSize: paperFormat === 'A5' ? '0.75rem' : '0.8rem' }}>
                 Inv No: {invoice.invoiceNo}
               </div>
             </div>
           </div>
 
           {/* 1-Line Party Details */}
-          <div style={{ borderBottom: '1.5px solid #000000', paddingBottom: '3px', marginBottom: '4px', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#000000' }}>
+          <div style={{ borderBottom: '1.5px solid #000000', paddingBottom: '3px', marginBottom: '4px', fontSize: paperFormat === 'A5' ? '0.75rem' : '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#000000' }}>
             <div>
               <span style={{ fontWeight: '800', textTransform: 'uppercase' }}>BILLED TO: </span>
               <strong style={{ fontSize: '0.88rem', color: '#000000' }}>{invoice.partyName}</strong>
@@ -211,7 +211,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           </div>
 
           {/* Items Table (40-Item Optimized) */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'THERMAL' ? '9.5px' : '11.5px', marginBottom: '6px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'A5' ? '10px' : '11.5px', marginBottom: '6px' }}>
             <thead>
               <tr style={{ borderTop: '2px solid #000000', borderBottom: '2px solid #000000', textAlign: 'left', fontWeight: '800', background: '#f1f5f9' }}>
                 <th style={{ padding: '2.5px 5px', width: '4%', color: '#000' }}>#</th>
@@ -247,7 +247,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           </table>
 
           {/* Bottom Summary Section (Notes on Left, Totals Table on Right) */}
-          <div className="print-summary-signature" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '12px', fontSize: paperFormat === 'THERMAL' ? '0.7rem' : '0.8rem', pageBreakInside: 'avoid', breakInside: 'avoid', marginTop: '6px' }}>
+          <div className="print-summary-signature" style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '12px', fontSize: paperFormat === 'A5' ? '0.74rem' : '0.8rem', pageBreakInside: 'avoid', breakInside: 'avoid', marginTop: '6px' }}>
             
             <div>
               {invoice.notes && (
@@ -258,7 +258,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </div>
 
             <div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'THERMAL' ? '9.5px' : '11.5px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'A5' ? '10px' : '11.5px' }}>
                 <tbody>
                   <tr>
                     <td style={{ padding: '2px 5px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>Total (Incl. GST):</td>

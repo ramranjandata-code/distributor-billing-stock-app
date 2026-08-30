@@ -345,11 +345,11 @@ input[type=number] {
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Printable Bill Styling for A4 / Thermal Receipt Printer (Optimized for 40 Items on 1 A4 Sheet) */
+/* Printable Bill Styling for A4 / A5 Printer (Optimized for High Density Invoice Printing) */
 @media print {
   @page {
     margin: 3mm 5mm !important;
-    size: A4 portrait;
+    size: auto;
   }
   
   html, body {
