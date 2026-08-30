@@ -142,12 +142,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
       {/* TOP CONTROLS & PERIOD SELECTOR (Hidden on Print) */}
-      <div className="glass-card no-print" style={{ padding: '16px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+      <div className="glass-card no-print" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
         
         {/* Filter Buttons */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Calendar size={16} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', flex: 1 }}>
+          <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '2px' }}>
+            <Calendar size={15} />
             समय अवधि:
           </span>
 
@@ -155,6 +155,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             type="button" 
             onClick={() => setPeriod('WEEKLY')} 
             className={`btn btn-sm ${period === 'WEEKLY' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
             साप्ताहिक (Weekly)
           </button>
@@ -163,6 +164,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             type="button" 
             onClick={() => setPeriod('MONTHLY')} 
             className={`btn btn-sm ${period === 'MONTHLY' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
             मासिक (Monthly)
           </button>
@@ -171,6 +173,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             type="button" 
             onClick={() => setPeriod('QUARTERLY')} 
             className={`btn btn-sm ${period === 'QUARTERLY' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
             तिमाही (Quarterly)
           </button>
@@ -179,6 +182,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             type="button" 
             onClick={() => setPeriod('YEARLY')} 
             className={`btn btn-sm ${period === 'YEARLY' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
             वार्षिक (Yearly)
           </button>
@@ -187,6 +191,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             type="button" 
             onClick={() => setPeriod('ALL')} 
             className={`btn btn-sm ${period === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
             सभी (All)
           </button>
@@ -195,6 +200,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             type="button" 
             onClick={() => setPeriod('CUSTOM')} 
             className={`btn btn-sm ${period === 'CUSTOM' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ padding: '4px 10px', fontSize: '0.78rem' }}
           >
             कस्टम (Custom)
           </button>
@@ -205,9 +211,9 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           type="button" 
           onClick={handlePrintPDF} 
           className="btn btn-primary"
-          style={{ gap: '6px', padding: '6px 16px', fontWeight: '700', fontSize: '0.88rem', marginLeft: 'auto', whiteSpace: 'nowrap' }}
+          style={{ gap: '6px', padding: '6px 14px', fontWeight: '700', fontSize: '0.82rem', whiteSpace: 'nowrap', flexShrink: 0, marginLeft: 'auto' }}
         >
-          <Printer size={16} />
+          <Printer size={15} />
           <span>Export PDF</span>
         </button>
 
