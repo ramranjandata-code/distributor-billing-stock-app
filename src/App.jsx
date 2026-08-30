@@ -191,49 +191,62 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* App Reload Button */}
-            <button
-              onClick={handleAppReload}
-              className="btn btn-secondary"
-              title="ऐप रिफ्रेश करें (Press F5 or Ctrl+R)"
-              style={{
-                gap: '6px',
-                padding: '6px 12px',
-                fontSize: '0.82rem',
-                fontWeight: '700',
-                background: '#f1f5f9',
-                borderColor: '#cbd5e1',
-                color: '#1e293b',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <RefreshCw size={14} color="#0284c7" />
-              <span>🔄 App Reload (F5)</span>
-            </button>
-
-            {/* Live Cloud Sync Status Badge */}
+            
+            {/* Live Cloud Sync Green Dot Indicator */}
             {cloudConnected ? (
               <div 
                 onClick={triggerManualSync}
-                className="badge badge-success"
-                title="Click to trigger manual sync with Web & Cloud DB"
-                style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title={`Cloud Synced ${lastSyncedTime ? `(${lastSyncedTime})` : ''} - Click to sync`}
+                style={{ 
+                  cursor: 'pointer', 
+                  padding: '5px 10px', 
+                  borderRadius: '20px', 
+                  background: 'rgba(16, 185, 129, 0.12)', 
+                  border: '1px solid rgba(16, 185, 129, 0.3)', 
+                  fontSize: '0.78rem', 
+                  fontWeight: '700', 
+                  color: '#059669', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px' 
+                }}
               >
-                <Cloud size={14} />
-                <span>Cloud Synced {lastSyncedTime ? `(${lastSyncedTime})` : ''}</span>
-                <RefreshCw size={12} className={isSyncing ? 'spin' : ''} style={{ marginLeft: '2px' }} />
+                <span style={{ 
+                  width: '8px', 
+                  height: '8px', 
+                  borderRadius: '50%', 
+                  background: '#10b981', 
+                  boxShadow: '0 0 8px #10b981',
+                  display: 'inline-block'
+                }} />
+                <span>Cloud</span>
               </div>
             ) : (
               <div 
                 onClick={() => setActiveTab('settings')}
-                className="badge badge-warning"
-                title="Click to setup Supabase Cloud Database credentials"
-                style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                title="Offline Mode - Click to setup Cloud"
+                style={{ 
+                  cursor: 'pointer', 
+                  padding: '5px 10px', 
+                  borderRadius: '20px', 
+                  background: 'rgba(245, 158, 11, 0.12)', 
+                  border: '1px solid rgba(245, 158, 11, 0.3)', 
+                  fontSize: '0.78rem', 
+                  fontWeight: '700', 
+                  color: '#d97706', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px' 
+                }}
               >
-                <CloudOff size={14} />
-                <span>Offline Mode (Setup Cloud)</span>
+                <span style={{ 
+                  width: '8px', 
+                  height: '8px', 
+                  borderRadius: '50%', 
+                  background: '#f59e0b', 
+                  display: 'inline-block'
+                }} />
+                <span>Offline</span>
               </div>
             )}
 
@@ -273,13 +286,14 @@ export default function App() {
               </button>
             )}
 
+            {/* Small App Reload Icon Button */}
             <button 
-              onClick={triggerManualSync}
+              onClick={handleAppReload}
               className="btn btn-secondary"
-              title="Sync with Cloud DB Now"
-              style={{ padding: '10px' }}
+              title="ऐप रिफ्रेश करें (App Reload - F5)"
+              style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <RefreshCw size={18} className={isSyncing ? 'spin' : ''} color="var(--text-muted)" />
+              <RefreshCw size={16} />
             </button>
           </div>
         </header>
