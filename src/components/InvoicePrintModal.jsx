@@ -41,7 +41,12 @@ function numToWords(num) {
 }
 
 export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData }) {
-  const [paperFormat, setPaperFormat] = useState('A4'); // 'A4' or 'A5'
+  const [paperFormat, setPaperFormat] = useState(() => localStorage.getItem('distro_default_paper_format') || 'A5');
+
+  const changePaperFormat = (fmt) => {
+    setPaperFormat(fmt);
+    localStorage.setItem('distro_default_paper_format', fmt);
+  };
 
   if (!invoice) return null;
 
@@ -98,7 +103,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             {/* Paper Size Format Switcher */}
             <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '6px', padding: '2px' }}>
               <button
-                onClick={() => setPaperFormat('A4')}
+                onClick={() => changePaperFormat('A4')}
                 style={{
                   padding: '4px 12px',
                   border: 'none',
@@ -112,7 +117,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 📄 Standard A4
               </button>
               <button
-                onClick={() => setPaperFormat('A5')}
+                onClick={() => changePaperFormat('A5')}
                 style={{
                   padding: '4px 12px',
                   border: 'none',
