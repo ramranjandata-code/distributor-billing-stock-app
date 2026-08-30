@@ -113,6 +113,13 @@ export default function Inventory({ products, refreshAllData }) {
     saveProduct(payload);
     refreshAllData();
     setProductModalOpen(false);
+    setEditingProduct(null);
+    setFormData({
+      ...initialForm,
+      cartonsStock: 0,
+      loosePcsStock: 0,
+      currentStock: 0
+    });
   };
 
   const handleDelete = (id, name) => {

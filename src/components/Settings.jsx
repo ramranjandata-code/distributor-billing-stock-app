@@ -111,7 +111,13 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     saveProduct(payload);
     refreshAllData();
     setItemModalOpen(false);
-    alert(`✅ '${payload.name}' सफलता से इन्वेंट्री में जुड़ गया!`);
+    setEditingProd(null);
+    setProdFormData({
+      ...initialProdState,
+      cartonsStock: 0,
+      loosePcsStock: 0,
+      currentStock: 0
+    });
   };
 
   const handleDeleteItem = (id, name) => {

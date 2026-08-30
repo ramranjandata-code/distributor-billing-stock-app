@@ -130,6 +130,22 @@ const getCloudHeaders = () => ({
   'Prefer': 'return=representation'
 });
 
+const mergeById = (localArr = [], remoteArr = []) => {
+  const map = new Map();
+  (remoteArr || []).forEach(item => {
+    if (item && item.id && !SAMPLE_IDS.includes(item.id)) {
+      map.set(item.id, item);
+    }
+  });
+  // Local items override or append (preserves local creations & updates)
+  (localArr || []).forEach(item => {
+    if (item && item.id && !SAMPLE_IDS.includes(item.id)) {
+      map.set(item.id, item);
+    }
+  });
+  return Array.from(map.values());
+};
+
 export const fetchCloudData = async () => {
   let hasUpdated = false;
 
@@ -143,25 +159,23 @@ export const fetchCloudData = async () => {
       if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
         const remote = JSON.parse(rows[0].beat);
 
-        // Sync Invoices
+        const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
+        const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+        const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+
+        // Safely merge remote data into local state without losing new local creations
         if (Array.isArray(remote.invoices)) {
-          const cleanInvoices = remote.invoices.filter(i => i && i.id && !SAMPLE_IDS.includes(i.id));
-          setStorageData(STORAGE_KEYS.INVOICES, cleanInvoices);
+          setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, remote.invoices));
         }
 
-        // Sync Products
         if (Array.isArray(remote.products)) {
-          const cleanProducts = remote.products.filter(p => p && p.id && !SAMPLE_IDS.includes(p.id));
-          setStorageData(STORAGE_KEYS.PRODUCTS, cleanProducts);
+          setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(localProducts, remote.products));
         }
 
-        // Sync Parties
         if (Array.isArray(remote.parties)) {
-          const cleanParties = remote.parties.filter(pt => pt && pt.id && !SAMPLE_IDS.includes(pt.id));
-          setStorageData(STORAGE_KEYS.PARTIES, cleanParties);
+          setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, remote.parties));
         }
 
-        // Sync Business Info
         if (remote.business && remote.business.name) {
           setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
         }
