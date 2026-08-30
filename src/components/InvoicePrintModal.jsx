@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Printer, X, CheckCircle, Zap, FileText, Trash2, MapPin } from 'lucide-react';
 import { formatCartonStock, deleteInvoice, fetchParties } from '../utils/storage';
+import firmLogo from '../assets/firm_logo.png';
 
 export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData }) {
   const [paperFormat, setPaperFormat] = useState('A4'); // 'A4' or 'THERMAL'
@@ -149,18 +150,29 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               </div>
             </div>
 
-            {/* Business / Firm Name (BOLD) */}
-            <h2 style={{ 
-              fontSize: paperFormat === 'A5' ? '1.15rem' : '1.35rem', 
-              fontWeight: '900', 
-              margin: '3px 0 2px 0', 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.6px',
-              color: '#000000',
-              lineHeight: '1.1'
-            }}>
-              {business?.name || 'SHREE GANESH SALES AGENCY'}
-            </h2>
+            {/* Business Header Center with Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', margin: '3px 0 2px 0' }}>
+              <img 
+                src={firmLogo} 
+                alt="Firm Logo" 
+                style={{ 
+                  height: paperFormat === 'A5' ? '36px' : '44px', 
+                  width: 'auto',
+                  objectFit: 'contain'
+                }} 
+              />
+              <h2 style={{ 
+                fontSize: paperFormat === 'A5' ? '1.15rem' : '1.35rem', 
+                fontWeight: '900', 
+                margin: 0, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.6px',
+                color: '#000000',
+                lineHeight: '1.1'
+              }}>
+                {business?.name || 'SHREE GANESH SALES AGENCY'}
+              </h2>
+            </div>
 
             {/* Address (Normal Weight) */}
             <p style={{ 
