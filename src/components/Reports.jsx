@@ -205,7 +205,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           type="button" 
           onClick={handlePrintPDF} 
           className="btn btn-primary"
-          style={{ gap: '6px', padding: '6px 16px', fontWeight: '700', fontSize: '0.88rem' }}
+          style={{ gap: '6px', padding: '6px 16px', fontWeight: '700', fontSize: '0.88rem', marginLeft: 'auto', whiteSpace: 'nowrap' }}
         >
           <Printer size={16} />
           <span>Export PDF</span>

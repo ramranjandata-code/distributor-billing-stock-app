@@ -20,7 +20,7 @@ import Reports from './components/Reports';
 import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 
-import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2 } from 'lucide-react';
+import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
 import { isSupabaseConnected } from './utils/supabaseClient';
 
@@ -272,6 +272,17 @@ export default function App() {
               >
                 <Bell size={14} />
                 <span>{lowStockProducts.length} {translate('low_stock_alert')}</span>
+              </button>
+            )}
+
+            {activeTab === 'reports' && (
+              <button 
+                onClick={() => window.print()}
+                className="btn btn-primary no-print"
+                style={{ gap: '6px', padding: '6px 14px', fontSize: '0.85rem', fontWeight: '700', whiteSpace: 'nowrap' }}
+              >
+                <Printer size={16} />
+                <span>Export PDF</span>
               </button>
             )}
 
