@@ -203,15 +203,6 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           <span>आइटम्स जोड़ें & प्रबंधित करें (Add Items)</span>
         </button>
 
-        <button 
-          onClick={() => setActiveSubTab('cloud')}
-          className={`btn btn-sm ${activeSubTab === 'cloud' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ gap: '6px' }}
-        >
-          <Cloud size={16} />
-          <span>☁️ {t('cloud_db_settings')}</span>
-        </button>
-
       </div>
 
       {/* SUB-TAB 1: Firm Settings */}
