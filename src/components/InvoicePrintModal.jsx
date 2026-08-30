@@ -218,69 +218,53 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               </div>
             </div>
 
-            {/* 3-Column Info Grid: Party Details | Invoice & Logistics | Dates */}
+            {/* 2-Column Info Grid: Party Details | Invoice & Date Details */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: '1.35fr 1fr 0.9fr', 
-              fontSize: paperFormat === 'A5' ? '0.72rem' : '0.78rem' 
+              gridTemplateColumns: '1.4fr 1fr', 
+              fontSize: paperFormat === 'A5' ? '0.74rem' : '0.8rem' 
             }}>
               
               {/* Col 1: Party / Buyer Info */}
-              <div style={{ padding: '4px 8px', borderRight: '1.5px solid #000000' }}>
+              <div style={{ padding: '5px 8px', borderRight: '1.5px solid #000000' }}>
                 <div style={{ display: 'flex', marginBottom: '2px' }}>
-                  <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>M/S</span>
-                  <strong style={{ fontSize: '0.85rem', color: '#000' }}>{invoice.partyName}</strong>
+                  <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>M/S:</span>
+                  <strong style={{ fontSize: '0.86rem', color: '#000' }}>{invoice.partyName}</strong>
                 </div>
                 <div style={{ display: 'flex', marginBottom: '2px' }}>
-                  <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>Address</span>
+                  <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>Address:</span>
                   <span style={{ color: '#000' }}>{displayAddress}</span>
                 </div>
                 {invoice.partyPhone && (
                   <div style={{ display: 'flex', marginBottom: '2px' }}>
-                    <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>Phone</span>
+                    <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>Phone:</span>
                     <span style={{ color: '#000' }}>{invoice.partyPhone}</span>
                   </div>
                 )}
                 {!isNonGst && invoice.partyGstin && (
-                  <div style={{ display: 'flex', marginBottom: '2px' }}>
-                    <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>GSTIN</span>
+                  <div style={{ display: 'flex' }}>
+                    <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>GSTIN:</span>
                     <span style={{ fontWeight: '700', color: '#000' }}>{invoice.partyGstin}</span>
                   </div>
                 )}
-                <div style={{ display: 'flex' }}>
-                  <span style={{ width: '65px', fontWeight: '700', color: '#000' }}>Place of Supply</span>
-                  <span style={{ color: '#000' }}>{partyObj?.state || partyObj?.city || 'Local Market'}</span>
-                </div>
               </div>
 
-              {/* Col 2: Invoice & Transport Details */}
-              <div style={{ padding: '4px 8px', borderRight: '1.5px solid #000000' }}>
-                <div style={{ display: 'flex', marginBottom: '2px' }}>
-                  <span style={{ width: '90px', fontWeight: '700', color: '#000' }}>Invoice No.</span>
-                  <strong style={{ color: '#000' }}>{invoice.invoiceNo}</strong>
+              {/* Col 2: Invoice & Date Details */}
+              <div style={{ padding: '5px 8px' }}>
+                <div style={{ display: 'flex', marginBottom: '3px' }}>
+                  <span style={{ width: '95px', fontWeight: '700', color: '#000' }}>Invoice No.:</span>
+                  <strong style={{ color: '#000', fontSize: '0.86rem' }}>{invoice.invoiceNo}</strong>
                 </div>
-                <div style={{ display: 'flex', marginBottom: '2px' }}>
-                  <span style={{ width: '90px', fontWeight: '700', color: '#000' }}>Challan No</span>
-                  <span style={{ color: '#000' }}>{invoice.challanNo || '-'}</span>
-                </div>
-                <div style={{ display: 'flex', marginBottom: '2px' }}>
-                  <span style={{ width: '90px', fontWeight: '700', color: '#000' }}>E-Way Bill No.</span>
-                  <span style={{ color: '#000' }}>{invoice.ewayBillNo || '-'}</span>
-                </div>
-                <div style={{ display: 'flex' }}>
-                  <span style={{ width: '90px', fontWeight: '700', color: '#000' }}>Transport</span>
-                  <span style={{ color: '#000' }}>{invoice.transport || 'Self / Direct'}</span>
-                </div>
-              </div>
-
-              {/* Col 3: Dates */}
-              <div style={{ padding: '4px 8px' }}>
-                <div style={{ display: 'flex', marginBottom: '2px' }}>
-                  <span style={{ width: '82px', fontWeight: '700', color: '#000' }}>Invoice Date</span>
+                <div style={{ display: 'flex', marginBottom: '3px' }}>
+                  <span style={{ width: '95px', fontWeight: '700', color: '#000' }}>Invoice Date:</span>
                   <strong style={{ color: '#000' }}>{formattedDate}</strong>
                 </div>
+                <div style={{ display: 'flex', marginBottom: '3px' }}>
+                  <span style={{ width: '95px', fontWeight: '700', color: '#000' }}>Challan No:</span>
+                  <span style={{ color: '#000' }}>{invoice.challanNo || '-'}</span>
+                </div>
                 <div style={{ display: 'flex' }}>
-                  <span style={{ width: '82px', fontWeight: '700', color: '#000' }}>Challan Date</span>
+                  <span style={{ width: '95px', fontWeight: '700', color: '#000' }}>Challan Date:</span>
                   <span style={{ color: '#000' }}>{formattedDate}</span>
                 </div>
               </div>
