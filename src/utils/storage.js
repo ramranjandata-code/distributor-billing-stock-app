@@ -449,6 +449,9 @@ export const saveInvoice = (invoiceData) => {
   const generatedIrn = invoiceData.irn || Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
   const currentOp = getCurrentOperator();
 
+  const partyNameResolved = invoiceData.partyName || invoiceData.customerName || 'Cash Customer';
+  const taxableSubtotal = Number(invoiceData.taxableSubtotal || invoiceData.taxableAmount || invoiceData.subtotal || invoiceData.subTotal || invoiceData.grandTotal) || 0;
+
   const newInvoice = {
     ...invoiceData,
     id: 'inv_' + Date.now(),
@@ -459,7 +462,13 @@ export const saveInvoice = (invoiceData) => {
     ackDate: invoiceData.ackDate || new Date().toISOString().split('T')[0],
     warehouseId: invoiceData.warehouseId || 'wh_main',
     operator: invoiceData.operator || currentOp?.name || 'Admin',
-    paymentMode: invoiceData.paymentMode || 'CASH'
+    paymentMode: invoiceData.paymentMode || 'CASH',
+    partyName: partyNameResolved,
+    customerName: partyNameResolved,
+    subtotal: taxableSubtotal,
+    subTotal: taxableSubtotal,
+    taxableAmount: taxableSubtotal,
+    taxTotal: Number(invoiceData.taxTotal !== undefined ? invoiceData.taxTotal : (Number(invoiceData.cgst || 0) + Number(invoiceData.sgst || 0) + Number(invoiceData.igst || 0))) || 0
   };
 
   // 1. Deduct Stock for billed items

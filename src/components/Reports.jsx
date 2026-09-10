@@ -103,8 +103,8 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const totalCgst = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
   const totalSgst = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
   const totalIgst = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
-  const totalTax = totalCgst + totalSgst + totalIgst;
-  const netTaxableRevenue = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.subtotal) || 0), 0);
+  const getInvTaxable = (inv) => Number(inv.taxableAmount || inv.taxableSubtotal || inv.subTotal || inv.subtotal || (Number(inv.grandTotal || 0) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)))) || 0;
+  const netTaxableRevenue = filteredInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
 
   // Profit & Loss (COGS & Margins) Calculations
   const pnlData = useMemo(() => {
@@ -217,12 +217,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
     // B2B Section
     b2bInvoices.forEach(inv => {
-      csvContent += `B2B,"${inv.invoiceNo}","${inv.date?.split('T')[0]}","${inv.partyName}","${inv.partyGstin}",${inv.subtotal || 0},${inv.cgst || 0},${inv.sgst || 0},${inv.igst || 0},${inv.grandTotal || 0}\n`;
+      csvContent += `B2B,"${inv.invoiceNo}","${inv.date?.split('T')[0]}","${inv.partyName || inv.customerName}","${inv.partyGstin}",${getInvTaxable(inv).toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},${Number(inv.grandTotal || 0).toFixed(2)}\n`;
     });
 
     // B2C Section
     b2cInvoices.forEach(inv => {
-      csvContent += `B2C_SMALL,"${inv.invoiceNo}","${inv.date?.split('T')[0]}","${inv.partyName || 'Cash Consumer'}","URP",${inv.subtotal || 0},${inv.cgst || 0},${inv.sgst || 0},${inv.igst || 0},${inv.grandTotal || 0}\n`;
+      csvContent += `B2C_SMALL,"${inv.invoiceNo}","${inv.date?.split('T')[0]}","${inv.partyName || inv.customerName || 'Cash Consumer'}","URP",${getInvTaxable(inv).toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},${Number(inv.grandTotal || 0).toFixed(2)}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);

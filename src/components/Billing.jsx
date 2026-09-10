@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { saveInvoice, saveParty, formatCartonStock, fetchWarehouses, getCurrentOperator } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
+import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
 import { 
   Search, 
   Plus, 
@@ -18,15 +19,17 @@ import {
   Building, 
   Printer, 
   Percent, 
-  Tag,
-  Barcode,
-  Truck,
-  QrCode,
-  Send,
-  Zap,
-  LayoutGrid,
-  Layers,
-  Sparkles
+  Tag, 
+  Barcode, 
+  Truck, 
+  QrCode, 
+  Send, 
+  Zap, 
+  LayoutGrid, 
+  Layers, 
+  Sparkles,
+  Calculator,
+  ShieldCheck
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab }) {
@@ -34,7 +37,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [taxMode, setTaxMode] = useState('INTRA'); // Default: INTRA (CGST + SGST)
+  const [pricingType, setPricingType] = useState('EXCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
+  const [taxMode, setTaxMode] = useState('INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
+  const [roundOffEnabled, setRoundOffEnabled] = useState(true);
 
   // Enterprise POS & Barcode State
   const [posMode, setPosMode] = useState('STANDARD'); // 'STANDARD' or 'FAST_TOUCH'
@@ -87,6 +92,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   // Selected party object
   const selectedParty = parties.find(p => p.id === selectedPartyId);
+
+  // Auto-detect supply type (Intra vs Inter) based on Seller and Buyer GSTIN state codes
+  useEffect(() => {
+    if (selectedParty && selectedParty.gstin && business?.gstin) {
+      const autoSupply = detectSupplyType(business.gstin, selectedParty.gstin);
+      setTaxMode(autoSupply);
+    }
+  }, [selectedPartyId, business]);
 
   // Auto-focus barcode input when switching to Fast POS mode
   useEffect(() => {
@@ -312,77 +325,50 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setCart(cart.filter((_, i) => i !== index));
   };
 
-  // Billing Math Calculations per item (Rates entered are GST INCLUSIVE / Added GST)
-  const getItemDetails = (item) => {
-    const grossTotal = (Number(item.price) || 0) * (Number(item.qty) || 1);
-    let itemDiscAmount = 0;
-    const dVal = Number(item.itemDiscountVal) || 0;
-
-    if (item.itemDiscountType === 'PERCENT') {
-      itemDiscAmount = (grossTotal * dVal) / 100;
-    } else {
-      itemDiscAmount = dVal * (Number(item.qty) || 1); // ₹ dVal per unit
-    }
-
-    const netInclusiveTotal = Math.max(0, grossTotal - itemDiscAmount);
-    const gstRate = Number(item.gstRate) || 0;
-    
-    // Back-calculate taxable base and GST portion included in the rate
-    const netTaxable = taxMode === 'NONE' ? netInclusiveTotal : (netInclusiveTotal / (1 + gstRate / 100));
-    const gstVal = taxMode === 'NONE' ? 0 : (netInclusiveTotal - netTaxable);
-
-    return {
-      grossTotal,
-      itemDiscAmount,
-      netInclusiveTotal,
-      netTaxable,
-      gstVal,
-      finalItemTotal: netInclusiveTotal
-    };
-  };
-
-  // Aggregate Totals
-  let grossSubTotal = 0;
-  let itemDiscountsTotal = 0;
-  let taxTotal = 0;
-
-  const processedCartItems = cart.map(item => {
-    const calc = getItemDetails(item);
-    const itemGst = taxMode === 'NONE' ? 0 : calc.gstVal;
-    grossSubTotal += calc.grossTotal;
-    itemDiscountsTotal += calc.itemDiscAmount;
-    taxTotal += itemGst;
-
-    return {
-      ...item,
-      total: calc.netInclusiveTotal, // Inclusive total for this item
-      taxableAmount: calc.netTaxable,
-      discAmount: calc.itemDiscAmount,
-      itemGstAmount: itemGst
-    };
+  // Centralized GST & Billing Calculations Engine
+  const billCalc = calculateBillTotals({
+    cartItems: cart,
+    taxType: pricingType, // 'EXCLUSIVE' (Wholesale: Rate + GST on top) or 'INCLUSIVE' (MRP includes GST)
+    supplyType: taxMode === 'NONE' ? 'EXEMPT' : taxMode,
+    overallDiscountVal: discountValue,
+    overallDiscountType: discountType,
+    roundOffEnabled: roundOffEnabled
   });
 
-  const netSubTotal = Math.max(0, grossSubTotal - itemDiscountsTotal);
+  const processedCartItems = billCalc.processedItems;
+  const grossSubTotal = billCalc.grossSubtotal;
+  const itemDiscountsTotal = billCalc.itemDiscountsTotal;
+  const overallDiscountAmt = billCalc.billDiscountAmount;
+  const taxableSubtotal = billCalc.taxableSubtotal;
+  const taxTotal = billCalc.taxTotal;
+  const cgst = billCalc.cgst;
+  const sgst = billCalc.sgst;
+  const igst = billCalc.igst;
+  const roundOff = billCalc.roundOff;
+  const grandTotal = billCalc.grandTotal;
 
-  // Overall Bill Discount Calculation
-  let overallDiscountAmt = 0;
-  const overallDVal = Number(discountValue) || 0;
-  if (discountType === 'PERCENT') {
-    overallDiscountAmt = (netSubTotal * overallDVal) / 100;
-  } else {
-    overallDiscountAmt = overallDVal;
-  }
-
-  // Grand Total is GST Inclusive (no extra GST added on top)
-  const grandTotal = Math.max(0, netSubTotal - overallDiscountAmt);
-
-  let cgst = 0, sgst = 0, igst = 0;
-  if (taxMode === 'INTRA') {
-    cgst = taxTotal / 2;
-    sgst = taxTotal / 2;
-  } else if (taxMode === 'INTER') {
-    igst = taxTotal;
-  }
+  // Compatibility helper for rendering individual row totals
+  const getItemDetails = (item) => {
+    const found = processedCartItems.find(p => p.productId === item.productId);
+    if (found) {
+      return {
+        grossTotal: found.grossTotal,
+        itemDiscAmount: found.discAmount,
+        netInclusiveTotal: found.total,
+        netTaxable: found.taxableAmount,
+        gstVal: found.itemGstAmount,
+        finalItemTotal: found.total
+      };
+    }
+    return {
+      grossTotal: 0,
+      itemDiscAmount: 0,
+      netInclusiveTotal: 0,
+      netTaxable: 0,
+      gstVal: 0,
+      finalItemTotal: 0
+    };
+  };
 
   const handlePartySelect = (e) => {
     const pId = e.target.value;
@@ -430,13 +416,19 @@ export default function Billing({ products, parties, business, refreshAllData, h
       partyGstin: partyGstinFinal,
       partyAddress: partyAddressFinal,
       items: processedCartItems,
+      pricingType,
       taxMode,
+      supplyType: taxMode === 'NONE' ? 'EXEMPT' : taxMode,
       subTotal: grossSubTotal,
+      subtotal: grossSubTotal,
+      taxableAmount: taxableSubtotal,
+      taxableSubtotal: taxableSubtotal,
       taxTotal,
       cgst,
       sgst,
       igst,
       discount: totalDiscountCombined,
+      roundOff,
       grandTotal,
       paymentStatus,
       paidAmount: actualPaid,
@@ -946,6 +938,110 @@ export default function Billing({ products, parties, business, refreshAllData, h
         {/* Calculation Summary Footer */}
         <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
           
+          {/* Taxation & Pricing Controls */}
+          <div style={{ background: '#f1f5f9', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                मूल्य निर्धारण (Pricing Mode):
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPricingType('EXCLUSIVE')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-color)',
+                    background: pricingType === 'EXCLUSIVE' ? 'var(--primary)' : '#fff',
+                    color: pricingType === 'EXCLUSIVE' ? '#fff' : 'var(--text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  थोक (Rate + GST Extra)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPricingType('INCLUSIVE')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-color)',
+                    background: pricingType === 'INCLUSIVE' ? 'var(--primary)' : '#fff',
+                    color: pricingType === 'INCLUSIVE' ? '#fff' : 'var(--text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  MRP / कर सहित (Tax Incl.)
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                टैक्स क्षेत्र (Supply Region):
+                {selectedParty?.gstin && (
+                  <span style={{ fontSize: '0.68rem', color: '#059669', background: '#d1fae5', padding: '1px 5px', borderRadius: '4px' }}>
+                    Auto GSTIN
+                  </span>
+                )}
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setTaxMode('INTRA')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-color)',
+                    background: taxMode === 'INTRA' ? '#2563eb' : '#fff',
+                    color: taxMode === 'INTRA' ? '#fff' : 'var(--text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Intra (CGST+SGST)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaxMode('INTER')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-color)',
+                    background: taxMode === 'INTER' ? '#7c3aed' : '#fff',
+                    color: taxMode === 'INTER' ? '#fff' : 'var(--text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Inter (IGST)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaxMode('NONE')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.74rem',
+                    fontWeight: '700',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-color)',
+                    background: taxMode === 'NONE' ? '#475569' : '#fff',
+                    color: taxMode === 'NONE' ? '#fff' : 'var(--text-main)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Non-GST (0%)
+                </button>
+              </div>
+            </div>
+          </div>
+          
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', marginBottom: '12px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
               <span>सकल सब-टोटल (Gross Subtotal):</span>
@@ -953,7 +1049,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
 
             {itemDiscountsTotal > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34d399' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
                 <span>आइटम छूट (Item Discounts):</span>
                 <span>- ₹{itemDiscountsTotal.toFixed(2)}</span>
               </div>
@@ -981,8 +1077,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     fontWeight: '800',
                     borderRadius: '4px',
                     border: '1px solid var(--border-color)',
-                    background: discountType === 'PERCENT' ? 'rgba(99, 102, 241, 0.3)' : 'rgba(16, 185, 129, 0.3)',
-                    color: discountType === 'PERCENT' ? '#818cf8' : '#34d399',
+                    background: discountType === 'PERCENT' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                    color: discountType === 'PERCENT' ? '#4f46e5' : '#059669',
                     cursor: 'pointer'
                   }}
                   title="Toggle overall discount between % and ₹"
@@ -992,28 +1088,47 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
             </div>
 
+            {/* Taxable Amount */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: '600' }}>
+              <span>कर योग्य मूल्य (Taxable Amount):</span>
+              <span>₹{taxableSubtotal.toFixed(2)}</span>
+            </div>
+
             {taxMode === 'NONE' ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: '700' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: '700' }}>
                 <span>GST टैक्स:</span>
-                <span>बिना GST (Non-GST Bill)</span>
+                <span>बिना GST (Non-GST / Exempt 0%)</span>
               </div>
             ) : taxMode === 'INTRA' ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                  <span>CGST (दर में शामिल / Included):</span>
-                  <span>₹{cgst.toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  <span>CGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                  <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{cgst.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                  <span>SGST (दर में शामिल / Included):</span>
-                  <span>₹{sgst.toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  <span>SGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                  <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{sgst.toFixed(2)}</span>
                 </div>
               </>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                <span>IGST (दर में शामिल / Included):</span>
-                <span>₹{igst.toFixed(2)}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                <span>IGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{igst.toFixed(2)}</span>
               </div>
             )}
+
+            {/* Round Off Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={roundOffEnabled} 
+                  onChange={e => setRoundOffEnabled(e.target.checked)} 
+                />
+                <span>राउंड ऑफ (Auto Round Off):</span>
+              </label>
+              <span>{roundOff >= 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}</span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
