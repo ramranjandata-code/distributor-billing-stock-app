@@ -13,7 +13,9 @@ const STORAGE_KEYS = {
   BANK_ACCOUNTS: 'distro_bank_accounts',
   BANK_TRANSACTIONS: 'distro_bank_transactions',
   CURRENT_OPERATOR: 'distro_current_operator',
-  SECURITY_SETTINGS: 'distro_security_settings'
+  SECURITY_SETTINGS: 'distro_security_settings',
+  EXPENSES: 'distro_expenses',
+  PROPRIETOR_CAPITAL: 'distro_proprietor_capital'
 };
 
 const DEFAULT_BUSINESS = {
@@ -61,6 +63,74 @@ const DEFAULT_PRODUCTS = [];
 const DEFAULT_PARTIES = [];
 const DEFAULT_INVOICES = [];
 const DEFAULT_PURCHASES = [];
+
+const DEFAULT_PROPRIETOR_CAPITAL = {
+  openingCapital: 500000,
+  additionalCapital: 0,
+  asOfDate: '2026-04-01',
+  notes: 'Opening capital as per FY 2026-27 balance sheet'
+};
+
+const DEFAULT_EXPENSES = [
+  {
+    id: 'exp_sample_1',
+    date: new Date().toISOString().split('T')[0],
+    category: 'Shop / Godown Rent',
+    type: 'OPERATING', // 'DIRECT', 'OPERATING', 'DRAWING'
+    amount: 15000,
+    paymentMode: 'BANK',
+    bankAccountId: 'bank_1',
+    paidTo: 'Shree Balaji Commercial Real Estate',
+    notes: 'Monthly godown rent',
+    voucherNo: 'VOUCH-2601'
+  },
+  {
+    id: 'exp_sample_2',
+    date: new Date().toISOString().split('T')[0],
+    category: 'Electricity & Utilities',
+    type: 'OPERATING',
+    amount: 3200,
+    paymentMode: 'BANK',
+    bankAccountId: 'bank_1',
+    paidTo: 'State Electricity Board',
+    notes: 'Godown electricity bill',
+    voucherNo: 'VOUCH-2602'
+  },
+  {
+    id: 'exp_sample_3',
+    date: new Date().toISOString().split('T')[0],
+    category: 'Vehicle Fuel & Transport',
+    type: 'OPERATING',
+    amount: 1800,
+    paymentMode: 'CASH',
+    paidTo: 'HP Fuel Station',
+    notes: 'Delivery van diesel refill',
+    voucherNo: 'VOUCH-2603'
+  },
+  {
+    id: 'exp_sample_4',
+    date: new Date().toISOString().split('T')[0],
+    category: 'Freight & Cartage Inward',
+    type: 'DIRECT',
+    amount: 2500,
+    paymentMode: 'CASH',
+    paidTo: 'Delhi Goods Transport Service',
+    notes: 'Cartage on factory goods arrival',
+    voucherNo: 'VOUCH-2604'
+  },
+  {
+    id: 'exp_sample_5',
+    date: new Date().toISOString().split('T')[0],
+    category: 'Proprietor Personal Drawings (मालिक का निजी आहरण)',
+    type: 'DRAWING',
+    amount: 8000,
+    paymentMode: 'BANK',
+    bankAccountId: 'bank_1',
+    paidTo: 'Rajesh Verma (Self)',
+    notes: 'Personal home groceries and family medical',
+    voucherNo: 'VOUCH-2605'
+  }
+];
 
 export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24) => {
   const pcs = Number(pcsPerCarton) || 1;
@@ -1098,6 +1168,110 @@ export const recordBankTransaction = (txn) => {
   return newTxn;
 };
 
+// --- ENTERPRISE MODULE: EXPENSES & SOLE PROPRIETOR CAPITAL ---
+export const fetchExpenses = () => getStorageData(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
+
+export const saveExpense = (exp) => {
+  const expenses = fetchExpenses();
+  const accounts = fetchBankAccounts();
+  const txns = fetchBankTransactions();
+
+  const id = exp.id || 'exp_' + Date.now();
+  const amount = Number(exp.amount) || 0;
+  const isBankPayment = exp.paymentMode === 'BANK' || exp.paymentMode === 'UPI';
+
+  const newExp = {
+    ...exp,
+    id,
+    amount,
+    date: exp.date || new Date().toISOString().split('T')[0],
+    voucherNo: exp.voucherNo || `VOUCH-${Math.floor(1000 + Math.random() * 9000)}`
+  };
+
+  let updatedExpenses;
+  if (exp.id) {
+    updatedExpenses = expenses.map(e => e.id === exp.id ? newExp : e);
+  } else {
+    updatedExpenses = [newExp, ...expenses];
+  }
+  setStorageData(STORAGE_KEYS.EXPENSES, updatedExpenses);
+
+  // If paid via Bank or UPI on creation, deduct from chosen bank account
+  if (isBankPayment && exp.bankAccountId && !exp.id) {
+    const updatedAccounts = accounts.map(a => {
+      if (a.id === exp.bankAccountId) {
+        return { ...a, balance: (Number(a.balance) || 0) - amount };
+      }
+      return a;
+    });
+    setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, updatedAccounts);
+
+    // Record bank transaction entry
+    const newTxn = {
+      id: 'btxn_' + Date.now(),
+      bankAccountId: exp.bankAccountId,
+      date: newExp.date,
+      type: 'DEBIT',
+      amount,
+      mode: exp.paymentMode || 'UPI',
+      referenceNo: newExp.voucherNo,
+      partyName: exp.paidTo || exp.category,
+      note: `${exp.category}: ${exp.notes || ''}`
+    };
+    setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, [newTxn, ...txns]);
+  }
+
+  logAuditAction(
+    'EXPENSE_RECORDED',
+    'Accounting & P&L',
+    `${exp.type === 'DRAWING' ? 'Personal Drawing' : 'Expense'} recorded: ₹${amount.toLocaleString('en-IN')} (${exp.category}) paid to ${exp.paidTo || 'N/A'}`
+  );
+  autoCloudSync();
+  return newExp;
+};
+
+export const deleteExpense = (id) => {
+  const expenses = fetchExpenses();
+  const target = expenses.find(e => e.id === id);
+  if (!target) return false;
+
+  const updatedExpenses = expenses.filter(e => e.id !== id);
+  setStorageData(STORAGE_KEYS.EXPENSES, updatedExpenses);
+
+  // Revert bank account balance if it was a bank/UPI payment
+  if ((target.paymentMode === 'BANK' || target.paymentMode === 'UPI') && target.bankAccountId) {
+    const accounts = fetchBankAccounts();
+    const updatedAccounts = accounts.map(a => {
+      if (a.id === target.bankAccountId) {
+        return { ...a, balance: (Number(a.balance) || 0) + Number(target.amount || 0) };
+      }
+      return a;
+    });
+    setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, updatedAccounts);
+  }
+
+  logAuditAction('EXPENSE_DELETED', 'Accounting & P&L', `Expense deleted: ₹${target.amount} (${target.category})`);
+  autoCloudSync();
+  return true;
+};
+
+export const fetchProprietorCapital = () => getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+
+export const saveProprietorCapital = (capitalData) => {
+  const current = fetchProprietorCapital();
+  const updated = {
+    ...current,
+    ...capitalData,
+    openingCapital: Number(capitalData.openingCapital ?? current.openingCapital) || 0,
+    additionalCapital: Number(capitalData.additionalCapital ?? current.additionalCapital) || 0,
+    updatedAt: new Date().toISOString()
+  };
+  setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, updated);
+  logAuditAction('CAPITAL_UPDATE', 'Accounting & P&L', `Proprietor capital updated: Opening ₹${updated.openingCapital.toLocaleString('en-IN')}, Additional ₹${updated.additionalCapital.toLocaleString('en-IN')}`);
+  autoCloudSync();
+  return updated;
+};
+
 // --- ENTERPRISE MODULE: BACKUP EXPORT & RESTORE ---
 export const exportBackupJSON = () => {
   const data = {
@@ -1112,6 +1286,8 @@ export const exportBackupJSON = () => {
     warehouses: fetchWarehouses(),
     bankAccounts: fetchBankAccounts(),
     bankTransactions: fetchBankTransactions(),
+    expenses: fetchExpenses(),
+    proprietorCapital: fetchProprietorCapital(),
     auditLogs: fetchAuditLogs()
   };
   return JSON.stringify(data, null, 2);
@@ -1130,6 +1306,8 @@ export const restoreBackupJSON = (jsonString) => {
     if (Array.isArray(data.warehouses)) setStorageData(STORAGE_KEYS.WAREHOUSES, data.warehouses);
     if (Array.isArray(data.bankAccounts)) setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, data.bankAccounts);
     if (Array.isArray(data.bankTransactions)) setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, data.bankTransactions);
+    if (Array.isArray(data.expenses)) setStorageData(STORAGE_KEYS.EXPENSES, data.expenses);
+    if (data.proprietorCapital && typeof data.proprietorCapital === 'object') setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, data.proprietorCapital);
 
     logAuditAction('RESTORE_BACKUP', 'Security & Audit', 'Full enterprise database restored from JSON backup');
     autoCloudSync();

@@ -385,6 +385,7 @@ export default function App() {
             products={products}
             parties={parties}
             business={business}
+            refreshAllData={refreshAllData}
             t={translate}
           />
         )}
