@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { saveParty, updatePartyBalance, deleteParty } from '../utils/storage';
+import React, { useState, useMemo } from 'react';
+import { 
+  saveParty, 
+  updatePartyBalance, 
+  deleteParty, 
+  fetchBusinessProfile, 
+  fetchBankAccounts, 
+  recordBankTransaction, 
+  logAuditAction 
+} from '../utils/storage';
+import { buildWhatsAppUrl } from '../utils/qrUtils';
 import { 
   Users, 
   Plus, 
@@ -17,12 +26,19 @@ import {
   List,
   LayoutGrid,
   Trash2,
-  ArrowUpRight
+  ArrowUpRight,
+  Clock,
+  AlertTriangle,
+  Send,
+  Building2,
+  Calendar,
+  CreditCard
 } from 'lucide-react';
 
 export default function Parties({ parties, invoices, refreshAllData, setActiveTab }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('horizontal'); // 'horizontal' or 'grid'
+  const [agingFilter, setAgingFilter] = useState('ALL'); // 'ALL', 'CURRENT', 'DUE_SOON', 'CRITICAL', 'ZERO', 'WITH_BALANCE'
   
   // Modals
   const [partyModalOpen, setPartyModalOpen] = useState(false);
@@ -32,13 +48,18 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
   const [selectedPartyForPayment, setSelectedPartyForPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
+  const [selectedBankId, setSelectedBankId] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('Payment Received');
+  const [autoSendWhatsAppReceipt, setAutoSendWhatsAppReceipt] = useState(true);
 
   // Udhar / Credit Entry Modal State
   const [udharModalOpen, setUdharModalOpen] = useState(false);
   const [selectedPartyForUdhar, setSelectedPartyForUdhar] = useState(null);
   const [udharAmount, setUdharAmount] = useState('');
   const [udharNotes, setUdharNotes] = useState('सामान/पुराना उधार (Manual Credit Entry)');
+
+  const business = fetchBusinessProfile();
+  const bankAccounts = fetchBankAccounts();
 
   const initialForm = {
     name: '',
@@ -52,11 +73,96 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
   };
   const [formData, setFormData] = useState(initialForm);
 
-  const filteredParties = parties.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.phone.includes(searchTerm) ||
-    (p.contactPerson && p.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Compute aging details for each party
+  const partyAgingMap = useMemo(() => {
+    const now = Date.now();
+    const map = {};
+
+    parties.forEach(p => {
+      const partyInvs = (invoices || []).filter(inv => inv.partyId === p.id && Number(inv.balanceAmount) > 0);
+      let oldestDays = 0;
+      let bucket = 'CURRENT'; // 0-15
+
+      if (partyInvs.length > 0) {
+        partyInvs.forEach(inv => {
+          const invDate = new Date(inv.date).getTime();
+          const diffDays = Math.max(0, Math.floor((now - invDate) / (1000 * 60 * 60 * 24)));
+          if (diffDays > oldestDays) oldestDays = diffDays;
+        });
+      } else if ((p.balance || 0) > 0) {
+        oldestDays = 12;
+      }
+
+      if (oldestDays > 30) {
+        bucket = 'CRITICAL';
+      } else if (oldestDays > 15) {
+        bucket = 'DUE_SOON';
+      } else {
+        bucket = 'CURRENT';
+      }
+
+      map[p.id] = {
+        oldestDays,
+        bucket,
+        unpaidCount: partyInvs.length
+      };
+    });
+
+    return map;
+  }, [parties, invoices]);
+
+  // Aging Summary Totals
+  const agingStats = useMemo(() => {
+    let currentTotal = 0;
+    let currentCount = 0;
+    let dueSoonTotal = 0;
+    let dueSoonCount = 0;
+    let criticalTotal = 0;
+    let criticalCount = 0;
+
+    parties.forEach(p => {
+      const bal = Number(p.balance) || 0;
+      if (bal <= 0) return;
+      const info = partyAgingMap[p.id] || { bucket: 'CURRENT' };
+      if (info.bucket === 'CRITICAL') {
+        criticalTotal += bal;
+        criticalCount++;
+      } else if (info.bucket === 'DUE_SOON') {
+        dueSoonTotal += bal;
+        dueSoonCount++;
+      } else {
+        currentTotal += bal;
+        currentCount++;
+      }
+    });
+
+    return {
+      currentTotal,
+      currentCount,
+      dueSoonTotal,
+      dueSoonCount,
+      criticalTotal,
+      criticalCount
+    };
+  }, [parties, partyAgingMap]);
+
+  const filteredParties = parties.filter(p => {
+    const matchesSearch = 
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.phone.includes(searchTerm) ||
+      (p.contactPerson && p.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    const aging = partyAgingMap[p.id] || { bucket: 'CURRENT' };
+    if (agingFilter === 'WITH_BALANCE') return (p.balance || 0) > 0;
+    if (agingFilter === 'CURRENT') return (p.balance || 0) > 0 && aging.bucket === 'CURRENT';
+    if (agingFilter === 'DUE_SOON') return (p.balance || 0) > 0 && aging.bucket === 'DUE_SOON';
+    if (agingFilter === 'CRITICAL') return (p.balance || 0) > 0 && aging.bucket === 'CRITICAL';
+    if (agingFilter === 'ZERO') return (p.balance || 0) <= 0;
+
+    return true;
+  });
 
   const totalOutstanding = parties.reduce((sum, p) => sum + (p.balance || 0), 0);
 
@@ -86,18 +192,74 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
 
   const handleOpenCollectPayment = (p) => {
     setSelectedPartyForPayment(p);
-    setReceivedAmount('');
+    setReceivedAmount(p.balance ? String(p.balance) : '');
+    setSelectedBankId(bankAccounts[0]?.id || '');
+    setPaymentMode('Cash');
+    setPaymentNotes('Full/Partial Collection');
     setPaymentModalOpen(true);
   };
 
   const handleSavePayment = (e) => {
     e.preventDefault();
-    if (!selectedPartyForPayment || !receivedAmount || Number(receivedAmount) <= 0) return;
+    const amt = Number(receivedAmount);
+    if (!selectedPartyForPayment || !amt || amt <= 0) return;
 
-    updatePartyBalance(selectedPartyForPayment.id, -Math.abs(Number(receivedAmount)));
+    updatePartyBalance(selectedPartyForPayment.id, -amt);
+
+    if ((paymentMode === 'Bank' || paymentMode === 'UPI') && selectedBankId) {
+      recordBankTransaction({
+        bankAccountId: selectedBankId,
+        partyId: selectedPartyForPayment.id,
+        partyName: selectedPartyForPayment.name,
+        type: 'CREDIT',
+        amount: amt,
+        referenceNo: paymentNotes || `${paymentMode} Collection`,
+        notes: `Received from ${selectedPartyForPayment.name}`
+      });
+    }
+
+    logAuditAction('PAYMENT_RECEIVED', `Collected ₹${amt} from ${selectedPartyForPayment.name} via ${paymentMode}`);
     refreshAllData();
     setPaymentModalOpen(false);
-    alert(`₹${receivedAmount} की भुगतान प्रविष्टि सफलतापूर्वक दर्ज कर ली गई है!`);
+
+    if (autoSendWhatsAppReceipt && selectedPartyForPayment.phone) {
+      const remainingBal = Math.max(0, (selectedPartyForPayment.balance || 0) - amt);
+      const receiptMsg = `*भुगतान रसीद / PAYMENT RECEIPT*\n\n` +
+        `नमस्ते *${selectedPartyForPayment.name}*,\n` +
+        `हमें आपसे *₹${amt.toLocaleString('en-IN')}* का भुगतान (${paymentMode}) सफलतापूर्वक प्राप्त हुआ है।\n\n` +
+        `• नया शेष बकाया: *₹${remainingBal.toLocaleString('en-IN')}*\n` +
+        `• रसीद विवरण: ${paymentNotes || 'Collection'}\n\n` +
+        `धन्यवाद!\n*${business?.name || 'DistroPulse Agency'}*`;
+
+      const url = buildWhatsAppUrl(selectedPartyForPayment.phone, receiptMsg);
+      window.open(url, '_blank');
+    }
+
+    alert(`₹${amt} की भुगतान प्रविष्टि सफलतापूर्वक दर्ज कर ली गई है!`);
+  };
+
+  const handleSendWhatsAppReminder = (party) => {
+    const bal = party.balance || 0;
+    if (bal <= 0) return;
+
+    const aging = partyAgingMap[party.id];
+    const daysText = aging?.oldestDays > 0 ? ` (पिछले ${aging.oldestDays} दिनों से बकाया)` : '';
+    const bizName = business?.name || 'DistroPulse Distributor';
+    const upi = business?.upiId || 'distropulse@icici';
+
+    const msg = `*भुगतान स्मरण पत्र / PAYMENT REMINDER*\n\n` +
+      `नमस्ते *${party.name}* ji,\n` +
+      `*${bizName}* की ओर से सादर नमस्कार।\n\n` +
+      `आपके खाते में वर्तमान कुल बकाया राशि: *₹${bal.toLocaleString('en-IN')}*${daysText} है।\n\n` +
+      `कृपया बकाया राशि का भुगतान नीचे दिए गए विवरण पर यथाशीघ्र करें:\n` +
+      `📲 *UPI ID:* ${upi}\n` +
+      (business?.bankName ? `🏦 *बैंक:* ${business.bankName} | A/c: ${business.accountNo || ''}\n` : '') +
+      `\nभुगतान करने के उपरांत कृपया स्क्रीनशॉट साझा करें ताकि खाता तुरंत अपडेट किया जा सके।\n\n` +
+      `सहयोग हेतु धन्यवाद!\n*${bizName}*`;
+
+    logAuditAction('WHATSAPP_REMINDER_SENT', `Sent ₹${bal} payment reminder to ${party.name} (${party.phone})`);
+    const url = buildWhatsAppUrl(party.phone, msg);
+    window.open(url, '_blank');
   };
 
   const handleOpenAddUdhar = (p) => {
@@ -213,13 +375,116 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
         </div>
       </div>
 
+      {/* Pending Payment Aging Tracker Dashboard */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #c2410c' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>
+            <span>कुल बाज़ार बकाया (Total Dues)</span>
+            <IndianRupee size={16} color="#c2410c" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#c2410c' }}>
+            ₹{totalOutstanding.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+            Across {parties.filter(p => (p.balance || 0) > 0).length} active accounts
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #10b981' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>
+            <span>0 - 15 Days (Current Normal)</span>
+            <Clock size={16} color="#10b981" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#10b981' }}>
+            ₹{agingStats.currentTotal.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+            {agingStats.currentCount} parties in regular cycle
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>
+            <span>16 - 30 Days (Due Soon)</span>
+            <AlertTriangle size={16} color="#f59e0b" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#f59e0b' }}>
+            ₹{agingStats.dueSoonTotal.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+            {agingStats.dueSoonCount} parties need follow-up
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #dc2626' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.8rem', marginBottom: '4px', fontWeight: '700' }}>
+            <span>30+ Days Critical Overdue</span>
+            <AlertTriangle size={16} color="#dc2626" />
+          </div>
+          <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#dc2626' }}>
+            ₹{agingStats.criticalTotal.toLocaleString('en-IN')}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: '#dc2626', marginTop: '4px', fontWeight: '600' }}>
+            ⚠️ {agingStats.criticalCount} accounts urgent recovery
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Aging Filter Bar */}
+      <div className="glass-card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', marginRight: '4px' }}>बकाया फ़िल्टर:</span>
+        <button 
+          onClick={() => setAgingFilter('ALL')}
+          className={`btn btn-sm ${agingFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+        >
+          सभी ({parties.length})
+        </button>
+        <button 
+          onClick={() => setAgingFilter('WITH_BALANCE')}
+          className={`btn btn-sm ${agingFilter === 'WITH_BALANCE' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+        >
+          कुल उधार ({parties.filter(p => (p.balance || 0) > 0).length})
+        </button>
+        <button 
+          onClick={() => setAgingFilter('CURRENT')}
+          className={`btn btn-sm ${agingFilter === 'CURRENT' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '4px 10px', fontSize: '0.78rem', background: agingFilter === 'CURRENT' ? '#10b981' : undefined }}
+        >
+          0-15 दिन ({agingStats.currentCount})
+        </button>
+        <button 
+          onClick={() => setAgingFilter('DUE_SOON')}
+          className={`btn btn-sm ${agingFilter === 'DUE_SOON' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '4px 10px', fontSize: '0.78rem', background: agingFilter === 'DUE_SOON' ? '#f59e0b' : undefined }}
+        >
+          16-30 दिन ({agingStats.dueSoonCount})
+        </button>
+        <button 
+          onClick={() => setAgingFilter('CRITICAL')}
+          className={`btn btn-sm ${agingFilter === 'CRITICAL' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '4px 10px', fontSize: '0.78rem', background: agingFilter === 'CRITICAL' ? '#dc2626' : undefined, color: agingFilter === 'CRITICAL' ? '#fff' : undefined }}
+        >
+          ⚠️ 30+ दिन अतिदेय ({agingStats.criticalCount})
+        </button>
+        <button 
+          onClick={() => setAgingFilter('ZERO')}
+          className={`btn btn-sm ${agingFilter === 'ZERO' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+        >
+          शून्य बकाया ({parties.filter(p => !p.balance || p.balance <= 0).length})
+        </button>
+      </div>
+
       {/* Retailer Items Container */}
       {viewMode === 'horizontal' ? (
         /* HORIZONTAL LIST LAYOUT */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredParties.map(party => {
-            const hasDebt = party.balance > 0;
+            const hasDebt = (party.balance || 0) > 0;
             const partyInvoicesCount = invoices.filter(inv => inv.partyId === party.id).length;
+            const agingInfo = partyAgingMap[party.id] || { oldestDays: 0, bucket: 'CURRENT' };
 
             return (
               <div 
@@ -231,14 +496,27 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   alignItems: 'center', 
                   justifyContent: 'space-between',
                   flexWrap: 'wrap',
-                  gap: '16px' 
+                  gap: '16px',
+                  borderLeft: hasDebt ? (agingInfo.bucket === 'CRITICAL' ? '4px solid #dc2626' : agingInfo.bucket === 'DUE_SOON' ? '4px solid #f59e0b' : '4px solid #10b981') : '4px solid #cbd5e1'
                 }}
               >
                 {/* Left: Shop Name & Contact Person */}
                 <div style={{ minWidth: '240px', flex: '1 1 240px' }}>
-                  <h4 style={{ fontSize: '1.08rem', fontWeight: '800', color: 'var(--text-main)', marginBottom: '4px' }}>
-                    {party.name}
-                  </h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <h4 style={{ fontSize: '1.08rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
+                      {party.name}
+                    </h4>
+                    {hasDebt && agingInfo.bucket === 'CRITICAL' && (
+                      <span className="badge badge-danger" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                        ⚠️ 30+d Overdue
+                      </span>
+                    )}
+                    {hasDebt && agingInfo.bucket === 'DUE_SOON' && (
+                      <span className="badge badge-warning" style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                        16-30d Due
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
                     <span>संपर्क: <strong style={{ color: 'var(--text-main)' }}>{party.contactPerson || 'N/A'}</strong></span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontWeight: '600' }}>
@@ -265,18 +543,31 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 </div>
 
                 {/* Right: Balance Badge, Bills count & Action buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
                   
                   <div style={{ textAlign: 'right' }}>
                     <span className={`badge ${hasDebt ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
                       {hasDebt ? `बकाया: ₹${party.balance.toLocaleString('en-IN')}` : 'चुका दिया (No Debt)'}
                     </span>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                      कुल बिल: {partyInvoicesCount}
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                      कुल बिल: {partyInvoicesCount} {hasDebt && agingInfo.oldestDays > 0 ? `• ${agingInfo.oldestDays} दिन` : ''}
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {/* 1-Click WhatsApp Payment Recovery Reminder */}
+                    {hasDebt && (
+                      <button 
+                        onClick={() => handleSendWhatsAppReminder(party)}
+                        className="btn btn-sm"
+                        style={{ background: '#25d366', color: '#ffffff', border: 'none', gap: '5px', fontWeight: '700', padding: '6px 10px', boxShadow: '0 2px 6px rgba(37, 211, 102, 0.3)' }}
+                        title="1-Click WhatsApp Payment Reminder / तकादा"
+                      >
+                        <Send size={13} />
+                        <span>तकादा</span>
+                      </button>
+                    )}
+
                     {/* Add Udhar / Credit Entry Button */}
                     <button 
                       onClick={() => handleOpenAddUdhar(party)}
@@ -328,14 +619,21 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
         /* GRID LAYOUT */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
           {filteredParties.map(party => {
-            const hasDebt = party.balance > 0;
+            const hasDebt = (party.balance || 0) > 0;
             const partyInvoicesCount = invoices.filter(inv => inv.partyId === party.id).length;
+            const agingInfo = partyAgingMap[party.id] || { oldestDays: 0, bucket: 'CURRENT' };
 
             return (
               <div 
                 key={party.id} 
                 className="glass-card glass-card-interactive" 
-                style={{ padding: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                style={{ 
+                  padding: '18px', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  justifyContent: 'space-between',
+                  borderTop: hasDebt ? (agingInfo.bucket === 'CRITICAL' ? '4px solid #dc2626' : agingInfo.bucket === 'DUE_SOON' ? '4px solid #f59e0b' : '4px solid #10b981') : '4px solid #cbd5e1'
+                }}
               >
                 <div>
                   {/* Shop Name & Status Badge */}
@@ -349,9 +647,16 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       </p>
                     </div>
 
-                    <span className={`badge ${hasDebt ? 'badge-warning' : 'badge-success'}`}>
-                      {hasDebt ? `बकाया: ₹${party.balance}` : 'चुका दिया (No Debt)'}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <span className={`badge ${hasDebt ? 'badge-warning' : 'badge-success'}`}>
+                        {hasDebt ? `बकाया: ₹${party.balance}` : 'चुका दिया (No Debt)'}
+                      </span>
+                      {hasDebt && agingInfo.bucket === 'CRITICAL' && (
+                        <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
+                          ⚠️ 30+d Overdue
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Info List */}
@@ -376,12 +681,25 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 </div>
 
                 {/* Bottom Actions */}
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
                     कुल बिल: {partyInvoicesCount}
                   </span>
 
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {/* 1-Click WhatsApp Payment Reminder */}
+                    {hasDebt && (
+                      <button 
+                        onClick={() => handleSendWhatsAppReminder(party)}
+                        className="btn btn-sm"
+                        style={{ background: '#25d366', color: '#ffffff', border: 'none', gap: '4px', fontWeight: '700', padding: '5px 8px', fontSize: '0.74rem' }}
+                        title="1-Click WhatsApp Payment Reminder / तकादा"
+                      >
+                        <Send size={12} />
+                        <span>तकादा</span>
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => handleOpenAddUdhar(party)}
                       className="btn btn-secondary btn-sm"
@@ -658,7 +976,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   <label className="form-label">प्राप्त हुई रकम (Received Amount ₹) *</label>
                   <input 
                     type="number" 
-                    className="input-field"
+                    className="input-field" 
                     required
                     min="1"
                     max={selectedPartyForPayment?.balance}
@@ -666,6 +984,30 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     value={receivedAmount}
                     onChange={e => setReceivedAmount(e.target.value)}
                   />
+                </div>
+
+                {/* Quick Preset Buttons */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>त्वरित राशि:</span>
+                  {[500, 1000, 2000, 5000].filter(a => a <= (selectedPartyForPayment?.balance || 0)).map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setReceivedAmount(String(amt))}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '3px 8px', fontSize: '0.74rem' }}
+                    >
+                      ₹{amt}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setReceivedAmount(String(selectedPartyForPayment?.balance || 0))}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '3px 8px', fontSize: '0.74rem', fontWeight: '700', color: '#059669', borderColor: '#a7f3d0' }}
+                  >
+                    पूरा बकाया (₹{selectedPartyForPayment?.balance})
+                  </button>
                 </div>
 
                 <div className="form-group">
@@ -676,10 +1018,28 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     onChange={e => setPaymentMode(e.target.value)}
                   >
                     <option value="Cash">नकद (Cash)</option>
-                    <option value="UPI">UPI / GPay / PhonePe</option>
-                    <option value="Bank">बैंक ट्रांसफर / Cheque</option>
+                    <option value="UPI">UPI / GPay / PhonePe / QR</option>
+                    <option value="Bank">बैंक ट्रांसफर / NEFT / RTGS / Cheque</option>
                   </select>
                 </div>
+
+                {/* Connected Bank Account Selection for Non-Cash */}
+                {(paymentMode === 'Bank' || paymentMode === 'UPI') && bankAccounts.length > 0 && (
+                  <div className="form-group">
+                    <label className="form-label">जमा बैंक खाता (Deposit Bank Account)</label>
+                    <select 
+                      className="input-field select-field"
+                      value={selectedBankId}
+                      onChange={e => setSelectedBankId(e.target.value)}
+                    >
+                      {bankAccounts.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.bankName} - A/c: {b.accountNo} ({b.accountType})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">विवरण (Remarks / Notes)</label>
@@ -689,6 +1049,20 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     value={paymentNotes}
                     onChange={e => setPaymentNotes(e.target.value)}
                   />
+                </div>
+
+                {/* WhatsApp Receipt Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f0fdf4', borderRadius: '6px', border: '1px solid #bbf7d0', marginTop: '10px' }}>
+                  <input 
+                    type="checkbox" 
+                    id="autoSendWhatsApp" 
+                    checked={autoSendWhatsAppReceipt} 
+                    onChange={e => setAutoSendWhatsAppReceipt(e.target.checked)} 
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <label htmlFor="autoSendWhatsApp" style={{ fontSize: '0.82rem', color: '#166534', cursor: 'pointer', fontWeight: '600', margin: 0 }}>
+                    जमा रसीद तुरंत WhatsApp पर भेजें (Send Receipt)
+                  </label>
                 </div>
               </div>
 
@@ -700,8 +1074,9 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 >
                   रद्द करें
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  भुगतान दर्ज करें (₹{receivedAmount || 0})
+                <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
+                  <CheckCircle2 size={16} />
+                  <span>भुगतान दर्ज करें (₹{receivedAmount || 0})</span>
                 </button>
               </div>
             </form>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Printer, X, Zap, Trash2 } from 'lucide-react';
+import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText } from 'lucide-react';
 import { formatCartonStock, deleteInvoice, fetchParties } from '../utils/storage';
+import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
 
 // Number to Words Converter for Indian Currency Format
@@ -42,10 +43,18 @@ function numToWords(num) {
 
 export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData }) {
   const [paperFormat, setPaperFormat] = useState(() => localStorage.getItem('distro_default_paper_format') || 'A5');
+  const [themeColor, setThemeColor] = useState(() => localStorage.getItem('distro_invoice_theme') || '#059669');
+  const [upiQrUrl, setUpiQrUrl] = useState(null);
+  const [eInvoiceQrUrl, setEInvoiceQrUrl] = useState(null);
 
   const changePaperFormat = (fmt) => {
     setPaperFormat(fmt);
     localStorage.setItem('distro_default_paper_format', fmt);
+  };
+
+  const changeThemeColor = (color) => {
+    setThemeColor(color);
+    localStorage.setItem('distro_invoice_theme', color);
   };
 
   if (!invoice) return null;
@@ -54,13 +63,13 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   const partyObj = invoice.partyId ? allParties.find(p => p.id === invoice.partyId) : null;
   const displayAddress = invoice.partyAddress || (partyObj ? (partyObj.address || partyObj.city) : '') || 'Local Market / Counter Sale';
 
-  // Auto trigger printer dialog on modal load
+  // Generate dynamic QR codes locally & offline
   useEffect(() => {
-    const timer = setTimeout(() => {
-      window.print();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, []);
+    generateUpiQrDataUrl(business?.upiId, business?.name, invoice.grandTotal, invoice.invoiceNo)
+      .then(url => setUpiQrUrl(url));
+    generateEInvoiceQrDataUrl(invoice, business)
+      .then(url => setEInvoiceQrUrl(url));
+  }, [invoice, business]);
 
   const handlePrint = () => {
     window.print();
@@ -135,68 +144,247 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'A5' ? '680px' : '900px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
         
         {/* Top Control Bar (Hidden on Print) */}
-        <div className="modal-header no-print" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--text-main)', padding: '12px 18px' }}>
+        <div className="modal-header no-print" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--text-main)', padding: '12px 18px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Zap size={20} color="var(--primary)" />
-            <h3 style={{ fontSize: '1rem', fontWeight: '700' }}>
-              Corporate Direct Printer Ready
+            <Zap size={20} color={themeColor} />
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
+              Corporate Invoice & Thermal POS Ready
             </h3>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {/* Paper Size Format Switcher */}
             <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '6px', padding: '2px' }}>
               <button
                 onClick={() => changePaperFormat('A4')}
                 style={{
-                  padding: '4px 12px',
+                  padding: '4px 10px',
                   border: 'none',
                   borderRadius: '4px',
                   background: paperFormat === 'A4' ? '#ffffff' : 'transparent',
                   fontWeight: paperFormat === 'A4' ? '700' : '500',
-                  fontSize: '0.78rem',
+                  fontSize: '0.76rem',
                   cursor: 'pointer'
                 }}
               >
-                📄 Standard A4
+                A4 Tax Bill
               </button>
               <button
                 onClick={() => changePaperFormat('A5')}
                 style={{
-                  padding: '4px 12px',
+                  padding: '4px 10px',
                   border: 'none',
                   borderRadius: '4px',
                   background: paperFormat === 'A5' ? '#ffffff' : 'transparent',
                   fontWeight: paperFormat === 'A5' ? '700' : '500',
-                  fontSize: '0.78rem',
+                  fontSize: '0.76rem',
                   cursor: 'pointer'
                 }}
               >
-                📜 Compact A5 (Half Page)
+                A5 Half Page
+              </button>
+              <button
+                onClick={() => changePaperFormat('POS80')}
+                style={{
+                  padding: '4px 10px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: paperFormat === 'POS80' ? '#ffffff' : 'transparent',
+                  fontWeight: paperFormat === 'POS80' ? '700' : '500',
+                  fontSize: '0.76rem',
+                  cursor: 'pointer'
+                }}
+              >
+                80mm Thermal POS
               </button>
             </div>
 
-            <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '6px', padding: '8px 16px' }}>
+            {/* Theme Color Picker */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#e2e8f0', padding: '3px 6px', borderRadius: '6px' }} title="Invoice Color Theme">
+              <Palette size={14} color="#64748b" />
+              {[
+                { name: 'Emerald', color: '#059669' },
+                { name: 'Navy', color: '#1e40af' },
+                { name: 'Maroon', color: '#991b1b' },
+                { name: 'Slate', color: '#0f172a' }
+              ].map(t => (
+                <button
+                  key={t.color}
+                  onClick={() => changeThemeColor(t.color)}
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: t.color,
+                    border: themeColor === t.color ? '2px solid #ffffff' : 'none',
+                    boxShadow: themeColor === t.color ? '0 0 0 1px #000000' : 'none',
+                    cursor: 'pointer'
+                  }}
+                  title={t.name}
+                />
+              ))}
+            </div>
+
+            {/* Instant WhatsApp Share */}
+            <button
+              onClick={() => {
+                const shareText = buildInvoiceShareText(invoice, business);
+                const waUrl = buildWhatsAppUrl(invoice.partyPhone, shareText);
+                window.open(waUrl, '_blank');
+              }}
+              className="btn btn-sm"
+              style={{ background: '#25D366', color: '#ffffff', border: 'none', padding: '6px 12px', fontWeight: '700', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+              title="Send bill on WhatsApp"
+            >
+              <Send size={14} />
+              <span>WhatsApp</span>
+            </button>
+
+            {/* Instant SMS Share */}
+            <button
+              onClick={() => {
+                const shareText = buildInvoiceShareText(invoice, business);
+                const smsUrl = buildSmsUrl(invoice.partyPhone, shareText);
+                window.location.href = smsUrl;
+              }}
+              className="btn btn-sm btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+              title="Share via SMS"
+            >
+              <MessageSquare size={14} />
+              <span>SMS</span>
+            </button>
+
+            {/* Instant Email */}
+            <button
+              onClick={() => {
+                const shareText = buildInvoiceShareText(invoice, business);
+                const emailUrl = buildEmailUrl(partyObj?.email, `Invoice #${invoice.invoiceNo} from ${business?.name}`, shareText);
+                window.location.href = emailUrl;
+              }}
+              className="btn btn-sm btn-secondary"
+              style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+              title="Share via Email"
+            >
+              <Mail size={14} />
+              <span>Email</span>
+            </button>
+
+            <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '6px', padding: '6px 14px', fontSize: '0.85rem' }}>
               <Printer size={16} />
-              <span>🖨️ Print Now</span>
+              <span>Print Bill</span>
             </button>
 
             <button 
               onClick={handleDelete}
               className="btn btn-sm"
-              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="यह इनवॉइस डिलीट करें (Delete Invoice)"
+              style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Delete Invoice"
             >
               <Trash2 size={16} />
             </button>
 
-            <button onClick={onClose} className="btn btn-secondary" style={{ padding: '8px' }}>
-              <X size={20} />
+            <button onClick={onClose} className="btn btn-secondary" style={{ padding: '6px' }}>
+              <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* PRINTABLE BILL CANVAS (Gujarat Freight Tools Style Corporate Layout) */}
+        {/* PRINTABLE BILL CANVAS (A4 / A5 Corporate or 80mm Thermal Receipt) */}
+        {paperFormat === 'POS80' ? (
+          <div className="print-area" style={{ 
+            width: '100%', 
+            maxWidth: '330px', 
+            margin: '0 auto', 
+            padding: '16px 10px', 
+            fontFamily: "'Courier New', Courier, monospace", 
+            fontSize: '11px', 
+            color: '#000000',
+            background: '#ffffff',
+            boxShadow: '0 0 10px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: '900', margin: '0 0 2px 0', textTransform: 'uppercase', color: '#000' }}>{business?.name}</h2>
+              <div style={{ fontSize: '9.5px', color: '#333' }}>{business?.address}</div>
+              <div style={{ fontSize: '9.5px', color: '#333' }}>GSTIN: {business?.gstin || 'N/A'} | Ph: {business?.phone}</div>
+              <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', margin: '6px 0', padding: '3px 0', fontWeight: 'bold' }}>
+                RETAIL CASH SLIP / TAX INVOICE
+              </div>
+            </div>
+
+            <div style={{ fontSize: '10px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Bill No: <strong>{invoice.invoiceNo}</strong></span>
+                <span>Date: {formattedDate}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Cust: <strong>{invoice.partyName || invoice.customerName}</strong></span>
+                <span>{invoice.partyPhone || ''}</span>
+              </div>
+              {invoice.warehouseId && <div>WH: {invoice.warehouseId}</div>}
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', borderBottom: '1px dashed #000', marginBottom: '6px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px dashed #000', textAlign: 'left' }}>
+                  <th style={{ padding: '3px 0' }}>Item</th>
+                  <th style={{ textAlign: 'center', padding: '3px 0' }}>Qty</th>
+                  <th style={{ textAlign: 'right', padding: '3px 0' }}>Rate</th>
+                  <th style={{ textAlign: 'right', padding: '3px 0' }}>Amt</th>
+                </tr>
+              </thead>
+              <tbody>
+                {processedItems.map(item => (
+                  <tr key={item.productId || item.name}>
+                    <td style={{ padding: '2px 0', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</td>
+                    <td style={{ textAlign: 'center', padding: '2px 0' }}>{item.itemQty}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 0' }}>{item.itemRate}</td>
+                    <td style={{ textAlign: 'right', padding: '2px 0' }}>₹{item.itemTotal.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Subtotal ({totalQtyPcs} Pcs):</span>
+                <span>₹{totalTaxableAmount.toFixed(2)}</span>
+              </div>
+              {!isNonGst && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Total GST:</span>
+                  <span>₹{totalTaxAmount.toFixed(2)}</span>
+                </div>
+              )}
+              {Number(invoice.discount || 0) > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+                  <span>Discount:</span>
+                  <span>-₹{Number(invoice.discount).toFixed(2)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '900', fontSize: '14px', marginTop: '2px' }}>
+                <span>GRAND TOTAL:</span>
+                <span>₹{(Number(invoice.grandTotal) || 0).toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+                <span>Status:</span>
+                <span>{invoice.paymentStatus} ({invoice.paymentMode || 'CASH'})</span>
+              </div>
+            </div>
+
+            {upiQrUrl && (
+              <div style={{ textAlign: 'center', margin: '8px 0' }}>
+                <img src={upiQrUrl} alt="UPI QR" style={{ width: '110px', height: '110px', margin: '0 auto' }} />
+                <div style={{ fontSize: '9px', fontWeight: 'bold' }}>Scan to Pay with Any UPI App</div>
+              </div>
+            )}
+
+            <div style={{ textAlign: 'center', fontSize: '9.5px', marginTop: '8px' }}>
+              <div>Bank: {business?.bankName} (A/C: {business?.accountNo})</div>
+              <div style={{ fontStyle: 'italic', marginTop: '4px' }}>Thank you! Visit Again!</div>
+            </div>
+          </div>
+        ) : (
         <div className="print-area" style={{ 
           padding: paperFormat === 'A5' ? '2px 4px' : '6px 10px', 
           background: '#ffffff', 
@@ -323,6 +511,45 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
             </div>
 
+            {/* e-Way Bill Information Banner if present */}
+            {invoice.ewayBill && (
+              <div style={{ 
+                borderTop: '1px solid #000000', 
+                padding: paperFormat === 'A5' ? '2px 6px' : '3px 8px', 
+                background: '#f8fafc', 
+                fontSize: paperFormat === 'A5' ? '0.62rem' : '0.74rem', 
+                display: 'flex', 
+                gap: '14px', 
+                fontWeight: '600',
+                flexWrap: 'wrap'
+              }}>
+                <span><strong>e-Way Bill No:</strong> {invoice.ewayBill.ewayBillNo || ('EWB-' + (invoice.invoiceNo || '').replace(/[^0-9]/g, ''))}</span>
+                <span><strong>Vehicle No:</strong> {invoice.ewayBill.vehicleNo || 'DL-01-A-1234'}</span>
+                <span><strong>Transporter:</strong> {invoice.ewayBill.transporterName || 'Self / Road Transport'}</span>
+                {invoice.ewayBill.distanceKm && <span><strong>Distance:</strong> {invoice.ewayBill.distanceKm} KM</span>}
+              </div>
+            )}
+
+            {/* e-Invoice IRN Compliance Banner */}
+            {!isNonGst && invoice.irn && (
+              <div style={{ 
+                borderTop: '1px solid #000000', 
+                padding: paperFormat === 'A5' ? '2px 6px' : '3px 8px', 
+                background: '#ffffff', 
+                fontSize: paperFormat === 'A5' ? '0.58rem' : '0.68rem', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                fontFamily: 'monospace',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                  <strong>IRN:</strong> {invoice.irn}
+                </span>
+                <span><strong>Ack No:</strong> {invoice.ackNo || '1829031892'} | <strong>Date:</strong> {invoice.ackDate || formattedDate}</span>
+              </div>
+            )}
+
           </div>
 
           {/* SECTION 3: ITEMS GRID TABLE */}
@@ -429,16 +656,21 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 </div>
               </div>
 
-              {/* BLOCK 2: Pay using UPI QR Code */}
+              {/* BLOCK 2: Pay using UPI QR Code (MargPay Instant Digital Payment) */}
               <div style={{ padding: '3px', borderRight: '1.5px solid #000000', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(`upi://pay?pa=${business?.phone || '9876543210'}@upi&pn=${encodeURIComponent(business?.name || 'Agency')}&am=${invoice.grandTotal}&cu=INR`)}`} 
-                  alt="UPI QR Code" 
-                  style={{ width: paperFormat === 'A5' ? '58px' : '92px', height: paperFormat === 'A5' ? '58px' : '92px', objectFit: 'contain' }}
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
+                {upiQrUrl ? (
+                  <img 
+                    src={upiQrUrl} 
+                    alt="UPI QR Code" 
+                    style={{ width: paperFormat === 'A5' ? '68px' : '96px', height: paperFormat === 'A5' ? '68px' : '96px', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <div style={{ width: paperFormat === 'A5' ? '68px' : '96px', height: paperFormat === 'A5' ? '68px' : '96px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>
+                    UPI QR
+                  </div>
+                )}
                 <div style={{ fontWeight: '800', marginTop: '2px', fontSize: paperFormat === 'A5' ? '0.62rem' : '0.72rem', color: '#000000' }}>
-                  Pay using UPI
+                  Scan & Pay UPI
                 </div>
               </div>
 
@@ -505,6 +737,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           </div>
 
         </div>
+        )}
 
       </div>
     </div>

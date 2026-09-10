@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { saveInvoice, saveParty, formatCartonStock } from '../utils/storage';
+import React, { useState, useEffect, useRef } from 'react';
+import { saveInvoice, saveParty, formatCartonStock, fetchWarehouses, getCurrentOperator } from '../utils/storage';
+import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { 
   Search, 
   Plus, 
@@ -7,17 +8,25 @@ import {
   Trash2, 
   Receipt, 
   User, 
-  UserPlus,
-  X,
-  Save,
+  UserPlus, 
+  X, 
+  Save, 
   CheckCircle, 
-  IndianRupee,
-  ShoppingBag,
-  CreditCard,
-  Building,
-  Printer,
-  Percent,
-  Tag
+  IndianRupee, 
+  ShoppingBag, 
+  CreditCard, 
+  Building, 
+  Printer, 
+  Percent, 
+  Tag,
+  Barcode,
+  Truck,
+  QrCode,
+  Send,
+  Zap,
+  LayoutGrid,
+  Layers,
+  Sparkles
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab }) {
@@ -26,6 +35,28 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [taxMode, setTaxMode] = useState('INTRA'); // Default: INTRA (CGST + SGST)
+
+  // Enterprise POS & Barcode State
+  const [posMode, setPosMode] = useState('STANDARD'); // 'STANDARD' or 'FAST_TOUCH'
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeScanAlert, setBarcodeScanAlert] = useState(null);
+  const barcodeInputRef = useRef(null);
+
+  // Multi-Warehouse Source
+  const warehouses = fetchWarehouses();
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(warehouses[0]?.id || 'wh_main');
+
+  // e-Way Bill & Transport State
+  const [ewayBillOpen, setEwayBillOpen] = useState(false);
+  const [ewayBillData, setEwayBillData] = useState({
+    transporterName: '',
+    vehicleNo: '',
+    distanceKm: '',
+    ewayBillNo: ''
+  });
+
+  // Digital Payments & Instant Share Modal
+  const [checkoutModal, setCheckoutModal] = useState(null); // holds { invoice, upiQrUrl }
   
   // Party Search & Add Party Modal State
   const [partySearchTerm, setPartySearchTerm] = useState('');
@@ -49,12 +80,54 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   const [paymentStatus, setPaymentStatus] = useState('PAID'); // PAID, UNPAID, PARTIAL
   const [paidAmount, setPaidAmount] = useState('');
+  const [paymentMode, setPaymentMode] = useState('CASH'); // CASH, UPI, NEFT, CHEQUE
   const [notes, setNotes] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
 
   // Selected party object
   const selectedParty = parties.find(p => p.id === selectedPartyId);
+
+  // Auto-focus barcode input when switching to Fast POS mode
+  useEffect(() => {
+    if (posMode === 'FAST_TOUCH' && barcodeInputRef.current) {
+      barcodeInputRef.current.focus();
+    }
+  }, [posMode]);
+
+  // Quick Barcode Scanning Handler
+  const handleBarcodeScan = (e) => {
+    e.preventDefault();
+    const code = barcodeInput.trim();
+    if (!code) return;
+
+    const matchedProduct = products.find(p => 
+      (p.sku && p.sku.toLowerCase() === code.toLowerCase()) ||
+      (p.id && p.id.toLowerCase() === code.toLowerCase()) ||
+      (p.name && p.name.toLowerCase() === code.toLowerCase())
+    );
+
+    if (matchedProduct) {
+      handleAddToCart(matchedProduct);
+      setBarcodeScanAlert(`✅ Added: ${matchedProduct.name}`);
+      setTimeout(() => setBarcodeScanAlert(null), 2000);
+      setBarcodeInput('');
+    } else {
+      setBarcodeScanAlert(`❌ No item found for code: "${code}"`);
+      setTimeout(() => setBarcodeScanAlert(null), 2500);
+      setBarcodeInput('');
+    }
+  };
+
+  // 1-Click Walk-in Counter Sale filler
+  const handleWalkInCounterSale = () => {
+    setSelectedPartyId('');
+    setCustomerName('Walk-in Customer');
+    setCustomerPhone('');
+    setPartySearchTerm('');
+    setPaymentStatus('PAID');
+    setPaymentMode('CASH');
+  };
 
   // Filter parties for live search suggestions inside Customer Name input
   const filteredParties = parties.filter(p => {
@@ -368,11 +441,22 @@ export default function Billing({ products, parties, business, refreshAllData, h
       paymentStatus,
       paidAmount: actualPaid,
       balanceAmount: balanceAmt,
+      paymentMode,
+      warehouseId: selectedWarehouseId,
+      ewayBill: ewayBillOpen ? ewayBillData : null,
       notes
     };
 
     const savedInv = saveInvoice(invoicePayload);
     refreshAllData();
+
+    // Generate dynamic UPI QR code for instant payment
+    generateUpiQrDataUrl(business?.upiId, business?.name, grandTotal, savedInv.invoiceNo).then(qrUrl => {
+      setCheckoutModal({
+        invoice: savedInv,
+        upiQrUrl: qrUrl
+      });
+    });
     
     // Clear bill state
     setCart([]);
@@ -383,9 +467,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setPaymentStatus('PAID');
     setPaidAmount('');
     setNotes('');
-
-    // Print Modal open
-    handlePrintInvoice(savedInv);
+    setEwayBillOpen(false);
   };
 
   return (
@@ -395,28 +477,80 @@ export default function Billing({ products, parties, business, refreshAllData, h
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         
         <div className="glass-card" style={{ padding: '16px' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShoppingBag size={18} color="var(--primary)" />
-            <span>प्रोडक्ट्स खोजें & जोड़ें (Search Products)</span>
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShoppingBag size={18} color="var(--primary)" />
+              <span>{posMode === 'FAST_TOUCH' ? '⚡ Fast POS Touch Counter' : 'प्रोडक्ट्स खोजें & जोड़ें'}</span>
+            </h3>
 
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button 
+                type="button"
+                onClick={() => setPosMode('STANDARD')}
+                className={`btn ${posMode === 'STANDARD' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '4px 8px', fontSize: '0.72rem', fontWeight: '700' }}
+              >
+                Standard
+              </button>
+              <button 
+                type="button"
+                onClick={() => setPosMode('FAST_TOUCH')}
+                className={`btn ${posMode === 'FAST_TOUCH' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '4px 8px', fontSize: '0.72rem', fontWeight: '700', gap: '4px' }}
+              >
+                <Zap size={12} />
+                <span>Fast POS</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Barcode Scanner Input Row */}
+          <form onSubmit={handleBarcodeScan} style={{ marginBottom: '10px' }}>
+            <div style={{ position: 'relative', display: 'flex', gap: '6px' }}>
+              <Barcode size={18} color="var(--primary)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                ref={barcodeInputRef}
+                type="text"
+                className="input-field"
+                placeholder="Scan Barcode / Enter SKU (Auto-Add on Enter)..."
+                style={{ paddingLeft: '36px', fontSize: '0.84rem', borderColor: 'var(--primary)' }}
+                value={barcodeInput}
+                onChange={e => setBarcodeInput(e.target.value)}
+              />
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                style={{ padding: '0 12px', fontSize: '0.78rem', whiteSpace: 'nowrap', fontWeight: '700' }}
+              >
+                Scan Add
+              </button>
+            </div>
+            {barcodeScanAlert && (
+              <div style={{ fontSize: '0.75rem', fontWeight: '700', color: barcodeScanAlert.startsWith('✅') ? '#059669' : '#dc2626', marginTop: '4px' }}>
+                {barcodeScanAlert}
+              </div>
+            )}
+          </form>
+
+          {/* Standard Text Search */}
           <div style={{ position: 'relative' }}>
             <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
               type="text"
               className="input-field"
               placeholder="नाम, SKU या ब्रांड से खोजें..."
-              style={{ paddingLeft: '38px' }}
+              style={{ paddingLeft: '38px', fontSize: '0.84rem' }}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        {/* Product Quick Add List (Horizontal Row Layout) */}
+        {/* Product Quick Add List (Horizontal Row or Fast Touch Tiles) */}
         <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
+          display: posMode === 'FAST_TOUCH' ? 'grid' : 'flex',
+          gridTemplateColumns: posMode === 'FAST_TOUCH' ? 'repeat(auto-fill, minmax(130px, 1fr))' : undefined,
+          flexDirection: posMode === 'FAST_TOUCH' ? undefined : 'column',
           gap: '8px', 
           maxHeight: '600px', 
           overflowY: 'auto',
@@ -496,22 +630,34 @@ export default function Billing({ products, parties, business, refreshAllData, h
             {/* Retailer/Party Selection Header & Add Retailer Button */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <label className="form-label" style={{ marginBottom: 0 }}>
                   रिटेलर / ग्राहक चुनें (Select Party)
                 </label>
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setNewPartyData(initialNewPartyState);
-                    setPartyModalOpen(true);
-                  }}
-                  className="btn btn-sm btn-primary"
-                  style={{ padding: '3px 10px', fontSize: '0.78rem', gap: '4px' }}
-                >
-                  <UserPlus size={14} />
-                  <span>+ नया रिटेलर (Add Retailer)</span>
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    type="button"
+                    onClick={handleWalkInCounterSale}
+                    className="btn btn-sm btn-secondary"
+                    style={{ padding: '3px 8px', fontSize: '0.74rem', gap: '4px', background: '#ecfdf5', color: '#059669', borderColor: '#10b981' }}
+                    title="1-Click Walk-in Cash Customer"
+                  >
+                    <Zap size={12} />
+                    <span>⚡ Walk-in Cash Sale</span>
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setNewPartyData(initialNewPartyState);
+                      setPartyModalOpen(true);
+                    }}
+                    className="btn btn-sm btn-primary"
+                    style={{ padding: '3px 10px', fontSize: '0.78rem', gap: '4px' }}
+                  >
+                    <UserPlus size={14} />
+                    <span>+ नया रिटेलर</span>
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -902,27 +1048,112 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </button>
           </div>
 
-          {paymentStatus === 'PARTIAL' && (
-            <div className="form-group" style={{ marginBottom: '12px' }}>
-              <label className="form-label">प्राप्त हुई राशि (Paid Amount ₹)</label>
-              <input 
-                type="number"
-                className="input-field"
-                placeholder="उदा. 1000"
-                value={paidAmount}
-                onChange={e => setPaidAmount(e.target.value)}
-              />
+          {/* Payment Mode Selector */}
+          <div style={{ marginBottom: '12px' }}>
+            <label className="form-label" style={{ fontSize: '0.78rem', marginBottom: '4px' }}>
+              भुगतान माध्यम (Payment Method):
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
+              {['CASH', 'UPI', 'NEFT', 'CHEQUE'].map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setPaymentMode(mode)}
+                  style={{
+                    padding: '6px 4px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    background: paymentMode === mode ? '#ecfdf5' : '#ffffff',
+                    color: paymentMode === mode ? '#059669' : 'var(--text-main)',
+                    fontWeight: '800',
+                    fontSize: '0.74rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {mode}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
+
+          {/* Warehouse Source & e-Way Bill Accordion */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)' }}>Warehouse / Depot:</span>
+              <select 
+                className="input-field select-field" 
+                style={{ fontSize: '0.76rem', padding: '4px 20px 4px 8px', width: 'auto' }}
+                value={selectedWarehouseId}
+                onChange={e => setSelectedWarehouseId(e.target.value)}
+              >
+                {warehouses.map(w => (
+                  <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* e-Way Bill Toggle */}
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px 10px', background: '#ffffff' }}>
+              <div 
+                onClick={() => setEwayBillOpen(!ewayBillOpen)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700', color: '#2563eb' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Truck size={14} />
+                  <span>e-Way Bill & Transport Details {ewayBillOpen ? '▲' : '▼'}</span>
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                  {ewayBillOpen ? 'Hide' : '(Optional for Interstate / >₹50k)'}
+                </span>
+              </div>
+
+              {ewayBillOpen && (
+                <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.76rem' }}>
+                  <input 
+                    type="text"
+                    className="input-field"
+                    placeholder="Transporter Name"
+                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    value={ewayBillData.transporterName}
+                    onChange={e => setEwayBillData({ ...ewayBillData, transporterName: e.target.value })}
+                  />
+                  <input 
+                    type="text"
+                    className="input-field"
+                    placeholder="Vehicle No (e.g. DL01AA1234)"
+                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    value={ewayBillData.vehicleNo}
+                    onChange={e => setEwayBillData({ ...ewayBillData, vehicleNo: e.target.value })}
+                  />
+                  <input 
+                    type="text"
+                    className="input-field"
+                    placeholder="Distance (KM)"
+                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    value={ewayBillData.distanceKm}
+                    onChange={e => setEwayBillData({ ...ewayBillData, distanceKm: e.target.value })}
+                  />
+                  <input 
+                    type="text"
+                    className="input-field"
+                    placeholder="e-Way Bill No. (if generated)"
+                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    value={ewayBillData.ewayBillNo}
+                    onChange={e => setEwayBillData({ ...ewayBillData, ewayBillNo: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
 
           <button 
             onClick={handleSaveAndPrintBill}
             disabled={cart.length === 0}
             className="btn btn-primary btn-lg"
-            style={{ width: '100%', gap: '8px', opacity: cart.length === 0 ? 0.5 : 1 }}
+            style={{ width: '100%', gap: '8px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800' }}
           >
-            <Printer size={20} />
-            <span>बिल सेव करें & प्रिंट निकालें (Save & Print)</span>
+            <Zap size={20} />
+            <span>Generate Bill & Instant Digital Checkout</span>
           </button>
 
         </div>
@@ -1054,6 +1285,110 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dynamic UPI Checkout & Instant Sharing Modal */}
+      {checkoutModal && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '480px', padding: '24px', textAlign: 'center' }}>
+            <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+              <CheckCircle size={30} />
+            </div>
+
+            <h3 style={{ fontSize: '1.3rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
+              Invoice #{checkoutModal.invoice.invoiceNo} Generated!
+            </h3>
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '4px 0 16px 0' }}>
+              Billed to: <strong>{checkoutModal.invoice.customerName || 'Cash Customer'}</strong>
+            </p>
+
+            {/* Dynamic UPI QR Code Card */}
+            <div style={{
+              background: '#f8fafc',
+              border: '2px dashed #059669',
+              borderRadius: '12px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: '800', color: '#059669' }}>
+                <QrCode size={16} />
+                <span>SCAN TO PAY VIA ANY UPI APP (MargPay)</span>
+              </div>
+
+              {checkoutModal.upiQrUrl ? (
+                <img 
+                  src={checkoutModal.upiQrUrl} 
+                  alt="UPI QR" 
+                  style={{ width: '180px', height: '180px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#ffffff', padding: '4px' }}
+                />
+              ) : (
+                <div style={{ width: '180px', height: '180px', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  Generating QR...
+                </div>
+              )}
+
+              <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#059669' }}>
+                ₹{Number(checkoutModal.invoice.grandTotal || 0).toLocaleString('en-IN')}
+              </div>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                VPA: <strong>{business?.upiId || 'shreeganesh@upi'}</strong> • {business?.name}
+              </span>
+            </div>
+
+            {/* Instant Sharing Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  const shareText = buildInvoiceShareText(checkoutModal.invoice, business);
+                  const waUrl = buildWhatsAppUrl(checkoutModal.invoice.customerPhone, shareText);
+                  window.open(waUrl, '_blank');
+                }}
+                className="btn"
+                style={{ 
+                  background: '#25D366', 
+                  color: '#ffffff', 
+                  border: 'none', 
+                  padding: '11px', 
+                  fontWeight: '700', 
+                  fontSize: '0.9rem',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px' 
+                }}
+              >
+                <Send size={18} />
+                <span>Instant Share on WhatsApp</span>
+              </button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button 
+                  onClick={() => {
+                    handlePrintInvoice(checkoutModal.invoice);
+                    setCheckoutModal(null);
+                  }}
+                  className="btn btn-primary"
+                  style={{ padding: '10px', fontWeight: '700', fontSize: '0.85rem', gap: '6px' }}
+                >
+                  <Printer size={16} />
+                  <span>Print Bill (A4/A5/Thermal)</span>
+                </button>
+
+                <button 
+                  onClick={() => setCheckoutModal(null)}
+                  className="btn btn-secondary"
+                  style={{ padding: '10px', fontWeight: '700', fontSize: '0.85rem' }}
+                >
+                  Done / Next Bill
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

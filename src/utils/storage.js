@@ -7,7 +7,13 @@ const STORAGE_KEYS = {
   PARTIES: 'distro_parties',
   INVOICES: 'distro_invoices',
   PURCHASES: 'distro_purchases',
-  STOCK_LEDGER: 'distro_stock_ledger'
+  STOCK_LEDGER: 'distro_stock_ledger',
+  WAREHOUSES: 'distro_warehouses',
+  AUDIT_LOGS: 'distro_audit_logs',
+  BANK_ACCOUNTS: 'distro_bank_accounts',
+  BANK_TRANSACTIONS: 'distro_bank_transactions',
+  CURRENT_OPERATOR: 'distro_current_operator',
+  SECURITY_SETTINGS: 'distro_security_settings'
 };
 
 const DEFAULT_BUSINESS = {
@@ -21,8 +27,34 @@ const DEFAULT_BUSINESS = {
   bankName: "HDFC Bank Ltd.",
   accountNo: "50200088991122",
   ifsc: "HDFC0001234",
+  upiId: "shreeganesh@upi",
   invoicePrefix: "SGA/26-27/",
   terms: "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged on overdue payments.\n3. Subject to local jurisdiction."
+};
+
+const DEFAULT_WAREHOUSES = [
+  { id: 'wh_main', name: 'Main Central Godown', code: 'WH-01', location: 'Transport Nagar Depot', isDefault: true },
+  { id: 'wh_store', name: 'Shop Floor Counter', code: 'WH-02', location: 'Wholesale Grain Market', isDefault: false },
+  { id: 'wh_cold', name: 'Depot 2 (Transit/Cold Storage)', code: 'WH-03', location: 'Industrial Area Phase 1', isDefault: false }
+];
+
+const DEFAULT_BANK_ACCOUNTS = [
+  { id: 'bank_1', bankName: 'HDFC Bank Ltd', accountNo: '50200088991122', ifsc: 'HDFC0001234', upiId: 'shreeganesh@hdfcbank', branch: 'Transport Nagar', balance: 245000 },
+  { id: 'bank_2', bankName: 'State Bank of India', accountNo: '38920192831', ifsc: 'SBIN0001234', upiId: 'shreeganesh@sbi', branch: 'Main Branch', balance: 138500 }
+];
+
+const DEFAULT_OPERATOR = {
+  id: 'op_admin',
+  name: 'Rajesh Verma',
+  role: 'Admin / Owner',
+  badge: 'ADMIN'
+};
+
+const DEFAULT_SECURITY = {
+  pinEnabled: false,
+  adminPin: '1234',
+  cloudAutoSync: true,
+  lastBackupDate: null
 };
 
 const DEFAULT_PRODUCTS = [];
@@ -79,6 +111,35 @@ const SAMPLE_IDS = [
 export const initDataStorage = () => {
   if (!localStorage.getItem(STORAGE_KEYS.BUSINESS)) {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.WAREHOUSES)) {
+    setStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.BANK_ACCOUNTS)) {
+    setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, DEFAULT_BANK_ACCOUNTS);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_OPERATOR)) {
+    setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.SECURITY_SETTINGS)) {
+    setStorageData(STORAGE_KEYS.SECURITY_SETTINGS, DEFAULT_SECURITY);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.AUDIT_LOGS)) {
+    setStorageData(STORAGE_KEYS.AUDIT_LOGS, [
+      {
+        id: 'log_init',
+        timestamp: new Date().toISOString(),
+        operator: 'System',
+        action: 'SYSTEM_BOOT',
+        module: 'Security & Audit',
+        details: 'DistroPulse Enterprise System initialized with secure audit logging.'
+      }
+    ]);
   }
 
   // Force Clean of all sample data
@@ -273,12 +334,14 @@ export const saveProduct = (product) => {
   if (product.id) {
     targetProd = product;
     updated = products.map(p => p.id === product.id ? product : p);
+    logAuditAction('EDIT_PRODUCT', 'Inventory & Stock', `Updated item: ${product.name} (SKU: ${product.sku || 'N/A'}, MRP: ₹${product.mrp || 0})`);
   } else {
     targetProd = {
       ...product,
       id: 'prod_' + Date.now()
     };
     updated = [targetProd, ...products];
+    logAuditAction('ADD_PRODUCT', 'Inventory & Stock', `Added new product: ${product.name} (Batch: ${product.batchNo || 'Default'})`);
   }
   setStorageData(STORAGE_KEYS.PRODUCTS, updated);
   autoCloudSync();
@@ -287,8 +350,11 @@ export const saveProduct = (product) => {
 
 export const deleteProduct = (id) => {
   const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
+  const target = products.find(p => p.id === id);
   setStorageData(STORAGE_KEYS.PRODUCTS, products);
   
+  logAuditAction('DELETE_PRODUCT', 'Inventory & Stock', `Deleted product ID: ${id} (${target?.name || 'Item'})`);
+
   const client = getSupabaseClient();
   if (client) {
     client.from('products').delete().eq('id', id).then(() => {}).catch(console.error);
@@ -300,14 +366,17 @@ export const deleteProduct = (id) => {
 // Operations: Stock Update (Stock-In or Manual Adjust)
 export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') => {
   const products = fetchProducts();
+  let productName = 'Item';
   const updated = products.map(p => {
     if (p.id === productId) {
+      productName = p.name;
       const newStock = Math.max(0, (Number(p.currentStock) || 0) + Number(qtyToAdd));
       return { ...p, currentStock: newStock };
     }
     return p;
   });
   setStorageData(STORAGE_KEYS.PRODUCTS, updated);
+  logAuditAction('STOCK_ADJUSTMENT', 'Inventory & Stock', `${qtyToAdd >= 0 ? '+' : ''}${qtyToAdd} Pcs adjusted for ${productName} (${reason})`);
   autoCloudSync();
   return updated;
 };
@@ -321,6 +390,7 @@ export const saveParty = (party) => {
   if (party.id) {
     targetParty = party;
     updated = parties.map(p => p.id === party.id ? party : p);
+    logAuditAction('EDIT_PARTY', 'Parties & CRM', `Updated retailer profile: ${party.name} (${party.city || 'Local'})`);
   } else {
     targetParty = {
       ...party,
@@ -328,6 +398,7 @@ export const saveParty = (party) => {
       balance: Number(party.balance) || 0
     };
     updated = [targetParty, ...parties];
+    logAuditAction('ADD_PARTY', 'Parties & CRM', `Added new retailer: ${party.name} (Phone: ${party.phone || 'N/A'})`);
   }
   setStorageData(STORAGE_KEYS.PARTIES, updated);
   autoCloudSync();
@@ -336,14 +407,17 @@ export const saveParty = (party) => {
 
 export const updatePartyBalance = (partyId, amountToAdd) => {
   const parties = fetchParties();
+  let pName = 'Retailer';
   const updated = parties.map(p => {
     if (p.id === partyId) {
+      pName = p.name;
       const newBal = (Number(p.balance) || 0) + Number(amountToAdd);
       return { ...p, balance: Math.max(0, newBal) };
     }
     return p;
   });
   setStorageData(STORAGE_KEYS.PARTIES, updated);
+  logAuditAction('BALANCE_ADJUST', 'Parties & CRM', `Outstanding ledger balance updated for ${pName}: ₹${Number(amountToAdd).toLocaleString('en-IN')}`);
   autoCloudSync();
   return updated;
 };
@@ -371,11 +445,21 @@ export const saveInvoice = (invoiceData) => {
   const nextNumber = invoices.length + 1001;
   const invoiceNo = invoiceData.invoiceNo || `${business.invoicePrefix || 'INV/'}${nextNumber}`;
 
+  // Generate simulated 64-char IRN for GST e-Invoice compliance
+  const generatedIrn = invoiceData.irn || Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+  const currentOp = getCurrentOperator();
+
   const newInvoice = {
     ...invoiceData,
     id: 'inv_' + Date.now(),
     invoiceNo,
-    date: invoiceData.date || new Date().toISOString()
+    date: invoiceData.date || new Date().toISOString(),
+    irn: generatedIrn,
+    ackNo: invoiceData.ackNo || ('1' + Math.floor(10000000000 + Math.random() * 90000000000)),
+    ackDate: invoiceData.ackDate || new Date().toISOString().split('T')[0],
+    warehouseId: invoiceData.warehouseId || 'wh_main',
+    operator: invoiceData.operator || currentOp?.name || 'Admin',
+    paymentMode: invoiceData.paymentMode || 'CASH'
   };
 
   // 1. Deduct Stock for billed items
@@ -398,6 +482,14 @@ export const saveInvoice = (invoiceData) => {
   // 3. Save Invoice
   const updatedInvoices = [newInvoice, ...invoices];
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  
+  // 4. Log Audit Action
+  logAuditAction(
+    'CREATE_INVOICE',
+    'Billing & Invoicing',
+    `Created Invoice #${newInvoice.invoiceNo} for ${newInvoice.customerName || 'Cash Sale'} (₹${Number(newInvoice.grandTotal || 0).toLocaleString('en-IN')})`
+  );
+
   autoCloudSync();
   return newInvoice;
 };
@@ -433,7 +525,14 @@ export const deleteInvoice = (invoiceId) => {
   const updatedInvoices = invoices.filter(i => i.id !== invoiceId);
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
 
-  // 4. Delete from Supabase Cloud
+  // 4. Log Audit Action
+  logAuditAction(
+    'DELETE_INVOICE',
+    'Billing & Invoicing',
+    `Cancelled & Deleted Invoice #${targetInv.invoiceNo} (₹${Number(targetInv.grandTotal || 0).toLocaleString('en-IN')}) - Stock restored`
+  );
+
+  // 5. Delete from Supabase Cloud
   const client = getSupabaseClient();
   if (client) {
     client.from('invoices').delete().eq('id', invoiceId).then(() => {}).catch(console.error);
@@ -445,10 +544,210 @@ export const deleteInvoice = (invoiceId) => {
 
 // Operations: Business Settings
 export const fetchBusinessInfo = () => getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+export const fetchBusinessProfile = fetchBusinessInfo;
 export const saveBusinessInfo = (info) => {
   setStorageData(STORAGE_KEYS.BUSINESS, info);
+  logAuditAction('UPDATE_SETTINGS', 'Settings', 'Updated company profile, GSTIN & bank details');
   autoCloudSync();
   return info;
 };
+
+// --- ENTERPRISE MODULE: AUDIT TRAIL & OPERATOR MANAGEMENT ---
+export const getCurrentOperator = () => getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
+export const setCurrentOperator = (operator) => {
+  setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, operator);
+  logAuditAction('SWITCH_OPERATOR', 'Security & Audit', `Active operator switched to ${operator.name} (${operator.role})`);
+  return operator;
+};
+
+export const fetchAuditLogs = () => getStorageData(STORAGE_KEYS.AUDIT_LOGS, []);
+export const logAuditAction = (action, module, details) => {
+  try {
+    const currentOp = getCurrentOperator();
+    const logs = getStorageData(STORAGE_KEYS.AUDIT_LOGS, []);
+    const newEntry = {
+      id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      timestamp: new Date().toISOString(),
+      operator: currentOp?.name || 'System Operator',
+      action,
+      module,
+      details
+    };
+    // Keep most recent 300 logs
+    const updated = [newEntry, ...logs].slice(0, 300);
+    setStorageData(STORAGE_KEYS.AUDIT_LOGS, updated);
+  } catch (e) {
+    console.warn('Audit logging failed:', e);
+  }
+};
+
+export const clearAuditLogs = () => {
+  setStorageData(STORAGE_KEYS.AUDIT_LOGS, []);
+};
+
+// --- ENTERPRISE MODULE: SECURITY SETTINGS ---
+export const getSecuritySettings = () => getStorageData(STORAGE_KEYS.SECURITY_SETTINGS, DEFAULT_SECURITY);
+export const saveSecuritySettings = (settings) => {
+  setStorageData(STORAGE_KEYS.SECURITY_SETTINGS, settings);
+  logAuditAction('UPDATE_SECURITY', 'Security & Audit', 'Security PIN and Cloud settings modified');
+  return settings;
+};
+
+// --- ENTERPRISE MODULE: MULTI-WAREHOUSE MANAGEMENT ---
+export const fetchWarehouses = () => getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+export const saveWarehouse = (wh) => {
+  const warehouses = fetchWarehouses();
+  let updated;
+  if (wh.id) {
+    updated = warehouses.map(w => w.id === wh.id ? wh : w);
+  } else {
+    const newWh = { ...wh, id: 'wh_' + Date.now() };
+    updated = [...warehouses, newWh];
+  }
+  setStorageData(STORAGE_KEYS.WAREHOUSES, updated);
+  logAuditAction('SAVE_WAREHOUSE', 'Inventory & Warehouses', `Warehouse saved: ${wh.name} (${wh.code || ''})`);
+  autoCloudSync();
+  return updated;
+};
+
+export const deleteWarehouse = (id) => {
+  const warehouses = fetchWarehouses();
+  if (warehouses.length <= 1) {
+    alert('At least one warehouse is required.');
+    return warehouses;
+  }
+  const updated = warehouses.filter(w => w.id !== id);
+  setStorageData(STORAGE_KEYS.WAREHOUSES, updated);
+  logAuditAction('DELETE_WAREHOUSE', 'Inventory & Warehouses', `Warehouse deleted ID: ${id}`);
+  autoCloudSync();
+  return updated;
+};
+
+export const transferStockBetweenWarehouses = (productId, fromWhId, toWhId, qty, reason = 'Inter-depot transfer') => {
+  const products = fetchProducts();
+  const warehouses = fetchWarehouses();
+  const prod = products.find(p => p.id === productId);
+  if (!prod) return { success: false, message: 'Product not found' };
+
+  const fromWh = warehouses.find(w => w.id === fromWhId) || { name: 'Origin Warehouse' };
+  const toWh = warehouses.find(w => w.id === toWhId) || { name: 'Target Warehouse' };
+
+  // Log movement in stock ledger
+  const ledger = getStorageData(STORAGE_KEYS.STOCK_LEDGER, []);
+  const movement = {
+    id: 'mv_' + Date.now(),
+    productId,
+    productName: prod.name,
+    fromWarehouse: fromWh.name,
+    toWarehouse: toWh.name,
+    qty: Number(qty),
+    date: new Date().toISOString(),
+    reason
+  };
+  setStorageData(STORAGE_KEYS.STOCK_LEDGER, [movement, ...ledger].slice(0, 500));
+
+  logAuditAction(
+    'STOCK_TRANSFER',
+    'Inventory & Warehouses',
+    `Transferred ${qty} Pcs of ${prod.name} from ${fromWh.name} to ${toWh.name} (${reason})`
+  );
+  autoCloudSync();
+  return { success: true, message: `Successfully transferred ${qty} Pcs of ${prod.name}` };
+};
+
+export const fetchStockLedger = () => getStorageData(STORAGE_KEYS.STOCK_LEDGER, []);
+
+// --- ENTERPRISE MODULE: CONNECTED BANKING & RECONCILIATION ---
+export const fetchBankAccounts = () => getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, DEFAULT_BANK_ACCOUNTS);
+export const saveBankAccount = (acct) => {
+  const accounts = fetchBankAccounts();
+  let updated;
+  if (acct.id) {
+    updated = accounts.map(a => a.id === acct.id ? acct : a);
+  } else {
+    const newAcct = { ...acct, id: 'bank_' + Date.now(), balance: Number(acct.balance) || 0 };
+    updated = [...accounts, newAcct];
+  }
+  setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, updated);
+  logAuditAction('SAVE_BANK_ACCOUNT', 'Banking & Payments', `Bank account updated: ${acct.bankName} (${acct.accountNo})`);
+  autoCloudSync();
+  return updated;
+};
+
+export const fetchBankTransactions = () => getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []);
+export const recordBankTransaction = (txn) => {
+  const accounts = fetchBankAccounts();
+  const txns = fetchBankTransactions();
+
+  const newTxn = {
+    ...txn,
+    id: 'btxn_' + Date.now(),
+    date: txn.date || new Date().toISOString(),
+    amount: Number(txn.amount) || 0
+  };
+
+  // Adjust bank account balance
+  const updatedAccounts = accounts.map(a => {
+    if (a.id === txn.bankAccountId) {
+      const delta = txn.type === 'CREDIT' ? newTxn.amount : -newTxn.amount;
+      return { ...a, balance: (Number(a.balance) || 0) + delta };
+    }
+    return a;
+  });
+
+  setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, updatedAccounts);
+  setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, [newTxn, ...txns]);
+
+  logAuditAction(
+    'BANK_TRANSACTION',
+    'Banking & Payments',
+    `${txn.type} of ₹${newTxn.amount.toLocaleString('en-IN')} via ${txn.mode || 'NEFT/RTGS'} (Ref: ${txn.referenceNo || 'N/A'})`
+  );
+  autoCloudSync();
+  return newTxn;
+};
+
+// --- ENTERPRISE MODULE: BACKUP EXPORT & RESTORE ---
+export const exportBackupJSON = () => {
+  const data = {
+    version: '2.0.0',
+    app: 'DistroPulse ERP',
+    exportedAt: new Date().toISOString(),
+    business: getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS),
+    products: fetchProducts(),
+    parties: fetchParties(),
+    invoices: fetchInvoices(),
+    purchases: getStorageData(STORAGE_KEYS.PURCHASES, []),
+    warehouses: fetchWarehouses(),
+    bankAccounts: fetchBankAccounts(),
+    bankTransactions: fetchBankTransactions(),
+    auditLogs: fetchAuditLogs()
+  };
+  return JSON.stringify(data, null, 2);
+};
+
+export const restoreBackupJSON = (jsonString) => {
+  try {
+    const data = JSON.parse(jsonString);
+    if (!data || typeof data !== 'object') throw new Error('Invalid backup file format');
+
+    if (data.business) setStorageData(STORAGE_KEYS.BUSINESS, data.business);
+    if (Array.isArray(data.products)) setStorageData(STORAGE_KEYS.PRODUCTS, data.products);
+    if (Array.isArray(data.parties)) setStorageData(STORAGE_KEYS.PARTIES, data.parties);
+    if (Array.isArray(data.invoices)) setStorageData(STORAGE_KEYS.INVOICES, data.invoices);
+    if (Array.isArray(data.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, data.purchases);
+    if (Array.isArray(data.warehouses)) setStorageData(STORAGE_KEYS.WAREHOUSES, data.warehouses);
+    if (Array.isArray(data.bankAccounts)) setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, data.bankAccounts);
+    if (Array.isArray(data.bankTransactions)) setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, data.bankTransactions);
+
+    logAuditAction('RESTORE_BACKUP', 'Security & Audit', 'Full enterprise database restored from JSON backup');
+    autoCloudSync();
+    return { success: true, message: 'Data backup successfully restored!' };
+  } catch (err) {
+    console.error('Backup restore failed:', err);
+    return { success: false, message: 'Restore failed: ' + err.message };
+  }
+};
+
 
 

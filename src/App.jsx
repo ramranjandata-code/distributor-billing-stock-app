@@ -14,9 +14,12 @@ import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Billing from './components/Billing';
+import FieldEBilling from './components/FieldEBilling';
 import Parties from './components/Parties';
+import ConnectedBanking from './components/ConnectedBanking';
 import InvoiceHistory from './components/InvoiceHistory';
 import Reports from './components/Reports';
+import AuditSecurity from './components/AuditSecurity';
 import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 
@@ -178,10 +181,13 @@ export default function App() {
               <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>
                 {activeTab === 'dashboard' && translate('dashboard_title')}
                 {activeTab === 'billing' && translate('create_bill')}
+                {activeTab === 'field_ebilling' && 'Salesman Field eBilling & Collection'}
                 {activeTab === 'inventory' && translate('inventory_title')}
                 {activeTab === 'parties' && translate('parties_title')}
+                {activeTab === 'banking' && 'Connected Banking & Reconciliation'}
                 {activeTab === 'invoices' && translate('history_title')}
                 {activeTab === 'reports' && translate('reports_title')}
+                {activeTab === 'audit' && 'Security, Audit Trail & System Backup'}
                 {activeTab === 'settings' && translate('settings_title')}
               </h1>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -322,6 +328,17 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'field_ebilling' && (
+          <FieldEBilling 
+            products={products}
+            parties={parties}
+            business={business}
+            refreshAllData={refreshAllData}
+            handlePrintInvoice={handlePrintInvoice}
+            setActiveTab={setActiveTab}
+          />
+        )}
+
         {activeTab === 'inventory' && (
           <Inventory 
             products={products}
@@ -337,6 +354,15 @@ export default function App() {
             refreshAllData={refreshAllData}
             setActiveTab={setActiveTab}
             t={translate}
+          />
+        )}
+
+        {activeTab === 'banking' && (
+          <ConnectedBanking 
+            parties={parties}
+            invoices={invoices}
+            business={business}
+            refreshAllData={refreshAllData}
           />
         )}
 
@@ -356,6 +382,12 @@ export default function App() {
             parties={parties}
             business={business}
             t={translate}
+          />
+        )}
+
+        {activeTab === 'audit' && (
+          <AuditSecurity 
+            refreshAllData={refreshAllData}
           />
         )}
 

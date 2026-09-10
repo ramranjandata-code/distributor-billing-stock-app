@@ -9,17 +9,22 @@ import {
   Settings, 
   X, 
   Boxes,
-  ShieldCheck
+  ShieldCheck,
+  Smartphone,
+  Building2
 } from 'lucide-react';
 
 export default function Navigation({ activeTab, setActiveTab, business, mobileOpen, setMobileOpen, lowStockCount, t }) {
   const navItems = [
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
-    { id: 'billing', label: t('billing'), icon: Receipt, badge: 'POS' },
+    { id: 'billing', label: t('billing'), icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
+    { id: 'field_ebilling', label: t('field_ebilling'), icon: Smartphone, badge: 'Field', badgeColor: 'badge-info' },
     { id: 'inventory', label: t('inventory'), icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'badge-danger' },
     { id: 'parties', label: t('parties'), icon: Users },
+    { id: 'banking', label: t('banking'), icon: Building2, badge: 'Live', badgeColor: 'badge-success' },
     { id: 'invoices', label: t('invoices'), icon: FileText },
     { id: 'reports', label: t('reports'), icon: TrendingUp },
+    { id: 'audit', label: t('audit'), icon: ShieldCheck },
     { id: 'settings', label: t('settings'), icon: Settings }
   ];
 
