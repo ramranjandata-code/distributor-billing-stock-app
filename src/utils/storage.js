@@ -437,26 +437,97 @@ export const deleteParty = (id) => {
 // Operations: Invoices
 export const fetchInvoices = () => getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
 
+// Calculate Due Date from Invoice Date + Payment Terms
+export const calculateDueDate = (invoiceDateStr, terms = 'immediate') => {
+  const base = invoiceDateStr ? new Date(invoiceDateStr) : new Date();
+  if (isNaN(base.getTime())) return new Date().toISOString().split('T')[0];
+  
+  if (terms === '15_days') {
+    base.setDate(base.getDate() + 15);
+  } else if (terms === '30_days') {
+    base.setDate(base.getDate() + 30);
+  } else if (terms === '45_days') {
+    base.setDate(base.getDate() + 45);
+  } else if (terms === 'end_of_month') {
+    base.setMonth(base.getMonth() + 1, 0); // Last day of current month
+  }
+  return base.toISOString().split('T')[0];
+};
+
 export const saveInvoice = (invoiceData) => {
   const invoices = fetchInvoices();
   const products = fetchProducts();
-
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const currentOp = getCurrentOperator();
+
+  const isDraft = invoiceData.state === 'draft';
   const nextNumber = invoices.length + 1001;
-  const invoiceNo = invoiceData.invoiceNo || `${business.invoicePrefix || 'INV/'}${nextNumber}`;
+  const officialInvoiceNo = invoiceData.invoiceNo && !invoiceData.invoiceNo.startsWith('DRAFT') 
+    ? invoiceData.invoiceNo 
+    : `${business.invoicePrefix || 'INV/'}${nextNumber}`;
+
+  const invoiceNo = isDraft 
+    ? (invoiceData.invoiceNo || `DRAFT/${new Date().getFullYear()}/${String(nextNumber).slice(-4)}`) 
+    : officialInvoiceNo;
 
   // Generate simulated 64-char IRN for GST e-Invoice compliance
   const generatedIrn = invoiceData.irn || Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
-  const currentOp = getCurrentOperator();
 
   const partyNameResolved = invoiceData.partyName || invoiceData.customerName || 'Cash Customer';
   const taxableSubtotal = Number(invoiceData.taxableSubtotal || invoiceData.taxableAmount || invoiceData.subtotal || invoiceData.subTotal || invoiceData.grandTotal) || 0;
+  const grandTotal = Number(invoiceData.grandTotal) || 0;
+  
+  let paidAmount = Number(invoiceData.paidAmount) || 0;
+  if (!isDraft && invoiceData.paymentStatus === 'PAID') {
+    paidAmount = grandTotal;
+  }
+
+  const amountDue = Math.max(0, grandTotal - paidAmount);
+
+  // Determine Odoo Document State
+  let odooState = invoiceData.state;
+  if (!odooState) {
+    if (paidAmount >= grandTotal && grandTotal > 0) {
+      odooState = 'paid';
+    } else if (paidAmount > 0) {
+      odooState = 'in_payment';
+    } else {
+      odooState = 'posted';
+    }
+  }
+
+  // Payment Terms & Due Date
+  const paymentTerms = invoiceData.paymentTerms || 'immediate';
+  const dueDate = invoiceData.dueDate || calculateDueDate(invoiceData.date, paymentTerms);
+
+  // Initial Payment History Record if paid amount > 0
+  const initialPayments = invoiceData.payments || (paidAmount > 0 ? [{
+    id: 'pay_' + Date.now(),
+    date: invoiceData.date || new Date().toISOString(),
+    amount: paidAmount,
+    journal: invoiceData.paymentMode || 'CASH',
+    paymentMethod: invoiceData.paymentMode || 'MANUAL',
+    memo: `Initial payment for ${invoiceNo}`
+  }] : []);
+
+  // Initial Chatter / Activity Timeline
+  const initialChatter = invoiceData.chatter || [{
+    id: 'cht_' + Date.now(),
+    date: new Date().toISOString(),
+    author: currentOp?.name || 'Administrator',
+    text: isDraft ? 'Draft Invoice created' : `Invoice confirmed and posted (${odooState.toUpperCase()})`,
+    type: 'system'
+  }];
 
   const newInvoice = {
     ...invoiceData,
-    id: 'inv_' + Date.now(),
+    id: invoiceData.id || ('inv_' + Date.now()),
+    documentType: invoiceData.documentType || 'out_invoice', // 'out_invoice' or 'out_refund' (Credit Note)
+    journal: invoiceData.journal || 'INV',
     invoiceNo,
     date: invoiceData.date || new Date().toISOString(),
+    paymentTerms,
+    dueDate,
     irn: generatedIrn,
     ackNo: invoiceData.ackNo || ('1' + Math.floor(10000000000 + Math.random() * 90000000000)),
     ackDate: invoiceData.ackDate || new Date().toISOString().split('T')[0],
@@ -468,39 +539,350 @@ export const saveInvoice = (invoiceData) => {
     subtotal: taxableSubtotal,
     subTotal: taxableSubtotal,
     taxableAmount: taxableSubtotal,
-    taxTotal: Number(invoiceData.taxTotal !== undefined ? invoiceData.taxTotal : (Number(invoiceData.cgst || 0) + Number(invoiceData.sgst || 0) + Number(invoiceData.igst || 0))) || 0
+    taxTotal: Number(invoiceData.taxTotal !== undefined ? invoiceData.taxTotal : (Number(invoiceData.cgst || 0) + Number(invoiceData.sgst || 0) + Number(invoiceData.igst || 0))) || 0,
+    paidAmount,
+    amountDue,
+    balanceAmount: amountDue,
+    state: odooState,
+    payments: initialPayments,
+    chatter: initialChatter
   };
 
-  // 1. Deduct Stock for billed items
-  const updatedProducts = products.map(p => {
-    const billedItem = invoiceData.items.find(item => item.productId === p.id);
-    if (billedItem) {
-      const remainingStock = Math.max(0, Number(p.currentStock) - Number(billedItem.qty));
-      return { ...p, currentStock: remainingStock };
-    }
-    return p;
-  });
-  setStorageData(STORAGE_KEYS.PRODUCTS, updatedProducts);
+  // If NOT draft, commit inventory and party ledger
+  if (!isDraft) {
+    // 1. Deduct Stock for billed items
+    const updatedProducts = products.map(p => {
+      const billedItem = invoiceData.items.find(item => item.productId === p.id);
+      if (billedItem && !billedItem.isSection && !billedItem.isNote) {
+        const remainingStock = Math.max(0, Number(p.currentStock) - Number(billedItem.qty));
+        return { ...p, currentStock: remainingStock };
+      }
+      return p;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, updatedProducts);
 
-  // 2. If bill is UNPAID or PARTIAL, add balance to Party Ledger
-  if (invoiceData.partyId && (invoiceData.paymentStatus === 'UNPAID' || invoiceData.paymentStatus === 'PARTIAL')) {
-    const uncollectedAmount = invoiceData.balanceAmount || (invoiceData.grandTotal - (invoiceData.paidAmount || 0));
-    updatePartyBalance(invoiceData.partyId, uncollectedAmount);
+    // 2. If bill has open balance, add balance to Party Ledger
+    if (invoiceData.partyId && amountDue > 0) {
+      updatePartyBalance(invoiceData.partyId, amountDue);
+    }
   }
 
-  // 3. Save Invoice
-  const updatedInvoices = [newInvoice, ...invoices];
+  // 3. Save Invoice (update existing or append)
+  const existingIndex = invoices.findIndex(i => i.id === newInvoice.id);
+  let updatedInvoices;
+  if (existingIndex > -1) {
+    updatedInvoices = [...invoices];
+    updatedInvoices[existingIndex] = newInvoice;
+  } else {
+    updatedInvoices = [newInvoice, ...invoices];
+  }
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
   
   // 4. Log Audit Action
   logAuditAction(
-    'CREATE_INVOICE',
+    isDraft ? 'DRAFT_INVOICE_CREATED' : 'CREATE_INVOICE',
     'Billing & Invoicing',
-    `Created Invoice #${newInvoice.invoiceNo} for ${newInvoice.customerName || 'Cash Sale'} (₹${Number(newInvoice.grandTotal || 0).toLocaleString('en-IN')})`
+    `${isDraft ? 'Created Draft Invoice' : 'Confirmed Invoice'} #${newInvoice.invoiceNo} for ${newInvoice.customerName || 'Cash Sale'} (₹${Number(newInvoice.grandTotal || 0).toLocaleString('en-IN')})`
   );
 
   autoCloudSync();
   return newInvoice;
+};
+
+// Odoo Action: Confirm & Post a Draft Invoice
+export const postInvoice = (invoiceId) => {
+  const invoices = fetchInvoices();
+  const target = invoices.find(i => i.id === invoiceId);
+  if (!target || target.state !== 'draft') return target;
+
+  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const currentOp = getCurrentOperator();
+  const products = fetchProducts();
+
+  // Generate official sequence number
+  const nextNumber = invoices.filter(i => i.state !== 'draft').length + 1001;
+  const officialInvoiceNo = `${business.invoicePrefix || 'INV/'}${nextNumber}`;
+
+  // Deduct inventory stock
+  if (target.items && Array.isArray(target.items)) {
+    const updatedProducts = products.map(p => {
+      const billedItem = target.items.find(item => item.productId === p.id);
+      if (billedItem && !billedItem.isSection && !billedItem.isNote) {
+        const remainingStock = Math.max(0, Number(p.currentStock) - Number(billedItem.qty));
+        return { ...p, currentStock: remainingStock };
+      }
+      return p;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, updatedProducts);
+  }
+
+  const grandTotal = Number(target.grandTotal) || 0;
+  const paidAmount = Number(target.paidAmount) || 0;
+  const amountDue = Math.max(0, grandTotal - paidAmount);
+
+  // Update customer ledger if open debt
+  if (target.partyId && amountDue > 0) {
+    updatePartyBalance(target.partyId, amountDue);
+  }
+
+  const newState = amountDue === 0 ? 'paid' : (paidAmount > 0 ? 'in_payment' : 'posted');
+
+  const updatedInvoice = {
+    ...target,
+    invoiceNo: officialInvoiceNo,
+    state: newState,
+    amountDue,
+    balanceAmount: amountDue,
+    chatter: [
+      ...(target.chatter || []),
+      {
+        id: 'cht_' + Date.now(),
+        date: new Date().toISOString(),
+        author: currentOp?.name || 'Administrator',
+        text: `Invoice confirmed & posted with sequence #${officialInvoiceNo}`,
+        type: 'system'
+      }
+    ]
+  };
+
+  const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  logAuditAction('POST_INVOICE', 'Billing & Invoicing', `Confirmed & Posted Invoice #${officialInvoiceNo} (₹${grandTotal.toLocaleString('en-IN')})`);
+  autoCloudSync();
+  return updatedInvoice;
+};
+
+// Odoo Action: Register Payment against an Invoice
+export const registerInvoicePayment = (invoiceId, {
+  amount,
+  journal = 'BANK',
+  paymentMethod = 'UPI',
+  paymentDate,
+  memo = '',
+  paymentDifferenceAction = 'keep_open' // 'keep_open' or 'fully_paid'
+}) => {
+  const invoices = fetchInvoices();
+  const target = invoices.find(i => i.id === invoiceId);
+  if (!target) return null;
+
+  const currentOp = getCurrentOperator();
+  const payAmt = Math.min(Number(target.amountDue !== undefined ? target.amountDue : target.grandTotal), Math.max(0, Number(amount) || 0));
+  const newPaidAmount = (Number(target.paidAmount) || 0) + payAmt;
+  
+  let newAmountDue = Math.max(0, (Number(target.amountDue !== undefined ? target.amountDue : target.grandTotal) - payAmt));
+  if (paymentDifferenceAction === 'fully_paid') {
+    newAmountDue = 0;
+  }
+
+  const newState = newAmountDue <= 0 ? 'paid' : 'in_payment';
+
+  const newPaymentEntry = {
+    id: 'pay_' + Date.now(),
+    date: paymentDate || new Date().toISOString(),
+    amount: payAmt,
+    journal,
+    paymentMethod,
+    memo: memo || `Payment for ${target.invoiceNo}`
+  };
+
+  // Reduce customer debt in ledger
+  if (target.partyId && payAmt > 0) {
+    updatePartyBalance(target.partyId, -payAmt);
+  }
+
+  const updatedInvoice = {
+    ...target,
+    paidAmount: newPaidAmount,
+    amountDue: newAmountDue,
+    balanceAmount: newAmountDue,
+    paymentStatus: newAmountDue <= 0 ? 'PAID' : 'PARTIAL',
+    state: newState,
+    payments: [...(target.payments || []), newPaymentEntry],
+    chatter: [
+      ...(target.chatter || []),
+      {
+        id: 'cht_' + Date.now(),
+        date: new Date().toISOString(),
+        author: currentOp?.name || 'Cashier',
+        text: `Registered payment of ₹${payAmt.toLocaleString('en-IN')} via ${journal} (${paymentMethod}). Remaining residual: ₹${newAmountDue.toLocaleString('en-IN')}`,
+        type: 'payment'
+      }
+    ]
+  };
+
+  const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  logAuditAction('REGISTER_PAYMENT', 'Accounting & Invoicing', `Recorded payment of ₹${payAmt.toLocaleString('en-IN')} on invoice #${target.invoiceNo} (${journal})`);
+  autoCloudSync();
+  return updatedInvoice;
+};
+
+// Odoo Action: Add Credit Note (Refund / Reversal)
+export const createCreditNote = (invoiceId, reason = 'Customer Return / Pricing Adjustment') => {
+  const invoices = fetchInvoices();
+  const target = invoices.find(i => i.id === invoiceId);
+  if (!target) return null;
+
+  const currentOp = getCurrentOperator();
+  const products = fetchProducts();
+  const creditNoteNo = `RINV/${new Date().getFullYear()}/${invoices.length + 1001}`;
+
+  // 1. Restore Stock back to warehouse
+  if (target.items && Array.isArray(target.items)) {
+    const restoredProducts = products.map(p => {
+      const item = target.items.find(i => i.productId === p.id);
+      if (item && !item.isSection && !item.isNote) {
+        return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(item.qty) || 0) };
+      }
+      return p;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, restoredProducts);
+  }
+
+  // 2. Adjust Party ledger balance
+  if (target.partyId) {
+    updatePartyBalance(target.partyId, -Number(target.grandTotal || 0));
+  }
+
+  // 3. Create Credit Note Document
+  const creditNote = {
+    ...target,
+    id: 'cn_' + Date.now(),
+    documentType: 'out_refund',
+    invoiceNo: creditNoteNo,
+    reversalOf: target.invoiceNo,
+    reversalReason: reason,
+    date: new Date().toISOString(),
+    state: 'posted',
+    paymentStatus: 'PAID',
+    paidAmount: target.grandTotal,
+    amountDue: 0,
+    balanceAmount: 0,
+    chatter: [{
+      id: 'cht_' + Date.now(),
+      date: new Date().toISOString(),
+      author: currentOp?.name || 'Administrator',
+      text: `Credit Note created reversing invoice #${target.invoiceNo}. Reason: ${reason}`,
+      type: 'system'
+    }]
+  };
+
+  // Add chatter on original invoice
+  const originalWithChatter = {
+    ...target,
+    chatter: [
+      ...(target.chatter || []),
+      {
+        id: 'cht_' + Date.now(),
+        date: new Date().toISOString(),
+        author: currentOp?.name || 'Administrator',
+        text: `Reversed by Credit Note #${creditNoteNo} (Reason: ${reason})`,
+        type: 'system'
+      }
+    ]
+  };
+
+  const updatedInvoices = [creditNote, ...invoices.map(i => i.id === invoiceId ? originalWithChatter : i)];
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  logAuditAction('CREDIT_NOTE_CREATED', 'Accounting & Invoicing', `Created Credit Note #${creditNoteNo} reversing #${target.invoiceNo} (₹${Number(target.grandTotal).toLocaleString('en-IN')})`);
+  autoCloudSync();
+  return creditNote;
+};
+
+// Odoo Action: Reset to Draft
+export const resetInvoiceToDraft = (invoiceId) => {
+  const invoices = fetchInvoices();
+  const target = invoices.find(i => i.id === invoiceId);
+  if (!target || target.state === 'draft') return target;
+
+  const currentOp = getCurrentOperator();
+  const products = fetchProducts();
+
+  // 1. Restore Stock if previously posted
+  if (target.items && Array.isArray(target.items)) {
+    const restoredProducts = products.map(p => {
+      const item = target.items.find(i => i.productId === p.id);
+      if (item && !item.isSection && !item.isNote) {
+        return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(item.qty) || 0) };
+      }
+      return p;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, restoredProducts);
+  }
+
+  // 2. Reverse Khata debt if added
+  if (target.partyId && target.amountDue > 0) {
+    updatePartyBalance(target.partyId, -Number(target.amountDue));
+  }
+
+  const updatedInvoice = {
+    ...target,
+    state: 'draft',
+    chatter: [
+      ...(target.chatter || []),
+      {
+        id: 'cht_' + Date.now(),
+        date: new Date().toISOString(),
+        author: currentOp?.name || 'Administrator',
+        text: 'Invoice reset to draft. Stock & ledger adjustments reversed.',
+        type: 'system'
+      }
+    ]
+  };
+
+  const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  logAuditAction('RESET_TO_DRAFT', 'Billing & Invoicing', `Invoice #${target.invoiceNo} reset to draft`);
+  autoCloudSync();
+  return updatedInvoice;
+};
+
+// Odoo Action: Cancel Invoice
+export const cancelInvoice = (invoiceId) => {
+  const invoices = fetchInvoices();
+  const target = invoices.find(i => i.id === invoiceId);
+  if (!target || target.state === 'cancel') return target;
+
+  const currentOp = getCurrentOperator();
+  const products = fetchProducts();
+
+  // If posted, restore stock and reverse ledger
+  if (target.state !== 'draft') {
+    if (target.items && Array.isArray(target.items)) {
+      const restoredProducts = products.map(p => {
+        const item = target.items.find(i => i.productId === p.id);
+        if (item && !item.isSection && !item.isNote) {
+          return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(item.qty) || 0) };
+        }
+        return p;
+      });
+      setStorageData(STORAGE_KEYS.PRODUCTS, restoredProducts);
+    }
+    if (target.partyId && target.amountDue > 0) {
+      updatePartyBalance(target.partyId, -Number(target.amountDue));
+    }
+  }
+
+  const updatedInvoice = {
+    ...target,
+    state: 'cancel',
+    chatter: [
+      ...(target.chatter || []),
+      {
+        id: 'cht_' + Date.now(),
+        date: new Date().toISOString(),
+        author: currentOp?.name || 'Administrator',
+        text: 'Invoice cancelled.',
+        type: 'system'
+      }
+    ]
+  };
+
+  const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+  logAuditAction('CANCEL_INVOICE', 'Billing & Invoicing', `Cancelled Invoice #${target.invoiceNo}`);
+  autoCloudSync();
+  return updatedInvoice;
 };
 
 export const deleteInvoice = (invoiceId) => {

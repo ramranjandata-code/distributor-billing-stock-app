@@ -369,6 +369,10 @@ export default function App() {
         {activeTab === 'invoices' && (
           <InvoiceHistory 
             invoices={invoices}
+            parties={parties}
+            products={products}
+            business={business}
+            setActiveTab={setActiveTab}
             handlePrintInvoice={handlePrintInvoice}
             refreshAllData={refreshAllData}
             t={translate}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { saveInvoice, saveParty, formatCartonStock, fetchWarehouses, getCurrentOperator } from '../utils/storage';
+import { saveInvoice, saveParty, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
 import { 
@@ -29,7 +29,8 @@ import {
   Layers, 
   Sparkles,
   Calculator,
-  ShieldCheck
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab }) {
@@ -50,6 +51,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
   // Multi-Warehouse Source
   const warehouses = fetchWarehouses();
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(warehouses[0]?.id || 'wh_main');
+
+  // Odoo Payment Terms & Due Date
+  const [paymentTerms, setPaymentTerms] = useState('immediate');
+  const invoiceDate = new Date().toISOString().split('T')[0];
+  const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
 
   // e-Way Bill & Transport State
   const [ewayBillOpen, setEwayBillOpen] = useState(false);
@@ -385,7 +391,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     }
   };
 
-  const handleSaveAndPrintBill = () => {
+  const handleSaveAndPrintBill = (asDraft = false) => {
     if (cart.length === 0) {
       alert('⚠️ बिल में कम से कम 1 प्रोडक्ट जोड़ना आवश्यक है!');
       return;
@@ -399,7 +405,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
     let actualPaid = grandTotal;
     let balanceAmt = 0;
 
-    if (paymentStatus === 'UNPAID') {
+    if (asDraft) {
+      actualPaid = 0;
+      balanceAmt = grandTotal;
+    } else if (paymentStatus === 'UNPAID') {
       actualPaid = 0;
       balanceAmt = grandTotal;
     } else if (paymentStatus === 'PARTIAL') {
@@ -430,10 +439,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
       discount: totalDiscountCombined,
       roundOff,
       grandTotal,
-      paymentStatus,
+      paymentStatus: asDraft ? 'UNPAID' : paymentStatus,
       paidAmount: actualPaid,
       balanceAmount: balanceAmt,
       paymentMode,
+      paymentTerms,
+      dueDate: computedDueDate,
+      state: asDraft ? 'draft' : 'posted',
       warehouseId: selectedWarehouseId,
       ewayBill: ewayBillOpen ? ewayBillData : null,
       notes
@@ -441,6 +453,21 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
     const savedInv = saveInvoice(invoicePayload);
     refreshAllData();
+
+    if (asDraft) {
+      alert(`📝 Odoo Draft Invoice #${savedInv.invoiceNo} saved successfully! Stock has NOT been deducted yet. You can confirm or edit it anytime from Invoices history.`);
+      // Clear bill state
+      setCart([]);
+      setSelectedPartyId('');
+      setCustomerName('');
+      setCustomerPhone('');
+      setDiscountValue(0);
+      setPaymentStatus('PAID');
+      setPaidAmount('');
+      setNotes('');
+      setEwayBillOpen(false);
+      return;
+    }
 
     // Generate dynamic UPI QR code for instant payment
     generateUpiQrDataUrl(business?.upiId, business?.name, grandTotal, savedInv.invoiceNo).then(qrUrl => {
@@ -1259,17 +1286,86 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 </div>
               )}
             </div>
+
+            {/* Odoo Payment Terms & Due Date */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '8px 10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
+                  Payment Terms (शर्तें):
+                </label>
+                <select 
+                  className="input-field select-field" 
+                  style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                  value={paymentTerms}
+                  onChange={e => setPaymentTerms(e.target.value)}
+                >
+                  <option value="immediate">Immediate Payment</option>
+                  <option value="15_days">15 Days</option>
+                  <option value="30_days">30 Days</option>
+                  <option value="45_days">45 Days</option>
+                  <option value="end_of_month">End of Following Month</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
+                  Due Date (अंतिम तिथि):
+                </label>
+                <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', padding: '5px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  📅 {computedDueDate}
+                </div>
+              </div>
+            </div>
+
           </div>
 
-          <button 
-            onClick={handleSaveAndPrintBill}
-            disabled={cart.length === 0}
-            className="btn btn-primary btn-lg"
-            style={{ width: '100%', gap: '8px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800' }}
-          >
-            <Zap size={20} />
-            <span>Generate Bill & Instant Digital Checkout</span>
-          </button>
+          {/* Action Buttons: Confirm & Post vs Save as Draft */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '8px' }}>
+              <button 
+                onClick={() => handleSaveAndPrintBill(false)}
+                disabled={cart.length === 0}
+                className="btn btn-primary"
+                style={{ padding: '12px', gap: '8px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800', fontSize: '0.9rem' }}
+              >
+                <Zap size={18} />
+                <span>Confirm & Post (बिल बनाएं)</span>
+              </button>
+              <button 
+                onClick={() => handleSaveAndPrintBill(true)}
+                disabled={cart.length === 0}
+                className="btn btn-secondary"
+                style={{ padding: '12px', gap: '6px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '700', fontSize: '0.82rem', background: '#f1f5f9' }}
+                title="Save as Draft without deducting stock or updating ledger yet"
+              >
+                <FileText size={16} />
+                <span>Save Draft (ड्राफ्ट)</span>
+              </button>
+            </div>
+
+            {setActiveTab && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('invoices')}
+                style={{
+                  background: 'none',
+                  border: '1px dashed var(--primary)',
+                  color: 'var(--primary)',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  fontSize: '0.78rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Sparkles size={14} />
+                <span>Switch to Odoo Invoice Studio & History ➔</span>
+              </button>
+            )}
+          </div>
 
         </div>
 
