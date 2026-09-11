@@ -978,52 +978,27 @@ export default function Billing({ products, parties, business, refreshAllData, h
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Receipt size={22} color="var(--primary)" />
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>Current Invoice</h3>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>Current Invoice</h3>
               </div>
-
-              <select 
-                className="input-field select-field" 
-                style={{ width: 'auto', fontSize: '0.8rem', padding: '6px 28px 6px 10px' }}
-                value={taxMode}
-                onChange={e => setTaxMode(e.target.value)}
-              >
-                <option value="INTRA">Intra-State (CGST + SGST)</option>
-                <option value="INTER">Inter-State (IGST)</option>
-                <option value="NONE">Non-GST / Estimate</option>
-              </select>
             </div>
 
-            {/* Retailer/Party Selection Header & Add Retailer Button */}
+            {/* Retailer/Party Selection Header */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <label className="form-label" style={{ marginBottom: 0 }}>
                   Select Retailer / Customer
                 </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button 
-                    type="button"
-                    onClick={handleWalkInCounterSale}
-                    className="btn btn-sm btn-secondary"
-                    style={{ padding: '3px 8px', fontSize: '0.74rem', gap: '4px', background: '#ecfdf5', color: '#059669', borderColor: '#10b981' }}
-                    title="1-Click Walk-in Cash Customer"
-                  >
-                    <Zap size={12} />
-                    <span>⚡ Walk-in Cash Sale</span>
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setNewPartyData(initialNewPartyState);
-                      setPartyModalOpen(true);
-                    }}
-                    className="btn btn-sm btn-primary"
-                    style={{ padding: '3px 10px', fontSize: '0.78rem', gap: '4px' }}
-                  >
-                    <UserPlus size={14} />
-                    <span>+ New Retailer</span>
-                  </button>
-                </div>
+                <button 
+                  type="button"
+                  onClick={handleWalkInCounterSale}
+                  className="btn btn-sm btn-secondary"
+                  style={{ padding: '3px 8px', fontSize: '0.74rem', gap: '4px', background: '#ecfdf5', color: '#059669', borderColor: '#10b981' }}
+                  title="1-Click Walk-in Cash Customer"
+                >
+                  <Zap size={12} />
+                  <span>⚡ Walk-in Cash Sale</span>
+                </button>
               </div>
 
               {/* Customer Search Bar (Shifted to this side, matching reference screenshot) */}
