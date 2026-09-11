@@ -30,7 +30,8 @@ import {
   Sparkles,
   Calculator,
   ShieldCheck,
-  FileText
+  FileText,
+  PlusCircle
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab }) {
@@ -74,6 +75,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [showPartySuggestions, setShowPartySuggestions] = useState(false);
   const [upperPartySearchTerm, setUpperPartySearchTerm] = useState('');
   const [showUpperPartySuggestions, setShowUpperPartySuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const customerSearchContainerRef = useRef(null);
   const [partyModalOpen, setPartyModalOpen] = useState(false);
   const initialNewPartyState = {
     name: '',
@@ -115,6 +118,17 @@ export default function Billing({ products, parties, business, refreshAllData, h
       barcodeInputRef.current.focus();
     }
   }, [posMode]);
+
+  // Auto-close customer dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (customerSearchContainerRef.current && !customerSearchContainerRef.current.contains(event.target)) {
+        setShowUpperPartySuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Quick Barcode Scanning Handler
   const handleBarcodeScan = (e) => {
@@ -562,204 +576,256 @@ export default function Billing({ products, parties, business, refreshAllData, h
             ) : null}
           </div>
 
-          {/* Upper Search Bar: Customer / Retailer Search */}
-          <div style={{ position: 'relative', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <User 
-                  size={18} 
-                  color={selectedParty ? '#059669' : 'var(--primary)'} 
-                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} 
-                />
-                <input 
-                  type="text"
-                  className="input-field"
-                  placeholder="Search Customer / Retailer (Name, Phone, City, GSTIN)..."
-                  style={{ 
-                    paddingLeft: '36px', 
-                    paddingRight: (selectedParty || customerName || upperPartySearchTerm) ? '32px' : '10px',
-                    fontSize: '0.84rem', 
-                    borderColor: selectedParty ? '#10b981' : 'var(--primary)',
-                    background: selectedParty ? '#f0fdf4' : undefined,
-                    fontWeight: selectedParty ? '600' : 'normal'
-                  }}
-                  value={
-                    selectedParty 
-                      ? `${selectedParty.name}${selectedParty.phone ? ` (${selectedParty.phone})` : ''}${selectedParty.balance > 0 ? ` - Due: ₹${selectedParty.balance}` : ''}`
-                      : (upperPartySearchTerm || customerName || '')
-                  }
-                  onFocus={() => {
-                    if (selectedParty) {
-                      setUpperPartySearchTerm('');
-                    }
-                    setShowUpperPartySuggestions(true);
-                  }}
-                  onChange={e => {
-                    const val = e.target.value;
-                    setSelectedPartyId('');
-                    setUpperPartySearchTerm(val);
-                    setCustomerName(val);
-                    setShowUpperPartySuggestions(true);
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      if (filteredPartiesForUpper.length > 0) {
-                        handleSelectPartyFromList(filteredPartiesForUpper[0]);
-                        setShowUpperPartySuggestions(false);
-                      } else if (upperPartySearchTerm.trim()) {
-                        setCustomerName(upperPartySearchTerm.trim());
-                        setShowUpperPartySuggestions(false);
-                      }
-                    }
-                  }}
-                />
-                {(selectedParty || customerName || upperPartySearchTerm) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSelectPartyFromList(null);
-                      setUpperPartySearchTerm('');
-                    }}
-                    style={{
-                      position: 'absolute',
-                      right: '8px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: '#dc2626',
-                      fontSize: '15px',
-                      fontWeight: 'bold',
-                      padding: '2px 6px',
-                      borderRadius: '50%',
-                      lineHeight: 1
-                    }}
-                    title="Clear Customer (Reset to Walk-in)"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              <button 
-                type="button" 
-                onClick={() => {
-                  setNewPartyData(initialNewPartyState);
-                  setPartyModalOpen(true);
+          {/* Upper Search Bar: Customer / Retailer Search (Exact match to screenshot) */}
+          <div ref={customerSearchContainerRef} style={{ position: 'relative', marginBottom: '12px' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <Search 
+                size={16} 
+                color={showUpperPartySuggestions ? '#2563eb' : '#94a3b8'} 
+                style={{ 
+                  position: 'absolute', 
+                  left: '12px', 
+                  top: '50%', 
+                  transform: 'translateY(-50%)', 
+                  pointerEvents: 'none',
+                  transition: 'color 0.15s ease'
+                }} 
+              />
+              <input 
+                type="text"
+                className="input-field"
+                placeholder="Search"
+                style={{ 
+                  width: '100%',
+                  height: '42px',
+                  paddingLeft: '38px', 
+                  paddingRight: (selectedParty || upperPartySearchTerm) ? '34px' : '14px',
+                  fontSize: '0.92rem', 
+                  borderRadius: '8px',
+                  border: showUpperPartySuggestions ? '1.5px solid #2563eb' : '1px solid var(--border-color)',
+                  boxShadow: showUpperPartySuggestions ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : 'none',
+                  background: 'var(--bg-input, #ffffff)',
+                  color: 'var(--text-main, #0f172a)',
+                  outline: 'none',
+                  transition: 'all 0.15s ease'
                 }}
-                className="btn btn-primary"
-                style={{ padding: '0 12px', fontSize: '0.78rem', whiteSpace: 'nowrap', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}
-                title="Register New Customer / Retailer"
-              >
-                <UserPlus size={14} />
-                <span>+ New</span>
-              </button>
+                value={
+                  selectedParty 
+                    ? (upperPartySearchTerm !== '' ? upperPartySearchTerm : selectedParty.name)
+                    : (upperPartySearchTerm || customerName || '')
+                }
+                onClick={() => {
+                  setShowUpperPartySuggestions(true);
+                  setHighlightedIndex(0);
+                }}
+                onFocus={() => {
+                  setShowUpperPartySuggestions(true);
+                  setHighlightedIndex(0);
+                }}
+                onChange={e => {
+                  const val = e.target.value;
+                  setUpperPartySearchTerm(val);
+                  setCustomerName(val);
+                  setSelectedPartyId('');
+                  setShowUpperPartySuggestions(true);
+                  setHighlightedIndex(0);
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    if (filteredPartiesForUpper.length > 0) {
+                      setHighlightedIndex(prev => (prev + 1) % filteredPartiesForUpper.length);
+                    }
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    if (filteredPartiesForUpper.length > 0) {
+                      setHighlightedIndex(prev => (prev - 1 + filteredPartiesForUpper.length) % filteredPartiesForUpper.length);
+                    }
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredPartiesForUpper.length > 0 && filteredPartiesForUpper[highlightedIndex]) {
+                      handleSelectPartyFromList(filteredPartiesForUpper[highlightedIndex]);
+                      setShowUpperPartySuggestions(false);
+                    } else if (upperPartySearchTerm.trim()) {
+                      setCustomerName(upperPartySearchTerm.trim());
+                      setShowUpperPartySuggestions(false);
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowUpperPartySuggestions(false);
+                  }
+                }}
+              />
+              {(selectedParty || customerName || upperPartySearchTerm) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectPartyFromList(null);
+                    setUpperPartySearchTerm('');
+                    setShowUpperPartySuggestions(true);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94a3b8',
+                    fontSize: '15px',
+                    fontWeight: 'bold',
+                    padding: '2px 6px',
+                    borderRadius: '50%',
+                    lineHeight: 1
+                  }}
+                  title="Clear Customer"
+                >
+                  ✕
+                </button>
+              )}
             </div>
 
-            {/* Live Autocomplete Dropdown for Customer Search */}
+            {/* Dropdown Popup matching exact user screenshot */}
             {showUpperPartySuggestions && (
               <div 
                 style={{
                   position: 'absolute',
-                  top: '100%',
+                  top: 'calc(100% + 4px)',
                   left: 0,
                   right: 0,
-                  zIndex: 999,
+                  zIndex: 1000,
                   background: '#ffffff',
                   borderRadius: '8px',
-                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
-                  border: '1px solid var(--border-color)',
-                  maxHeight: '260px',
-                  overflowY: 'auto',
-                  marginTop: '4px'
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
+                  border: '1px solid #e2e8f0',
+                  padding: '6px',
+                  overflow: 'hidden'
                 }}
               >
-                <div style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', background: '#f8fafc', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>👥 Select Customer / Retailer ({filteredPartiesForUpper.length})</span>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <span 
-                      onClick={() => {
-                        handleWalkInCounterSale();
-                        setUpperPartySearchTerm('Walk-in Customer');
-                        setShowUpperPartySuggestions(false);
-                      }}
-                      style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: '700' }}
-                    >
-                      ⚡ Walk-in Sale
-                    </span>
-                    <span onClick={() => setShowUpperPartySuggestions(false)} style={{ cursor: 'pointer', color: '#c2410c' }}>✕ Close</span>
-                  </div>
+                {/* Scrollable list of customers */}
+                <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                  {filteredPartiesForUpper.length === 0 ? (
+                    <div style={{ padding: '16px 12px', fontSize: '0.86rem', color: '#64748b', textAlign: 'center' }}>
+                      No customer found for "{upperPartySearchTerm || customerName}"
+                    </div>
+                  ) : (
+                    filteredPartiesForUpper.map((p, idx) => {
+                      const isHighlighted = (highlightedIndex === idx);
+                      const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'C';
+
+                      return (
+                        <div 
+                          key={p.id}
+                          onClick={() => {
+                            handleSelectPartyFromList(p);
+                            setShowUpperPartySuggestions(false);
+                          }}
+                          onMouseEnter={() => setHighlightedIndex(idx)}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            cursor: 'pointer',
+                            background: isHighlighted ? '#2563eb' : 'transparent',
+                            color: isHighlighted ? '#ffffff' : '#0f172a',
+                            transition: 'background 0.1s ease, color 0.1s ease',
+                            marginBottom: '4px'
+                          }}
+                        >
+                          {/* Round Avatar Circle with Initial */}
+                          <div style={{
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            background: '#e2e8f0',
+                            color: '#475569',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '700',
+                            fontSize: '1rem',
+                            flexShrink: 0
+                          }}>
+                            {initial}
+                          </div>
+
+                          {/* Customer Details */}
+                          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                            <div style={{
+                              fontWeight: '600',
+                              fontSize: '0.92rem',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              color: isHighlighted ? '#ffffff' : '#0f172a'
+                            }}>
+                              {p.name}
+                            </div>
+                            <div style={{
+                              fontSize: '0.78rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              marginTop: '2px',
+                              color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
+                            }}>
+                              <FileText size={13} style={{ flexShrink: 0 }} />
+                              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {p.name} {p.phone ? `• ${p.phone}` : ''} {p.city ? `• ${p.city}` : ''}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Balance Due Tag */}
+                          {p.balance > 0 && (
+                            <div style={{
+                              flexShrink: 0,
+                              fontSize: '0.74rem',
+                              fontWeight: '700',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              background: isHighlighted ? 'rgba(255, 255, 255, 0.2)' : '#fff7ed',
+                              color: isHighlighted ? '#ffffff' : '#c2410c'
+                            }}>
+                              Due: ₹{p.balance}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
 
-                {filteredPartiesForUpper.length === 0 ? (
-                  <div style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    <div>No retailer found for "{upperPartySearchTerm || customerName}"</div>
-                    <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setSelectedPartyId('');
-                          setCustomerName(upperPartySearchTerm.trim() || 'Walk-in Customer');
-                          setShowUpperPartySuggestions(false);
-                        }}
-                        className="btn btn-sm btn-secondary"
-                        style={{ fontSize: '0.74rem' }}
-                      >
-                        ⚡ Use as Cash Customer
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          setNewPartyData({ ...initialNewPartyState, name: upperPartySearchTerm.trim() });
-                          setShowUpperPartySuggestions(false);
-                          setPartyModalOpen(true);
-                        }}
-                        className="btn btn-sm btn-primary"
-                        style={{ fontSize: '0.74rem' }}
-                      >
-                        + Create Retailer
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  filteredPartiesForUpper.map(p => (
-                    <div 
-                      key={p.id}
-                      onClick={() => {
-                        handleSelectPartyFromList(p);
-                        setShowUpperPartySuggestions(false);
-                      }}
-                      style={{
-                        padding: '9px 12px',
-                        borderBottom: '1px solid #f1f5f9',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{p.name}</strong>
-                        {p.balance > 0 ? (
-                          <span style={{ fontSize: '0.74rem', color: '#c2410c', background: '#fff7ed', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
-                            Due: ₹{p.balance}
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '0.72rem', color: '#059669', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>
-                            Nil Due
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {p.phone && <span>📞 {p.phone}</span>}
-                        {(p.city || p.address) && <span>📍 {p.city || p.address}</span>}
-                        {p.gstin && <span>GSTIN: {p.gstin}</span>}
-                      </div>
-                    </div>
-                  ))
-                )}
+                {/* Bottom Row: + New Customer */}
+                <div 
+                  onClick={() => {
+                    setNewPartyData({ ...initialNewPartyState, name: (upperPartySearchTerm || '').trim() });
+                    setShowUpperPartySuggestions(false);
+                    setPartyModalOpen(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    color: '#2563eb',
+                    fontWeight: '600',
+                    fontSize: '0.88rem',
+                    borderTop: '1px solid #f1f5f9',
+                    borderRadius: '0 0 6px 6px',
+                    transition: 'background 0.15s ease',
+                    marginTop: '2px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <PlusCircle size={18} color="#2563eb" />
+                  <span>New Customer</span>
+                </div>
               </div>
             )}
           </div>
