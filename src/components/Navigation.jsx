@@ -19,12 +19,12 @@ export default function Navigation({ activeTab, setActiveTab, business, mobileOp
   const navItems = [
     { id: 'home', label: 'App Launcher (Home)', icon: LayoutGrid, badge: 'Apps', badgeColor: 'badge-info' },
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
-    { id: 'billing', label: t('billing'), icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
-    { id: 'field_ebilling', label: t('field_ebilling'), icon: Smartphone, badge: 'Field', badgeColor: 'badge-info' },
+    { id: 'billing', label: 'Invoicing (Tax & POS)', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
+    { id: 'field_ebilling', label: 'Sales & Field Orders', icon: Smartphone, badge: 'Field', badgeColor: 'badge-info' },
+    { id: 'invoices', label: 'Invoice Records', icon: FileText },
     { id: 'inventory', label: t('inventory'), icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'badge-danger' },
     { id: 'parties', label: t('parties'), icon: Users },
     { id: 'banking', label: t('banking'), icon: Building2, badge: 'Live', badgeColor: 'badge-success' },
-    { id: 'invoices', label: t('invoices'), icon: FileText },
     { id: 'reports', label: t('reports'), icon: TrendingUp },
     { id: 'audit', label: t('audit'), icon: ShieldCheck },
     { id: 'settings', label: t('settings'), icon: Settings }

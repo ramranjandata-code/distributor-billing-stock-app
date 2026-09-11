@@ -520,6 +520,18 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 <Zap size={12} />
                 <span>Fast POS</span>
               </button>
+              {setActiveTab && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('invoices')}
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '0.72rem', fontWeight: '700', gap: '4px' }}
+                  title="View All Past Invoices & Billed Records"
+                >
+                  <FileText size={12} />
+                  <span>Invoice Records</span>
+                </button>
+              )}
             </div>
           </div>
 

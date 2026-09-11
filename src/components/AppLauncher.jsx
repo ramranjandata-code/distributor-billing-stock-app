@@ -60,15 +60,15 @@ export default function AppLauncher({
       )
     },
     {
-      id: 'invoices',
+      id: 'billing',
       name: 'Invoicing',
-      category: 'Finance',
-      description: 'Odoo Invoicing Pipeline, Tax Bills & Credit Notes',
+      category: 'Billing',
+      description: 'Create Tax Invoice, POS Billing & Barcode Counter',
       gradient: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
       shadowColor: 'rgba(2, 132, 199, 0.4)',
-      badge: unpaidInvoicesCount > 0 ? `${unpaidInvoicesCount} Pending` : `${invoices.length} Bills`,
-      badgeBg: unpaidInvoicesCount > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(59, 130, 246, 0.25)',
-      badgeColor: unpaidInvoicesCount > 0 ? '#fca5a5' : '#93c5fd',
+      badge: todayInvoices.length > 0 ? `${todayInvoices.length} Today` : 'New Bill (+)',
+      badgeBg: 'rgba(2, 132, 199, 0.25)',
+      badgeColor: '#93c5fd',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -79,13 +79,13 @@ export default function AppLauncher({
       )
     },
     {
-      id: 'billing',
-      name: 'Sales',
+      id: 'field_ebilling',
+      name: 'Sales & Field App',
       category: 'Operations',
-      description: 'POS Billing Desk, Counter Sales & Field Orders',
+      description: 'Salesman Field Orders, Van Stock & Payment Collection',
       gradient: 'linear-gradient(135deg, #ea580c 0%, #db2777 100%)',
       shadowColor: 'rgba(234, 88, 12, 0.4)',
-      badge: todayInvoices.length > 0 ? `${todayInvoices.length} Today` : 'New Order',
+      badge: 'Field App',
       badgeBg: 'rgba(234, 88, 12, 0.25)',
       badgeColor: '#fdba74',
       icon: (
@@ -93,6 +93,26 @@ export default function AppLauncher({
           <line x1="18" y1="20" x2="18" y2="10" />
           <line x1="12" y1="20" x2="12" y2="4" />
           <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      )
+    },
+    {
+      id: 'invoices',
+      name: 'Invoice History',
+      category: 'Records',
+      description: 'All Billed Records, Payment Status & Credit Notes',
+      gradient: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+      shadowColor: 'rgba(79, 70, 229, 0.4)',
+      badge: unpaidInvoicesCount > 0 ? `${unpaidInvoicesCount} Pending` : `${invoices.length} Bills`,
+      badgeBg: unpaidInvoicesCount > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(79, 70, 229, 0.25)',
+      badgeColor: unpaidInvoicesCount > 0 ? '#fca5a5' : '#c7d2fe',
+      icon: (
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
         </svg>
       )
     },

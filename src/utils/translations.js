@@ -4,12 +4,12 @@ export const translations = {
   en: {
     // Navigation / Tabs
     dashboard: "Dashboard",
-    billing: "Quick POS Billing",
-    field_ebilling: "eBilling & Field App",
+    billing: "Invoicing (Tax & POS)",
+    field_ebilling: "Sales & Field App",
     inventory: "Stock & Inventory",
     parties: "Parties & Khata",
     banking: "Connected Banking",
-    invoices: "Invoice History",
+    invoices: "Invoice Records",
     reports: "Reports & P&L",
     audit: "Security & Audit",
     settings: "Firm Settings",
