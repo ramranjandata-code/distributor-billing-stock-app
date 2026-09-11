@@ -31,7 +31,8 @@ import {
   Calculator,
   ShieldCheck,
   FileText,
-  PlusCircle
+  PlusCircle,
+  ChevronDown
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab }) {
@@ -982,57 +983,38 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
             </div>
 
-            {/* Retailer/Party Selection Header */}
+            {/* Customer Search Bar (matching reference UI in user image) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                <label className="form-label" style={{ marginBottom: 0 }}>
-                  Select Retailer / Customer
-                </label>
-                <button 
-                  type="button"
-                  onClick={handleWalkInCounterSale}
-                  className="btn btn-sm btn-secondary"
-                  style={{ padding: '3px 8px', fontSize: '0.74rem', gap: '4px', background: '#ecfdf5', color: '#059669', borderColor: '#10b981' }}
-                  title="1-Click Walk-in Cash Customer"
-                >
-                  <Zap size={12} />
-                  <span>⚡ Walk-in Cash Sale</span>
-                </button>
-              </div>
-
-              {/* Customer Search Bar (Shifted to this side, matching reference screenshot) */}
               <div ref={customerSearchContainerRef} style={{ position: 'relative' }}>
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <Search 
-                    size={16} 
-                    color={showUpperPartySuggestions ? '#2563eb' : '#94a3b8'} 
-                    style={{ 
-                      position: 'absolute', 
-                      left: '12px', 
-                      top: '50%', 
-                      transform: 'translateY(-50%)', 
-                      pointerEvents: 'none',
-                      transition: 'color 0.15s ease'
-                    }} 
-                  />
+                <div 
+                  style={{ 
+                    position: 'relative', 
+                    width: '100%',
+                    height: '42px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: '#ffffff',
+                    borderRadius: '6px',
+                    border: showUpperPartySuggestions ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                    boxShadow: showUpperPartySuggestions ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
+                    overflow: 'hidden',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
                   <input 
                     type="text"
-                    className="input-field"
-                    placeholder="Search"
+                    placeholder="Select or add a customer"
                     style={{ 
-                      width: '100%',
-                      height: '42px',
-                      paddingLeft: '38px', 
-                      paddingRight: (selectedParty || customerName || upperPartySearchTerm) ? '34px' : '14px',
+                      flex: 1,
+                      height: '100%',
+                      paddingLeft: '14px', 
+                      paddingRight: '8px',
                       fontSize: '0.92rem', 
-                      borderRadius: '8px',
-                      border: showUpperPartySuggestions ? '1.5px solid #2563eb' : '1px solid var(--border-color)',
-                      boxShadow: showUpperPartySuggestions ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : 'none',
-                      background: 'var(--bg-input, #ffffff)',
-                      color: 'var(--text-main, #0f172a)',
+                      border: 'none',
                       outline: 'none',
-                      transition: 'all 0.15s ease'
+                      background: 'transparent',
+                      color: 'var(--text-main, #0f172a)',
+                      cursor: 'text'
                     }}
                     value={
                       selectedParty 
@@ -1080,6 +1062,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       }
                     }}
                   />
+
+                  {/* Clear ✕ button if text or party selected */}
                   {(selectedParty || customerName || upperPartySearchTerm) && (
                     <button
                       type="button"
@@ -1090,18 +1074,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         setShowUpperPartySuggestions(true);
                       }}
                       style={{
-                        position: 'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
                         color: '#94a3b8',
-                        fontSize: '15px',
+                        fontSize: '14px',
                         fontWeight: 'bold',
-                        padding: '2px 6px',
-                        borderRadius: '50%',
+                        padding: '4px 6px',
                         lineHeight: 1
                       }}
                       title="Clear Customer"
@@ -1109,6 +1088,44 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       ✕
                     </button>
                   )}
+
+                  {/* Down Chevron icon */}
+                  <div 
+                    onClick={() => setShowUpperPartySuggestions(!showUpperPartySuggestions)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0 8px 0 4px',
+                      cursor: 'pointer',
+                      color: '#64748b'
+                    }}
+                    title="Open Customer List"
+                  >
+                    <ChevronDown size={18} color="#64748b" />
+                  </div>
+
+                  {/* Attached Blue Search Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowUpperPartySuggestions(!showUpperPartySuggestions)}
+                    style={{
+                      width: '44px',
+                      height: '100%',
+                      background: '#3b82f6',
+                      border: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      transition: 'background 0.15s ease'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#2563eb'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#3b82f6'}
+                    title="Search Customer"
+                  >
+                    <Search size={18} color="#ffffff" />
+                  </button>
                 </div>
 
                 {/* Dropdown Popup matching exact user screenshot */}
