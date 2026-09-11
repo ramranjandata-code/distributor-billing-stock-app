@@ -315,7 +315,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     // 7. Net GST Liability (Output tax payable to govt)
     const netGstPayable = Math.max(0, totalTax);
 
-    // 8. Proprietor's Capital Account (पूंजी खाता)
+    // 8. Proprietor's Capital Account (Equity)
     const openingCap = Number(capital.openingCapital) || 500000;
     const addCap = Number(capital.additionalCapital) || 0;
     const currentProfit = pnlData.netProfit;
@@ -539,7 +539,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const handleSaveExpense = (e) => {
     e.preventDefault();
     if (!expenseFormData.amount || Number(expenseFormData.amount) <= 0) {
-      alert('कृपया वैध खर्च रकम दर्ज करें!');
+      alert('Please enter a valid expense amount!');
       return;
     }
 
@@ -551,7 +551,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
   // Handle Delete Expense
   const handleDeleteExpense = (id) => {
-    if (window.confirm('क्या आप इस खर्च वाउचर को हटाना चाहते हैं?')) {
+    if (window.confirm('Are you sure you want to delete this expense voucher?')) {
       deleteExpense(id);
       reloadAccountingData();
     }
@@ -568,13 +568,13 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   // Period Text Header
   const getPeriodLabel = () => {
     switch (period) {
-      case 'TODAY': return 'आज की रिपोर्ट (Today)';
-      case 'WEEKLY': return 'साप्ताहिक रिपोर्ट (Weekly - Last 7 Days)';
-      case 'MONTHLY': return 'मासिक रिपोर्ट (Monthly - Last 30 Days)';
-      case 'QUARTERLY': return 'तिमाही रिपोर्ट (Quarterly - Last 90 Days)';
-      case 'YEARLY': return 'वार्षिक रिपोर्ट (Yearly - Last 1 Year)';
-      case 'CUSTOM': return `कस्टम अवधि (${startDate || 'प्रारंभ'} से ${endDate || 'आज'})`;
-      default: return 'कुल सर्वकालिक रिपोर्ट (All Time)';
+      case 'TODAY': return "Today's Report";
+      case 'WEEKLY': return 'Weekly Report (Last 7 Days)';
+      case 'MONTHLY': return 'Monthly Report (Last 30 Days)';
+      case 'QUARTERLY': return 'Quarterly Report (Last 90 Days)';
+      case 'YEARLY': return 'Yearly Report (Last 1 Year)';
+      case 'CUSTOM': return `Custom Period (${startDate || 'Start'} to ${endDate || 'Today'})`;
+      default: return 'All Time Report';
     }
   };
 
@@ -590,7 +590,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <TrendingUp size={15} />
-            <span>बिक्री रिपोर्ट (Sales)</span>
+            <span>Sales Analytics</span>
           </button>
 
           <button 
@@ -599,7 +599,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <PieChart size={15} />
-            <span>ट्रेडिंग & लाभ-हानि (P&L)</span>
+            <span>Trading & P&L</span>
           </button>
 
           <button 
@@ -608,7 +608,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <Scale size={15} />
-            <span>आर्थिक चिट्ठा (Balance Sheet)</span>
+            <span>Balance Sheet</span>
           </button>
 
           <button 
@@ -617,7 +617,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <Receipt size={15} />
-            <span>व्यापार खर्च & आहरण (Expenses)</span>
+            <span>Expenses & Drawings</span>
           </button>
 
           <button 
@@ -626,7 +626,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <ShieldCheck size={15} />
-            <span>GST रिटर्न (GSTR-1 & 3B)</span>
+            <span>GST Returns (GSTR-1 & 3B)</span>
           </button>
 
           <button 
@@ -635,7 +635,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <BookOpen size={15} />
-            <span>दैनिक रोकड़ (Day Book)</span>
+            <span>Day Book</span>
           </button>
 
           <button 
@@ -644,7 +644,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
           >
             <Package size={15} />
-            <span>स्टॉक वैल्यूएशन (Stock)</span>
+            <span>Stock Valuation</span>
           </button>
         </div>
 
@@ -657,7 +657,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             style={{ gap: '5px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: '700' }}
           >
             <Plus size={14} />
-            <span>+ खर्च / आहरण</span>
+            <span>+ Expense / Drawing</span>
           </button>
 
           <button
@@ -668,7 +668,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             title="Configure Sole Proprietor Opening Capital"
           >
             <Briefcase size={14} />
-            <span>पूंजी खाता</span>
+            <span>Capital Account</span>
           </button>
         </div>
       </div>
@@ -679,16 +679,16 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', flex: 1 }}>
             <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '2px' }}>
               <Calendar size={15} />
-              अवधि:
+              Period:
             </span>
 
-            <button type="button" onClick={() => setPeriod('TODAY')} className={`btn btn-sm ${period === 'TODAY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>आज (Today)</button>
-            <button type="button" onClick={() => setPeriod('WEEKLY')} className={`btn btn-sm ${period === 'WEEKLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>साप्ताहिक</button>
-            <button type="button" onClick={() => setPeriod('MONTHLY')} className={`btn btn-sm ${period === 'MONTHLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>मासिक</button>
-            <button type="button" onClick={() => setPeriod('QUARTERLY')} className={`btn btn-sm ${period === 'QUARTERLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>तिमाही</button>
-            <button type="button" onClick={() => setPeriod('YEARLY')} className={`btn btn-sm ${period === 'YEARLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>वार्षिक</button>
-            <button type="button" onClick={() => setPeriod('ALL')} className={`btn btn-sm ${period === 'ALL' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>सभी</button>
-            <button type="button" onClick={() => setPeriod('CUSTOM')} className={`btn btn-sm ${period === 'CUSTOM' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>कस्टम</button>
+            <button type="button" onClick={() => setPeriod('TODAY')} className={`btn btn-sm ${period === 'TODAY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Today</button>
+            <button type="button" onClick={() => setPeriod('WEEKLY')} className={`btn btn-sm ${period === 'WEEKLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Weekly</button>
+            <button type="button" onClick={() => setPeriod('MONTHLY')} className={`btn btn-sm ${period === 'MONTHLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Monthly</button>
+            <button type="button" onClick={() => setPeriod('QUARTERLY')} className={`btn btn-sm ${period === 'QUARTERLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Quarterly</button>
+            <button type="button" onClick={() => setPeriod('YEARLY')} className={`btn btn-sm ${period === 'YEARLY' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Yearly</button>
+            <button type="button" onClick={() => setPeriod('ALL')} className={`btn btn-sm ${period === 'ALL' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>All</button>
+            <button type="button" onClick={() => setPeriod('CUSTOM')} className={`btn btn-sm ${period === 'CUSTOM' ? 'btn-primary' : 'btn-secondary'}`} style={{ padding: '4px 10px', fontSize: '0.78rem' }}>Custom</button>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -721,11 +721,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       {period === 'CUSTOM' && (reportTab === 'SALES' || reportTab === 'PNL' || reportTab === 'BALANCESHEET' || reportTab === 'EXPENSES' || reportTab === 'GST') && (
         <div className="glass-card no-print" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label className="form-label" style={{ marginBottom: 0 }}>प्रारंभ तिथि:</label>
+            <label className="form-label" style={{ marginBottom: 0 }}>Start Date:</label>
             <input type="date" className="input-field" style={{ width: 'auto' }} value={startDate} onChange={e => setStartDate(e.target.value)} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label className="form-label" style={{ marginBottom: 0 }}>अंतिम तिथि:</label>
+            <label className="form-label" style={{ marginBottom: 0 }}>End Date:</label>
             <input type="date" className="input-field" style={{ width: 'auto' }} value={endDate} onChange={e => setEndDate(e.target.value)} />
           </div>
         </div>
@@ -745,7 +745,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 {business?.address || 'Authorized FMCG & Wholesale Distributor'}
               </p>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', margin: '2px 0 0 0' }}>
-                GSTIN: {business?.gstin || 'N/A'} • Phone: {business?.phone || 'N/A'} • प्रोपराइटर: <strong>{business?.proprietor || capital.notes || 'Rajesh Verma'}</strong>
+                GSTIN: {business?.gstin || 'N/A'} • Phone: {business?.phone || 'N/A'} • Proprietor: <strong>{business?.proprietor || capital.notes || 'Rajesh Verma'}</strong>
               </p>
             </div>
 
@@ -760,7 +760,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 {reportTab === 'STOCK' && `📦 Stock Valuation • ${new Date().toLocaleDateString('en-IN')}`}
               </span>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                तारीख: {new Date().toLocaleDateString('en-IN')}
+                Date: {new Date().toLocaleDateString('en-IN')}
               </p>
             </div>
           </div>
@@ -774,46 +774,46 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div className="glass-card" style={{ padding: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>कुल कारोबार (Total Revenue)</span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Total Sales Revenue</span>
                   <TrendingUp size={20} color="#10b981" />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
                   ₹{totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                  {filteredInvoices.length} इनवॉइस बिल जारी
+                  {filteredInvoices.length} Invoices Issued
                 </p>
               </div>
 
               <div className="glass-card" style={{ padding: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>प्राप्त नकद (Collected Cash)</span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Collected Cash</span>
                   <IndianRupee size={20} color="#34d399" />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#34d399', margin: 0 }}>
                   ₹{totalCollected.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                  जमा व नकद भुगतान
+                  Cash & Direct Receipts
                 </p>
               </div>
 
               <div className="glass-card" style={{ padding: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>बकाया बाजार उधार (Market Udhar)</span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Market Outstanding Dues</span>
                   <IndianRupee size={20} color="#fbbf24" />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#fbbf24', margin: 0 }}>
                   ₹{totalUdhar.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                  रिटेलर्स पर बकाया अनपेड राशि
+                  Unpaid retailer credit balance
                 </p>
               </div>
 
               <div className="glass-card" style={{ padding: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>GST टैक्स कलेक्शन</span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>GST Tax Collection</span>
                   <ShieldCheck size={20} color="#818cf8" />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#818cf8', margin: 0 }}>
@@ -831,13 +831,13 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                   <Award size={20} color="var(--primary)" />
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
-                    प्रोडक्ट बिक्री रिपोर्ट (Product-wise Sales Performance)
+                    Product-wise Sales Performance
                   </h3>
                 </div>
 
                 {topProducts.length === 0 ? (
                   <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    इस अवधि में कोई बिक्री रिकॉर्ड नहीं पाया गया।
+                    No sales records found for this period.
                   </p>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
@@ -845,10 +845,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       <thead>
                         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '8px' }}>#</th>
-                          <th style={{ padding: '8px' }}>प्रोडक्ट नाम</th>
+                          <th style={{ padding: '8px' }}>Product Name</th>
                           <th style={{ padding: '8px' }}>SKU</th>
-                          <th style={{ padding: '8px', textAlign: 'center' }}>बिकी मात्रा (Units)</th>
-                          <th style={{ padding: '8px', textAlign: 'right' }}>कुल बिक्री रकम (₹)</th>
+                          <th style={{ padding: '8px', textAlign: 'center' }}>Quantity Sold (Units)</th>
+                          <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -874,7 +874,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                   <Users size={20} color="var(--primary)" />
                   <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
-                    रिटेलर / पार्टी बिक्री रिपोर्ट (Party-wise Sales & Udhar Breakdown)
+                    Party-wise Sales & Udhar Breakdown
                   </h3>
                 </div>
 
@@ -883,11 +883,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     <thead>
                       <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                         <th style={{ padding: '8px' }}>#</th>
-                        <th style={{ padding: '8px' }}>पार्टी / ग्राहक नाम</th>
-                        <th style={{ padding: '8px' }}>फोन</th>
-                        <th style={{ padding: '8px', textAlign: 'center' }}>कुल बिल</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल बिक्री रकम (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>बकाया उधार (₹)</th>
+                        <th style={{ padding: '8px' }}>Party / Customer Name</th>
+                        <th style={{ padding: '8px' }}>Phone</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Total Bills</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Due Balance (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -921,7 +921,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* P&L Metric Highlights */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #3b82f6' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>शुद्ध बिक्री (Net Taxable Sales)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Net Taxable Sales</span>
                 <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--text-main)', margin: '6px 0 0 0' }}>
                   ₹{pnlData.netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -929,7 +929,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #059669' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>सकल मुनाफा (Gross Profit)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Gross Profit</span>
                 <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#059669', margin: '6px 0 0 0' }}>
                   ₹{pnlData.grossProfit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -937,7 +937,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #f59e0b' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>कुल व्यापार खर्च (Operating Expenses)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Operating Expenses</span>
                 <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#d97706', margin: '6px 0 0 0' }}>
                   ₹{pnlData.operatingExpenses.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -945,7 +945,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '18px', borderLeft: `4px solid ${pnlData.isProfit ? '#10b981' : '#ef4444'}` }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>शुद्ध लाभ / हानि (Net Profit / Loss)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Net Profit / Loss</span>
                 <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: pnlData.isProfit ? '#10b981' : '#dc2626', margin: '6px 0 0 0' }}>
                   ₹{pnlData.netProfit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -960,7 +960,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
-                    व्यापार एवं लाभ-हानि खाता (Sole Proprietor Trading & Profit-Loss Account)
+                    Sole Proprietor Trading & Profit-Loss Account
                   </h3>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                     GAAP / Income Tax Compliant • For the period: {getPeriodLabel()}
@@ -974,7 +974,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     style={{ gap: '4px', fontSize: '0.78rem' }}
                   >
                     <Plus size={14} />
-                    <span>खर्च जोड़ें</span>
+                    <span>Add Expense</span>
                   </button>
                   <button
                     onClick={() => window.print()}
@@ -992,38 +992,38 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   <tbody>
                     {/* --- PART 1: TRADING ACCOUNT --- */}
                     <tr style={{ background: '#f8fafc', fontWeight: '800', borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px' }} colSpan="2">भाग 1: व्यापार खाता (PART I: TRADING ACCOUNT - DIRECT OPERATIONS)</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>रकम (₹)</td>
+                      <td style={{ padding: '12px' }} colSpan="2">PART I: TRADING ACCOUNT - DIRECT OPERATIONS</td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>Amount (₹)</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>1. सकल इनवॉइस बिक्री (Gross Invoices Revenue)</td>
+                      <td style={{ padding: '10px 24px' }}>1. Gross Invoice Revenue</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{filteredInvoices.length} Bills Issued</td>
                       <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>2. घटाएं: व्यापार छूट (Less: Customer Discounts Allowed)</td>
+                      <td style={{ padding: '10px 24px' }}>2. Less: Customer Discounts Allowed</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Direct Scheme/Bill Off</td>
                       <td style={{ padding: '10px', textAlign: 'right', color: '#dc2626' }}>- ₹{pnlData.discounts.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #e2e8f0', fontWeight: '700', background: '#f0fdf4' }}>
-                      <td style={{ padding: '12px 24px', color: '#166534' }}>शुद्ध कर-योग्य बिक्री राजस्व (Net Taxable Turnover)</td>
+                      <td style={{ padding: '12px 24px', color: '#166534' }}>Net Taxable Turnover</td>
                       <td></td>
                       <td style={{ padding: '12px', textAlign: 'right', color: '#166534', fontSize: '1.05rem' }}>₹{pnlData.netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
 
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>3. घटाएं: बेचे गए माल की खरीद लागत (Cost of Goods Sold - Inward Items)</td>
+                      <td style={{ padding: '10px 24px' }}>3. Less: Cost of Goods Sold (Inward Item Costs)</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Direct Wholesale Rate</td>
                       <td style={{ padding: '10px', textAlign: 'right', color: '#dc2626' }}>- ₹{pnlData.cogsItems.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>4. घटाएं: प्रत्यक्ष आवक व्यय (Direct Expenses: Freight & Cartage Inward)</td>
+                      <td style={{ padding: '10px 24px' }}>4. Less: Direct Inward Expenses (Freight & Cartage)</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Loading, Transport & Packaging</td>
                       <td style={{ padding: '10px', textAlign: 'right', color: '#dc2626' }}>- ₹{pnlData.directExpenses.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style={{ background: '#ecfdf5', fontWeight: '800', borderBottom: '2px solid #059669' }}>
                       <td style={{ padding: '14px 24px', fontSize: '1.05rem', color: '#065f46' }}>
-                        सकल व्यापार लाभ (GROSS PROFIT C/F)
+                        GROSS TRADING PROFIT (C/F)
                       </td>
                       <td style={{ padding: '14px', color: '#065f46', fontWeight: '700' }}>
                         Gross Margin: {pnlData.grossMarginPct}%
@@ -1035,14 +1035,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
                     {/* --- PART 2: PROFIT & LOSS ACCOUNT --- */}
                     <tr style={{ background: '#f8fafc', fontWeight: '800', borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px', paddingTop: '20px' }} colSpan="2">भाग 2: लाभ-हानि खाता (PART II: OPERATING & INDIRECT EXPENSES)</td>
-                      <td style={{ padding: '12px', textAlign: 'right', paddingTop: '20px' }}>रकम (₹)</td>
+                      <td style={{ padding: '12px', paddingTop: '20px' }} colSpan="2">PART II: OPERATING & INDIRECT EXPENSES</td>
+                      <td style={{ padding: '12px', textAlign: 'right', paddingTop: '20px' }}>Amount (₹)</td>
                     </tr>
 
                     {Object.keys(pnlData.expensesByCategory).length === 0 ? (
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '10px 24px', color: 'var(--text-muted)' }} colSpan="2">
-                          कोई अप्रत्यक्ष व्यय दर्ज नहीं है। "+ खर्च / आहरण" बटन से किराया, बिजली या वेतन दर्ज करें।
+                          No operating expenses recorded yet. Use "+ Expense / Drawing" button to record rent, power, or salaries.
                         </td>
                         <td style={{ padding: '10px', textAlign: 'right' }}>₹0.00</td>
                       </tr>
@@ -1059,7 +1059,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     )}
 
                     <tr style={{ borderBottom: '2px solid var(--border-color)', fontWeight: '700', background: '#fef2f2' }}>
-                      <td style={{ padding: '12px 24px', color: '#991b1b' }}>कुल अप्रत्यक्ष व्यापार खर्च (Total Operating Expenses)</td>
+                      <td style={{ padding: '12px 24px', color: '#991b1b' }}>Total Indirect Operating Expenses</td>
                       <td></td>
                       <td style={{ padding: '12px', textAlign: 'right', color: '#991b1b', fontSize: '1.05rem' }}>
                         - ₹{pnlData.operatingExpenses.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -1073,7 +1073,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       borderBottom: `3px solid ${pnlData.isProfit ? '#059669' : '#dc2626'}` 
                     }}>
                       <td style={{ padding: '16px 24px', fontSize: '1.15rem', color: pnlData.isProfit ? '#065f46' : '#991b1b' }}>
-                        शुद्ध व्यापार लाभ / हानि (NET PROFIT / LOSS)
+                        NET PROFIT / LOSS
                       </td>
                       <td style={{ padding: '16px', color: pnlData.isProfit ? '#065f46' : '#991b1b', fontWeight: '700' }}>
                         Net Margin: {pnlData.netMarginPct}% • {pnlData.isProfit ? 'PROFIT' : 'LOSS'}
@@ -1085,23 +1085,23 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
                     {/* --- PART 3: PROPRIETOR'S CAPITAL ACCRUAL --- */}
                     <tr style={{ background: '#f8fafc', fontWeight: '800', borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px', paddingTop: '20px' }} colSpan="2">भाग 3: प्रोपराइटर पूंजी आबंटन (PART III: PROPRIETOR'S CAPITAL & DRAWINGS)</td>
-                      <td style={{ padding: '12px', textAlign: 'right', paddingTop: '20px' }}>रकम (₹)</td>
+                      <td style={{ padding: '12px', paddingTop: '20px' }} colSpan="2">PART III: PROPRIETOR'S CAPITAL & DRAWINGS ALLOCATION</td>
+                      <td style={{ padding: '12px', textAlign: 'right', paddingTop: '20px' }}>Amount (₹)</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>1. प्रारंभिक प्रोपराइटर पूंजी (Opening Proprietor Capital)</td>
+                      <td style={{ padding: '10px 24px' }}>1. Opening Proprietor Capital</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>As on {capital.asOfDate || '01/04/2026'}</td>
                       <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{Number(capital.openingCapital || 500000).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>2. जोड़ें: वर्तमान शुद्ध लाभ (Add: Net Profit from P&L)</td>
+                      <td style={{ padding: '10px 24px' }}>2. Add: Current Net Profit from P&L</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Accrued to Owner</td>
                       <td style={{ padding: '10px', textAlign: 'right', color: pnlData.isProfit ? '#059669' : '#dc2626', fontWeight: '700' }}>
                         {pnlData.isProfit ? '+' : ''} ₹{pnlData.netProfit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 24px' }}>3. घटाएं: मालिक का निजी आहरण (Less: Proprietor Personal Drawings)</td>
+                      <td style={{ padding: '10px 24px' }}>3. Less: Proprietor Personal Drawings</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Home Expenses / Family Medical</td>
                       <td style={{ padding: '10px', textAlign: 'right', color: '#dc2626', fontWeight: '700' }}>
                         - ₹{totalPersonalDrawings.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -1109,7 +1109,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     </tr>
                     <tr style={{ background: '#eff6ff', fontWeight: '800', borderBottom: '2px solid #3b82f6' }}>
                       <td style={{ padding: '14px 24px', fontSize: '1.05rem', color: '#1e40af' }}>
-                        अंतिम प्रोपराइटर नेटवर्थ / पूंजी (Closing Proprietor Capital)
+                        Closing Proprietor Capital (Net Worth)
                       </td>
                       <td style={{ padding: '14px', color: '#1e40af' }}>
                         Carried to Balance Sheet
@@ -1127,7 +1127,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 3: SOLE PROPRIETOR BALANCE SHEET (आर्थिक चिट्ठा) */}
+        {/* TAB 3: SOLE PROPRIETOR BALANCE SHEET */}
         {/* ------------------------------------------------------------- */}
         {reportTab === 'BALANCESHEET' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1136,7 +1136,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               <div>
                 <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Scale size={20} color="var(--primary)" />
-                  <span>आर्थिक स्थिति विवरण (Sole Proprietorship Balance Sheet)</span>
+                  <span>Sole Proprietorship Balance Sheet</span>
                 </h3>
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   As on {new Date().toLocaleDateString('en-IN')} • T-Format / Indian GAAP & Income Tax Standard
@@ -1145,7 +1145,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span className={`badge ${balanceSheetData.isBalanced ? 'badge-success' : 'badge-warning'}`} style={{ padding: '6px 12px', fontSize: '0.82rem', fontWeight: '800' }}>
-                  {balanceSheetData.isBalanced ? '✓ Balanced (संतुलित)' : `⚠️ Difference: ₹${balanceSheetData.difference.toFixed(2)}`}
+                  {balanceSheetData.isBalanced ? '✓ Balanced' : `⚠️ Difference: ₹${balanceSheetData.difference.toFixed(2)}`}
                 </span>
 
                 <button
@@ -1167,7 +1167,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               <div className="glass-card" style={{ padding: '20px' }}>
                 <div style={{ paddingBottom: '10px', borderBottom: '2px solid #ef4444', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h4 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: '#991b1b' }}>
-                    दायित्व एवं पूंजी (LIABILITIES & EQUITY)
+                    LIABILITIES & EQUITY
                   </h4>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Credit</span>
                 </div>
@@ -1177,7 +1177,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-main)' }}>
-                        1. प्रोपराइटर पूंजी खाता (Capital A/c)
+                        1. Proprietor Capital Account
                       </span>
                       <button 
                         onClick={() => setCapitalModalOpen(true)}
@@ -1189,19 +1189,19 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• प्रारंभिक पूंजी (Opening Capital):</span>
+                        <span>• Opening Capital:</span>
                         <span>₹{balanceSheetData.openingCapital.toLocaleString('en-IN')}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: pnlData.isProfit ? '#059669' : '#dc2626' }}>
-                        <span>• शुद्ध लाभ (Net Profit added):</span>
+                        <span>• Net Profit (added):</span>
                         <span>{pnlData.isProfit ? '+' : ''}₹{balanceSheetData.currentProfit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
-                        <span>• निजी आहरण (Drawings deducted):</span>
+                        <span>• Personal Drawings (deducted):</span>
                         <span>-₹{balanceSheetData.drawings.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', color: '#1e40af', borderTop: '1px solid #cbd5e1', paddingTop: '4px', marginTop: '2px' }}>
-                        <span>अंतिम पूंजी (Closing Net Worth):</span>
+                        <span>Closing Capital (Net Worth):</span>
                         <span>₹{balanceSheetData.closingCapital.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
@@ -1210,16 +1210,16 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   {/* Current Liabilities */}
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                     <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>
-                      2. चालू देनदारियां (Current Liabilities)
+                      2. Current Liabilities
                     </span>
 
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• लेनदार / सप्लायर बकाया (Sundry Creditors):</span>
+                        <span>• Sundry Creditors (Suppliers):</span>
                         <span style={{ fontWeight: '700', color: 'var(--text-main)' }}>₹{balanceSheetData.sundryCreditors.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• शुद्ध GST कर देयता (Net GST Liability):</span>
+                        <span>• Net GST Output Liability:</span>
                         <span style={{ fontWeight: '700', color: '#7c3aed' }}>₹{balanceSheetData.netGstPayable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
@@ -1228,7 +1228,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   {/* Total Liabilities Box */}
                   <div style={{ background: '#fef2f2', border: '2px solid #dc2626', padding: '14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '900', fontSize: '1rem', color: '#991b1b' }}>
-                      कुल दायित्व (TOTAL LIABILITIES & EQUITY):
+                      TOTAL LIABILITIES & EQUITY:
                     </span>
                     <span style={{ fontWeight: '900', fontSize: '1.25rem', color: '#991b1b' }}>
                       ₹{balanceSheetData.totalLiabilities.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -1241,7 +1241,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               <div className="glass-card" style={{ padding: '20px' }}>
                 <div style={{ paddingBottom: '10px', borderBottom: '2px solid #059669', marginBottom: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h4 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: '#065f46' }}>
-                    संपत्तियां (ASSETS & INVESTMENTS)
+                    ASSETS & INVESTMENTS
                   </h4>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Debit</span>
                 </div>
@@ -1250,24 +1250,24 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   {/* Current Assets */}
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                     <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>
-                      1. चालू संपत्तियां (Current Assets)
+                      1. Current Assets
                     </span>
 
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• अंतिम माल स्टॉक मूल्यांकन (Closing Stock @ Cost):</span>
+                        <span>• Closing Stock Valuation (@ Cost):</span>
                         <span style={{ fontWeight: '700', color: '#dc2626' }}>₹{balanceSheetData.closingStock.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• देनदार / बाजार उधारी (Sundry Debtors - Retailers):</span>
+                        <span>• Sundry Debtors (Retailers Udhar):</span>
                         <span style={{ fontWeight: '700', color: '#d97706' }}>₹{balanceSheetData.sundryDebtors.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• दुकान गल्ला नकद शेष (Cash in Hand):</span>
+                        <span>• Cash in Hand (Cash Register):</span>
                         <span style={{ fontWeight: '700', color: '#059669' }}>₹{balanceSheetData.cashInHand.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• चालू बैंक खाते व UPI शेष (Bank Balances):</span>
+                        <span>• Bank & UPI Balances:</span>
                         <span style={{ fontWeight: '700', color: '#2563eb' }}>₹{balanceSheetData.bankBalances.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
@@ -1276,12 +1276,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   {/* Fixed Assets */}
                   <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                     <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>
-                      2. स्थाई संपत्तियां (Fixed Assets & Infrastructure)
+                      2. Fixed Assets & Infrastructure
                     </span>
 
                     <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>• दुकान रैक, वाहन, कंप्यूटर व प्रिंटर (Fixed Plant):</span>
+                        <span>• Equipment, Vehicles & Fixtures:</span>
                         <span style={{ fontWeight: '700', color: 'var(--text-main)' }}>₹{balanceSheetData.fixedAssets.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
                       </div>
                     </div>
@@ -1290,7 +1290,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   {/* Total Assets Box */}
                   <div style={{ background: '#ecfdf5', border: '2px solid #059669', padding: '14px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '900', fontSize: '1rem', color: '#065f46' }}>
-                      कुल संपत्तियां (TOTAL ASSETS):
+                      TOTAL ASSETS:
                     </span>
                     <span style={{ fontWeight: '900', fontSize: '1.25rem', color: '#065f46' }}>
                       ₹{balanceSheetData.totalAssets.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -1304,14 +1304,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
         )}
 
         {/* ------------------------------------------------------------- */}
-        {/* TAB 4: EXPENSES & DRAWINGS LEDGER (व्यय एवं आहरण बही) */}
+        {/* TAB 4: EXPENSES & DRAWINGS LEDGER */}
         {/* ------------------------------------------------------------- */}
         {reportTab === 'EXPENSES' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Top Metric Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ऑपरेटिंग व्यापार खर्च (Operating Expenses)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Operating Expenses</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#d97706', margin: '4px 0 0 0' }}>
                   ₹{totalOperatingExpenses.toLocaleString('en-IN')}
                 </h3>
@@ -1319,7 +1319,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>प्रत्यक्ष आवक खर्च (Direct Freight)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Direct Inward Freight</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#2563eb', margin: '4px 0 0 0' }}>
                   ₹{totalDirectExpenses.toLocaleString('en-IN')}
                 </h3>
@@ -1327,7 +1327,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #ec4899' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>मालिक का निजी आहरण (Personal Drawings)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Proprietor Personal Drawings</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#db2777', margin: '4px 0 0 0' }}>
                   ₹{totalPersonalDrawings.toLocaleString('en-IN')}
                 </h3>
@@ -1341,7 +1341,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Receipt size={18} color="var(--primary)" />
                   <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0 }}>
-                    खर्च एवं निजी आहरण वाउचर सूची (Expense Register)
+                    Expense & Drawings Register
                   </h3>
                 </div>
 
@@ -1351,7 +1351,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     className={`btn btn-sm ${expenseFilterType === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
                     style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                   >
-                    सभी (All)
+                    All
                   </button>
                   <button 
                     onClick={() => setExpenseFilterType('OPERATING')}
@@ -1380,28 +1380,28 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     className="btn btn-primary btn-sm"
                     style={{ gap: '4px', marginLeft: '6px', padding: '5px 10px', fontSize: '0.76rem', fontWeight: '700' }}
                   >
-                    <Plus size={14} /> + नया खर्च
+                    <Plus size={14} /> + New Expense
                   </button>
                 </div>
               </div>
 
               {filteredExpenses.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  इस अवधि में कोई खर्च रिकॉर्ड नहीं है।
+                  No expenses recorded for this period.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                        <th style={{ padding: '8px' }}>वाउचर नं.</th>
-                        <th style={{ padding: '8px' }}>तारीख</th>
-                        <th style={{ padding: '8px' }}>कैटेगरी (खर्च का नाम)</th>
-                        <th style={{ padding: '8px' }}>प्रकार (Type)</th>
-                        <th style={{ padding: '8px' }}>प्राप्तकर्ता (Paid To)</th>
-                        <th style={{ padding: '8px' }}>माध्यम (Mode)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>रकम (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'center' }} className="no-print">एक्शन</th>
+                        <th style={{ padding: '8px' }}>Voucher #</th>
+                        <th style={{ padding: '8px' }}>Date</th>
+                        <th style={{ padding: '8px' }}>Expense Category</th>
+                        <th style={{ padding: '8px' }}>Type</th>
+                        <th style={{ padding: '8px' }}>Paid To</th>
+                        <th style={{ padding: '8px' }}>Payment Mode</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Amount (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }} className="no-print">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1453,7 +1453,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* GSTR-1 Summary Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>B2B इनवॉइस (Registered Buyers)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>B2B Invoices (Registered Buyers)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-main)', margin: '4px 0 0 0' }}>
                   {b2bInvoices.length} Bills
                 </h3>
@@ -1473,7 +1473,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CGST देयता (Central Tax)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CGST Liability (Central Tax)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#d97706', margin: '4px 0 0 0' }}>
                   ₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -1481,7 +1481,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #8b5cf6' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>SGST देयता (State Tax)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>SGST Liability (State Tax)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#7c3aed', margin: '4px 0 0 0' }}>
                   ₹{totalSgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -1493,7 +1493,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  🏛️ GSTR-3B तालिका 3.1: बाह्य आपूर्ति और कर देयता सारांश (Outward Tax Liability)
+                  🏛️ GSTR-3B Table 3.1: Outward Tax Liability Summary
                 </h3>
                 <span className="badge badge-success">GSTR-3B Ready</span>
               </div>
@@ -1502,17 +1502,17 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                      <th style={{ padding: '10px' }}>आपूर्ति का विवरण (Nature of Supply)</th>
-                      <th style={{ padding: '10px', textAlign: 'right' }}>कुल कर-योग्य मूल्य (Taxable ₹)</th>
+                      <th style={{ padding: '10px' }}>Nature of Supply</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Taxable Value (₹)</th>
                       <th style={{ padding: '10px', textAlign: 'right' }}>IGST (₹)</th>
                       <th style={{ padding: '10px', textAlign: 'right' }}>CGST (₹)</th>
                       <th style={{ padding: '10px', textAlign: 'right' }}>SGST (₹)</th>
-                      <th style={{ padding: '10px', textAlign: 'right' }}>कुल कर (Total Tax ₹)</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Total Tax (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px', fontWeight: '700' }}>(a) अन्य कर-योग्य बाह्य आपूर्ति (Taxable Outward Supplies)</td>
+                      <td style={{ padding: '10px', fontWeight: '700' }}>(a) Taxable Outward Supplies</td>
                       <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalIgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
@@ -1520,7 +1520,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       <td style={{ padding: '10px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>₹{totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style={{ background: '#ecfdf5', fontWeight: '800' }}>
-                      <td style={{ padding: '10px' }}>कुल शुद्ध कर देयता (Net Output Tax Liability)</td>
+                      <td style={{ padding: '10px' }}>Total Net Output Tax Liability</td>
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalIgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
@@ -1536,14 +1536,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  🏢 GSTR-1 तालिका 4A: पंजीकृत खरीदारों को बाह्य आपूर्ति (Table 4A - B2B Invoices)
+                  🏢 GSTR-1 Table 4A: Supplies to Registered Buyers (B2B Invoices)
                 </h3>
                 <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>{b2bInvoices.length} Registered Buyers</span>
               </div>
 
               {b2bInvoices.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
-                  इस अवधि में कोई B2B इनवॉइस नहीं है।
+                  No B2B invoices found for this period.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -1551,11 +1551,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
                         <th style={{ padding: '8px' }}>GSTIN</th>
-                        <th style={{ padding: '8px' }}>पार्टी नाम</th>
-                        <th style={{ padding: '8px' }}>इनवॉइस नं.</th>
-                        <th style={{ padding: '8px' }}>तारीख</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल मूल्य (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कर-योग्य (₹)</th>
+                        <th style={{ padding: '8px' }}>Party Name</th>
+                        <th style={{ padding: '8px' }}>Invoice No</th>
+                        <th style={{ padding: '8px' }}>Date</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Total Value (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Taxable (₹)</th>
                         <th style={{ padding: '8px', textAlign: 'right' }}>CGST (₹)</th>
                         <th style={{ padding: '8px', textAlign: 'right' }}>SGST (₹)</th>
                         <th style={{ padding: '8px', textAlign: 'right' }}>IGST (₹)</th>
@@ -1585,28 +1585,28 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  🛒 GSTR-1 तालिका 7: अपंजीकृत उपभोक्ताओं को आपूर्ति (Table 7 - B2C Small Supplies)
+                  🛒 GSTR-1 Table 7: Supplies to Unregistered Consumers (B2C Small)
                 </h3>
                 <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>{b2cInvoices.length} Consumer Bills</span>
               </div>
 
               {b2cInvoices.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
-                  इस अवधि में कोई B2C Small इनवॉइस नहीं है।
+                  No B2C Small invoices found for this period.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                        <th style={{ padding: '8px' }}>आपूर्ति प्रकार (Type)</th>
-                        <th style={{ padding: '8px' }}>आपूर्ति राज्य (POS)</th>
-                        <th style={{ padding: '8px', textAlign: 'center' }}>बिल संख्या</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल इनवॉइस मूल्य (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कर-योग्य मूल्य (₹)</th>
+                        <th style={{ padding: '8px' }}>Supply Type</th>
+                        <th style={{ padding: '8px' }}>Place of Supply (POS)</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>Bill Count</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Total Invoice Value (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Taxable Value (₹)</th>
                         <th style={{ padding: '8px', textAlign: 'right' }}>CGST (₹)</th>
                         <th style={{ padding: '8px', textAlign: 'right' }}>SGST (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल कर (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Total Tax (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1639,21 +1639,21 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* HSN Summary */}
             <div className="glass-card" style={{ padding: '20px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: '800', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                📑 GSTR-1 तालिका 12: HSN कोड सारांश (HSN-wise Outward Summary)
+                📑 GSTR-1 Table 12: HSN-wise Outward Summary
               </h3>
 
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                      <th style={{ padding: '8px' }}>HSN कोड</th>
-                      <th style={{ padding: '8px' }}>विवरण (Description)</th>
-                      <th style={{ padding: '8px', textAlign: 'center' }}>इकाई (UQC)</th>
-                      <th style={{ padding: '8px', textAlign: 'center' }}>मात्रा (Qty)</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>कर-योग्य मूल्य (₹)</th>
+                      <th style={{ padding: '8px' }}>HSN Code</th>
+                      <th style={{ padding: '8px' }}>Description</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>UQC</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Quantity</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Taxable Value (₹)</th>
                       <th style={{ padding: '8px', textAlign: 'right' }}>CGST (₹)</th>
                       <th style={{ padding: '8px', textAlign: 'right' }}>SGST (₹)</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>कुल कर (₹)</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Total Tax (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1685,7 +1685,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card no-print" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Calendar size={18} color="var(--primary)" />
-                <label style={{ fontWeight: '700', fontSize: '0.88rem' }}>दैनिक रोकड़ तिथि (Select Date):</label>
+                <label style={{ fontWeight: '700', fontSize: '0.88rem' }}>Select Day Book Date:</label>
                 <input 
                   type="date" 
                   className="input-field" 
@@ -1709,7 +1709,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* Daily Metric Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #10b981' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>आज की कुल बिक्री (Day Turnover)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Today's Total Turnover</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-main)', margin: '4px 0 0 0' }}>
                   ₹{dayBookData.dayTotalTurnover.toLocaleString('en-IN')}
                 </h3>
@@ -1717,7 +1717,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #059669' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>नकद प्राप्ति (Cash Inflow)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Cash Inflow (Hand Cash)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#059669', margin: '4px 0 0 0' }}>
                   ₹{dayBookData.dayCashSales.toLocaleString('en-IN')}
                 </h3>
@@ -1725,7 +1725,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>UPI / बैंक संग्रह (Digital / Bank)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Digital & Bank Collections</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#2563eb', margin: '4px 0 0 0' }}>
                   ₹{(dayBookData.dayUpiSales + dayBookData.dayBankSales).toLocaleString('en-IN')}
                 </h3>
@@ -1733,7 +1733,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>आज का नया उधार (Day Udhar Given)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Today's Credit Given (Udhar)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#d97706', margin: '4px 0 0 0' }}>
                   ₹{dayBookData.dayCreditSales.toLocaleString('en-IN')}
                 </h3>
@@ -1744,25 +1744,25 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* Chronological Day Vouchers Table */}
             <div className="glass-card" style={{ padding: '20px' }}>
               <h3 style={{ fontSize: '1.05rem', fontWeight: '800', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                📖 दैनिक वाउचर व रसीद सूची (Daily Transaction Chronology)
+                📖 Daily Voucher & Transaction Chronology
               </h3>
 
               {dayBookData.dayInvoices.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  तिथि {dayBookDate} के लिए कोई बिलिंग प्रविष्टि नहीं पाई गई।
+                  No billing entries found for {dayBookDate}.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                        <th style={{ padding: '8px' }}>समय</th>
-                        <th style={{ padding: '8px' }}>बिल / वाउचर नं.</th>
-                        <th style={{ padding: '8px' }}>पार्टी का नाम</th>
-                        <th style={{ padding: '8px' }}>भुगतान माध्यम</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल बिल राशि (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>नकद जमा (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>उधार शेष (₹)</th>
+                        <th style={{ padding: '8px' }}>Time</th>
+                        <th style={{ padding: '8px' }}>Bill / Voucher #</th>
+                        <th style={{ padding: '8px' }}>Party Name</th>
+                        <th style={{ padding: '8px' }}>Payment Mode</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Total Bill (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Paid / Received (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Due Balance (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1806,14 +1806,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card no-print" style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Building2 size={18} color="var(--primary)" />
-                <label style={{ fontWeight: '700', fontSize: '0.88rem' }}>वेयरहाउस चुनें (Select Warehouse):</label>
+                <label style={{ fontWeight: '700', fontSize: '0.88rem' }}>Select Warehouse:</label>
                 <select 
                   className="input-field select-field" 
                   style={{ width: 'auto', padding: '6px 14px' }}
                   value={selectedStockWarehouse}
                   onChange={e => setSelectedStockWarehouse(e.target.value)}
                 >
-                  <option value="ALL">सभी वेयरहाउस (All Depots & Warehouses)</option>
+                  <option value="ALL">All Depots & Warehouses</option>
                   {warehouses.map(w => (
                     <option key={w.id} value={w.id}>{w.name} ({w.city})</option>
                   ))}
@@ -1834,7 +1834,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* Valuation Metric Summary */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #3b82f6' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>कुल उपलब्ध स्टॉक (Total Units)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Available Stock</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)', margin: '4px 0 0 0' }}>
                   {stockValuationData.totalUnits.toLocaleString('en-IN')} Pcs / Units
                 </h3>
@@ -1842,7 +1842,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #ef4444' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>खरीद मूल्य मूल्यांकन (Valuation @ Cost)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Valuation @ Cost (Purchase Price)</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626', margin: '4px 0 0 0' }}>
                   ₹{stockValuationData.totalPurchaseVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -1850,7 +1850,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #10b981' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>बिक्री मूल्य मूल्यांकन (Valuation @ Retail)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Valuation @ Retail (Sale Price)</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669', margin: '4px 0 0 0' }}>
                   ₹{stockValuationData.totalSaleVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -1858,7 +1858,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
 
               <div className="glass-card" style={{ padding: '18px', borderLeft: '4px solid #f59e0b' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>संभावित सकल मुनाफा (Potential Margin)</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Potential Gross Margin</span>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#d97706', margin: '4px 0 0 0' }}>
                   ₹{stockValuationData.potentialGrossProfit.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
@@ -1872,7 +1872,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0 }}>
-                  📦 स्टॉक मूल्यांकन व संभावित लाभ सूची (Item-wise Valuation Ledger)
+                  📦 Item-wise Stock Valuation Ledger
                 </h3>
               </div>
 
@@ -1881,14 +1881,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
                       <th style={{ padding: '8px' }}>#</th>
-                      <th style={{ padding: '8px' }}>प्रोडक्ट नाम</th>
-                      <th style={{ padding: '8px' }}>ब्रांड / SKU</th>
-                      <th style={{ padding: '8px', textAlign: 'center' }}>स्टॉक मात्रा</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>खरीद दर (₹)</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>बिक्री दर (₹)</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>लागत मूल्य (₹)</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>बिक्री मूल्य (₹)</th>
-                      <th style={{ padding: '8px', textAlign: 'right' }}>संभावित लाभ (₹)</th>
+                      <th style={{ padding: '8px' }}>Product Name</th>
+                      <th style={{ padding: '8px' }}>Brand / SKU</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Stock Qty</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Purchase Rate (₹)</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Sale Rate (₹)</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Cost Valuation (₹)</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Retail Valuation (₹)</th>
+                      <th style={{ padding: '8px', textAlign: 'right' }}>Potential Profit (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1927,7 +1927,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="modal-header">
               <h3 style={{ fontSize: '1.15rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Receipt size={20} color="var(--primary)" />
-                <span>नया खर्च / निजी आहरण दर्ज करें</span>
+                <span>Record Expense / Personal Drawing</span>
               </h3>
               <button
                 type="button"
@@ -1943,7 +1943,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 
                 {/* Expense Type Selector */}
                 <div className="form-group">
-                  <label className="form-label">खर्च का प्रकार (Expense Classification) *</label>
+                  <label className="form-label">Expense Classification *</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '6px' }}>
                     <button
                       type="button"
@@ -1963,18 +1963,18 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExpenseFormData({ ...expenseFormData, type: 'DRAWING', category: 'Proprietor Personal Drawings (मालिक का निजी आहरण)' })}
+                      onClick={() => setExpenseFormData({ ...expenseFormData, type: 'DRAWING', category: 'Proprietor Personal Drawings' })}
                       className={`btn btn-sm ${expenseFormData.type === 'DRAWING' ? 'btn-danger' : 'btn-secondary'}`}
                       style={{ fontSize: '0.74rem', padding: '6px 4px' }}
                     >
-                      निजी आहरण (Drawing)
+                      Drawings
                     </button>
                   </div>
                 </div>
 
                 {/* Category Preset Dropdown */}
                 <div className="form-group">
-                  <label className="form-label">कैटेगरी (Expense Category) *</label>
+                  <label className="form-label">Expense Category *</label>
                   <select
                     className="input-field select-field"
                     value={expenseFormData.category}
@@ -1982,34 +1982,34 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   >
                     {expenseFormData.type === 'DIRECT' && (
                       <>
-                        <option value="Freight & Cartage Inward">माल भाड़ा / गाड़ी भाड़ा (Freight Inward)</option>
-                        <option value="Loading & Labour Inward">हमाली / लोडिंग खर्च (Loading Inward)</option>
-                        <option value="Packaging & Box Strapping">पैकिंग सामग्री (Packaging Materials)</option>
-                        <option value="Direct Fuel & Transit">ट्रांजिट डिलीवरी ईंधन (Transit Fuel)</option>
+                        <option value="Freight & Cartage Inward">Freight & Cartage Inward</option>
+                        <option value="Loading & Labour Inward">Loading & Labour Inward</option>
+                        <option value="Packaging & Box Strapping">Packaging & Box Strapping</option>
+                        <option value="Direct Fuel & Transit">Direct Fuel & Transit</option>
                       </>
                     )}
 
                     {expenseFormData.type === 'OPERATING' && (
                       <>
-                        <option value="Shop / Godown Rent">दुकान / गोदाम किराया (Godown Rent)</option>
-                        <option value="Staff Salaries & Wages">स्टाफ वेतन व मजदूरी (Salaries)</option>
-                        <option value="Electricity & Utilities">बिजली व पानी बिल (Electricity)</option>
-                        <option value="Vehicle Fuel & Transport">गाड़ी डीजल / डिलीवरी पेट्रोल (Fuel)</option>
-                        <option value="Office & Stationery">स्टेशनरी व प्रिंटिंग पेपर (Stationery)</option>
-                        <option value="Tea & Refreshment">दुकान चाय-नाश्ता खर्च (Refreshment)</option>
-                        <option value="Bank Charges & Gateway Fees">बैंक शुल्क व गेटवे फीस (Bank Charges)</option>
-                        <option value="Repair & Maintenance">दुकान रखरखाव व मरम्मत (Maintenance)</option>
-                        <option value="Marketing & Promotion">प्रचार व विज्ञापन (Marketing)</option>
-                        <option value="Miscellaneous Operating">अन्य विविध खर्च (Miscellaneous)</option>
+                        <option value="Shop / Godown Rent">Shop / Godown Rent</option>
+                        <option value="Staff Salaries & Wages">Staff Salaries & Wages</option>
+                        <option value="Electricity & Utilities">Electricity & Utilities</option>
+                        <option value="Vehicle Fuel & Transport">Vehicle Fuel & Transport</option>
+                        <option value="Office & Stationery">Office & Stationery</option>
+                        <option value="Tea & Refreshment">Tea & Refreshment</option>
+                        <option value="Bank Charges & Gateway Fees">Bank Charges & Gateway Fees</option>
+                        <option value="Repair & Maintenance">Repair & Maintenance</option>
+                        <option value="Marketing & Promotion">Marketing & Promotion</option>
+                        <option value="Miscellaneous Operating">Miscellaneous Operating</option>
                       </>
                     )}
 
                     {expenseFormData.type === 'DRAWING' && (
                       <>
-                        <option value="Proprietor Personal Drawings (मालिक का निजी आहरण)">मालिक का निजी घरेलू खर्च (Personal Drawings)</option>
-                        <option value="Family Medical & Insurance">पारिवारिक मेडिकल व बीमा (Medical & LIC)</option>
-                        <option value="Children Education & Tuition">बच्चों की स्कूल फीस (Education)</option>
-                        <option value="Personal Income Tax Advance">व्यक्तिगत आयकर भुगतान (Income Tax)</option>
+                        <option value="Proprietor Personal Drawings">Proprietor Personal Drawings</option>
+                        <option value="Family Medical & Insurance">Family Medical & Insurance</option>
+                        <option value="Children Education & Tuition">Children Education & Tuition</option>
+                        <option value="Personal Income Tax Advance">Personal Income Tax Advance</option>
                       </>
                     )}
                   </select>
@@ -2017,21 +2017,21 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
                   <div className="form-group">
-                    <label className="form-label">रकम (Amount ₹) *</label>
+                    <label className="form-label">Amount (₹) *</label>
                     <input
                       type="number"
                       required
                       min="1"
                       step="0.01"
                       className="input-field"
-                      placeholder="उदा. 3500"
+                      placeholder="e.g. 3500"
                       value={expenseFormData.amount}
                       onChange={e => setExpenseFormData({ ...expenseFormData, amount: e.target.value })}
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">तारीख (Date) *</label>
+                    <label className="form-label">Date *</label>
                     <input
                       type="date"
                       required
@@ -2044,24 +2044,24 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div className="form-group">
-                    <label className="form-label">भुगतान माध्यम (Mode)</label>
+                    <label className="form-label">Payment Mode</label>
                     <select
                       className="input-field select-field"
                       value={expenseFormData.paymentMode}
                       onChange={e => setExpenseFormData({ ...expenseFormData, paymentMode: e.target.value })}
                     >
-                      <option value="CASH">नकद (Cash in Hand)</option>
-                      <option value="BANK">बैंक ट्रांसफर (NEFT/RTGS)</option>
+                      <option value="CASH">Cash (Cash in Hand)</option>
+                      <option value="BANK">Bank Transfer (NEFT/RTGS)</option>
                       <option value="UPI">UPI (GooglePay / PhonePe)</option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">प्राप्तकर्ता (Paid To)</label>
+                    <label className="form-label">Paid To</label>
                     <input
                       type="text"
                       className="input-field"
-                      placeholder="उदा. मकान मालिक / पेट्रोल पंप"
+                      placeholder="e.g. Landlord / Fuel Station"
                       value={expenseFormData.paidTo}
                       onChange={e => setExpenseFormData({ ...expenseFormData, paidTo: e.target.value })}
                     />
@@ -2070,7 +2070,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
                 {expenseFormData.paymentMode !== 'CASH' && (
                   <div className="form-group">
-                    <label className="form-label">बैंक खाता (Deduct from Bank)</label>
+                    <label className="form-label">Deduct from Bank Account</label>
                     <select
                       className="input-field select-field"
                       value={expenseFormData.bankAccountId}
@@ -2086,11 +2086,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 )}
 
                 <div className="form-group">
-                  <label className="form-label">वाउचर विवरण / टिप्पणी (Notes / Receipt #)</label>
+                  <label className="form-label">Notes / Voucher Remarks</label>
                   <input
                     type="text"
                     className="input-field"
-                    placeholder="उदा. बिल नंबर 459 / चेक नंबर 002144"
+                    placeholder="e.g. Bill #459 / Cheque #002144"
                     value={expenseFormData.notes}
                     onChange={e => setExpenseFormData({ ...expenseFormData, notes: e.target.value })}
                   />
@@ -2104,7 +2104,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   onClick={() => setExpenseModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -2112,7 +2112,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   style={{ gap: '6px' }}
                 >
                   <Save size={16} />
-                  <span>वाउचर सेव करें</span>
+                  <span>Save Voucher</span>
                 </button>
               </div>
             </form>
@@ -2127,7 +2127,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="modal-header">
               <h3 style={{ fontSize: '1.15rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Briefcase size={20} color="var(--primary)" />
-                <span>प्रोपराइटर पूंजी खाता (Capital Setup)</span>
+                <span>Proprietor Capital Setup</span>
               </h3>
               <button
                 type="button"
@@ -2141,11 +2141,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <form onSubmit={handleSaveCapital}>
               <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-                  एकल स्वामित्व (Sole Proprietorship) में व्यापार मालिक की निवेशित पूंजी बैलेंस शीट का मुख्य आधार है।
+                  In a Sole Proprietorship, invested capital forms the core foundation of the business balance sheet.
                 </p>
 
                 <div className="form-group">
-                  <label className="form-label">प्रारंभिक पूंजी (Opening Capital ₹) *</label>
+                  <label className="form-label">Opening Capital (₹) *</label>
                   <input
                     type="number"
                     required
@@ -2157,7 +2157,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">अतिरिक्त पूंजी (Additional Capital Added ₹)</label>
+                  <label className="form-label">Additional Capital Added (₹)</label>
                   <input
                     type="number"
                     min="0"
@@ -2168,7 +2168,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">वित्तीय वर्ष तिथि (As on Date)</label>
+                  <label className="form-label">As on Date</label>
                   <input
                     type="date"
                     className="input-field"
@@ -2178,7 +2178,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">विवरण / नोट (Remarks)</label>
+                  <label className="form-label">Remarks / Notes</label>
                   <input
                     type="text"
                     className="input-field"
@@ -2194,7 +2194,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   onClick={() => setCapitalModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -2202,7 +2202,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   style={{ gap: '6px' }}
                 >
                   <Save size={16} />
-                  <span>पूंजी अपडेट करें</span>
+                  <span>Update Capital</span>
                 </button>
               </div>
             </form>

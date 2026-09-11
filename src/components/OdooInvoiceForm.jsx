@@ -471,7 +471,7 @@ export default function OdooInvoiceForm({
                 className="btn btn-primary btn-sm"
                 style={{ background: '#714B67', borderColor: '#714B67', color: '#fff', fontWeight: '800', padding: '7px 14px' }}
               >
-                Confirm (पुष्ट करें)
+                Confirm Invoice
               </button>
               <button 
                 onClick={handleSaveDraft}
@@ -499,7 +499,7 @@ export default function OdooInvoiceForm({
                   style={{ background: '#059669', borderColor: '#059669', color: '#fff', fontWeight: '800', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   <DollarSign size={16} />
-                  <span>Register Payment (भुगतान दर्ज करें)</span>
+                  <span>Register Payment</span>
                 </button>
               )}
               <button 
@@ -702,16 +702,16 @@ export default function OdooInvoiceForm({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
                 <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: '800', color: '#475569' }}>
-                  Customer (पार्टी / ग्राहक) *
+                  Customer *
                 </label>
                 <select 
-                  className="form-control"
+                  className="form-control" 
                   style={{ fontSize: '0.92rem', padding: '8px 12px' }}
                   value={invoice.partyId}
                   onChange={e => handlePartySelect(e.target.value)}
                   disabled={invoice.state !== 'draft'}
                 >
-                  <option value="">Cash Customer (नकद काउंटर ग्राहक)</option>
+                  <option value="">Cash Customer</option>
                   {parties.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.name} {p.city ? `(${p.city})` : ''} {Number(p.balance) > 0 ? `• Due: ₹${Number(p.balance).toLocaleString('en-IN')}` : ''}
@@ -737,7 +737,7 @@ export default function OdooInvoiceForm({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Invoice Date (बिल दिनांक)
+                  Invoice Date
                 </label>
                 <input 
                   type="date"
@@ -751,7 +751,7 @@ export default function OdooInvoiceForm({
 
               <div>
                 <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Payment Terms (भुगतान शर्तें)
+                  Payment Terms
                 </label>
                 <select 
                   className="form-control"
@@ -770,7 +770,7 @@ export default function OdooInvoiceForm({
 
               <div>
                 <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Due Date (अंतिम तिथि)
+                  Due Date
                 </label>
                 <input 
                   type="date"
@@ -784,7 +784,7 @@ export default function OdooInvoiceForm({
 
               <div>
                 <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Journal (खाता बही)
+                  Journal
                 </label>
                 <select 
                   className="form-control"
@@ -1136,7 +1136,7 @@ export default function OdooInvoiceForm({
                 <div style={{ width: '380px', background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', color: '#64748b' }}>
-                    <span>Untaxed Amount (कर पूर्व सबटोटल):</span>
+                    <span>Untaxed Amount:</span>
                     <span style={{ fontWeight: '700', color: '#1e293b' }}>₹{taxableSubtotal.toFixed(2)}</span>
                   </div>
 
@@ -1171,7 +1171,7 @@ export default function OdooInvoiceForm({
                   )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
-                    <span>Rounding (राउंड ऑफ):</span>
+                    <span>Rounding:</span>
                     <span>{roundOff >= 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}</span>
                   </div>
 
@@ -1197,7 +1197,7 @@ export default function OdooInvoiceForm({
 
                   {/* Residual / Amount Due */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: '900', color: amountDue > 0 ? '#dc2626' : '#059669', borderTop: '1px solid #cbd5e1', paddingTop: '8px' }}>
-                    <span>Amount Due (बकाया राशि):</span>
+                    <span>Amount Due:</span>
                     <span>₹{amountDue.toFixed(2)}</span>
                   </div>
                 </div>
@@ -1422,7 +1422,7 @@ export default function OdooInvoiceForm({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <DollarSign size={20} color="#059669" />
-                <span>Register Payment (भुगतान दर्ज करें)</span>
+                <span>Register Payment</span>
               </h3>
               <button onClick={() => setRegisterPaymentModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 <X size={18} />
@@ -1432,7 +1432,7 @@ export default function OdooInvoiceForm({
             <form onSubmit={handleExecutePayment} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label className="form-label">Journal (खाता बही) *</label>
+                  <label className="form-label">Journal *</label>
                   <select 
                     className="form-control"
                     value={paymentForm.journal}
@@ -1462,7 +1462,7 @@ export default function OdooInvoiceForm({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
-                  <label className="form-label">Amount (राशि ₹) *</label>
+                  <label className="form-label">Amount (₹) *</label>
                   <input 
                     type="number"
                     step="0.01"
@@ -1517,7 +1517,7 @@ export default function OdooInvoiceForm({
                         checked={paymentForm.paymentDifferenceAction === 'keep_open'}
                         onChange={() => setPaymentForm({ ...paymentForm, paymentDifferenceAction: 'keep_open' })}
                       />
-                      <span>Keep Open (उधार शेष रखें)</span>
+                      <span>Keep Open</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                       <input 
@@ -1545,7 +1545,7 @@ export default function OdooInvoiceForm({
                   className="btn btn-primary"
                   style={{ background: '#059669', borderColor: '#059669', fontWeight: '800' }}
                 >
-                  Create Payment (भुगतान दर्ज करें)
+                  Create Payment
                 </button>
               </div>
             </form>

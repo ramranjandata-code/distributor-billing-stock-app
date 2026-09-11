@@ -121,7 +121,7 @@ const DEFAULT_EXPENSES = [
   {
     id: 'exp_sample_5',
     date: new Date().toISOString().split('T')[0],
-    category: 'Proprietor Personal Drawings (मालिक का निजी आहरण)',
+    category: 'Proprietor Personal Drawings',
     type: 'DRAWING',
     amount: 8000,
     paymentMode: 'BANK',

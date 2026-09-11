@@ -56,7 +56,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
   const [udharModalOpen, setUdharModalOpen] = useState(false);
   const [selectedPartyForUdhar, setSelectedPartyForUdhar] = useState(null);
   const [udharAmount, setUdharAmount] = useState('');
-  const [udharNotes, setUdharNotes] = useState('सामान/पुराना उधार (Manual Credit Entry)');
+  const [udharNotes, setUdharNotes] = useState('Manual Credit / Outstanding Balance');
 
   const business = fetchBusinessProfile();
   const bankAccounts = fetchBankAccounts();
@@ -224,18 +224,18 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
 
     if (autoSendWhatsAppReceipt && selectedPartyForPayment.phone) {
       const remainingBal = Math.max(0, (selectedPartyForPayment.balance || 0) - amt);
-      const receiptMsg = `*भुगतान रसीद / PAYMENT RECEIPT*\n\n` +
-        `नमस्ते *${selectedPartyForPayment.name}*,\n` +
-        `हमें आपसे *₹${amt.toLocaleString('en-IN')}* का भुगतान (${paymentMode}) सफलतापूर्वक प्राप्त हुआ है।\n\n` +
-        `• नया शेष बकाया: *₹${remainingBal.toLocaleString('en-IN')}*\n` +
-        `• रसीद विवरण: ${paymentNotes || 'Collection'}\n\n` +
-        `धन्यवाद!\n*${business?.name || 'DistroPulse Agency'}*`;
+      const receiptMsg = `*PAYMENT RECEIPT*\n\n` +
+        `Dear *${selectedPartyForPayment.name}*,\n` +
+        `We have received your payment of *₹${amt.toLocaleString('en-IN')}* via ${paymentMode}.\n\n` +
+        `• Remaining Outstanding Balance: *₹${remainingBal.toLocaleString('en-IN')}*\n` +
+        `• Notes / Remarks: ${paymentNotes || 'Collection'}\n\n` +
+        `Thank you for your business!\n*${business?.name || 'DistroPulse Agency'}*`;
 
       const url = buildWhatsAppUrl(selectedPartyForPayment.phone, receiptMsg);
       window.open(url, '_blank');
     }
 
-    alert(`₹${amt} की भुगतान प्रविष्टि सफलतापूर्वक दर्ज कर ली गई है!`);
+    alert(`Payment entry of ₹${amt} recorded successfully!`);
   };
 
   const handleSendWhatsAppReminder = (party) => {
@@ -243,19 +243,19 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
     if (bal <= 0) return;
 
     const aging = partyAgingMap[party.id];
-    const daysText = aging?.oldestDays > 0 ? ` (पिछले ${aging.oldestDays} दिनों से बकाया)` : '';
+    const daysText = aging?.oldestDays > 0 ? ` (overdue for ${aging.oldestDays} days)` : '';
     const bizName = business?.name || 'DistroPulse Distributor';
     const upi = business?.upiId || 'distropulse@icici';
 
-    const msg = `*भुगतान स्मरण पत्र / PAYMENT REMINDER*\n\n` +
-      `नमस्ते *${party.name}* ji,\n` +
-      `*${bizName}* की ओर से सादर नमस्कार।\n\n` +
-      `आपके खाते में वर्तमान कुल बकाया राशि: *₹${bal.toLocaleString('en-IN')}*${daysText} है।\n\n` +
-      `कृपया बकाया राशि का भुगतान नीचे दिए गए विवरण पर यथाशीघ्र करें:\n` +
+    const msg = `*PAYMENT REMINDER*\n\n` +
+      `Dear *${party.name}*,\n` +
+      `Greetings from *${bizName}*.\n\n` +
+      `Your current outstanding balance is: *₹${bal.toLocaleString('en-IN')}*${daysText}.\n\n` +
+      `Kindly arrange payment to the account details below at your earliest convenience:\n` +
       `📲 *UPI ID:* ${upi}\n` +
-      (business?.bankName ? `🏦 *बैंक:* ${business.bankName} | A/c: ${business.accountNo || ''}\n` : '') +
-      `\nभुगतान करने के उपरांत कृपया स्क्रीनशॉट साझा करें ताकि खाता तुरंत अपडेट किया जा सके।\n\n` +
-      `सहयोग हेतु धन्यवाद!\n*${bizName}*`;
+      (business?.bankName ? `🏦 *Bank:* ${business.bankName} | A/c: ${business.accountNo || ''}\n` : '') +
+      `\nPlease share a payment screenshot once paid to update your account ledger immediately.\n\n` +
+      `Thank you!\n*${bizName}*`;
 
     logAuditAction('WHATSAPP_REMINDER_SENT', `Sent ₹${bal} payment reminder to ${party.name} (${party.phone})`);
     const url = buildWhatsAppUrl(party.phone, msg);
@@ -275,14 +275,14 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
     updatePartyBalance(selectedPartyForUdhar.id, Math.abs(Number(udharAmount)));
     refreshAllData();
     setUdharModalOpen(false);
-    alert(`₹${udharAmount} का नया उधार ${selectedPartyForUdhar.name} के खाते में दर्ज कर दिया गया है!`);
+    alert(`New credit of ₹${udharAmount} recorded for ${selectedPartyForUdhar.name}!`);
   };
 
   const handleDeleteRetailer = (party) => {
-    if (window.confirm(`क्या आप वाकई रिटेलर "${party.name}" को सिस्टम से डिलीट करना चाहते हैं?`)) {
+    if (window.confirm(`Are you sure you want to delete retailer "${party.name}" from the system?`)) {
       deleteParty(party.id);
       refreshAllData();
-      alert(`रिटेलर "${party.name}" को सफलतापूर्वक डिलीट कर दिया गया है!`);
+      alert(`Retailer "${party.name}" deleted successfully!`);
     }
   };
 
@@ -295,10 +295,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
           
           <div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-main)' }}>
-              👥 ग्राहक व रिटेलर खाता (Parties & Khata)
+              👥 Customer & Retailer Accounts (Khata)
             </h3>
             <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-              कुल बाज़ार बकाया (Total Market Outstanding): <strong style={{ color: '#c2410c', fontWeight: '800' }}>₹{totalOutstanding.toLocaleString('en-IN')}</strong>
+              Total Market Outstanding: <strong style={{ color: '#c2410c', fontWeight: '800' }}>₹{totalOutstanding.toLocaleString('en-IN')}</strong>
             </p>
           </div>
 
@@ -353,9 +353,9 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
             <div style={{ position: 'relative', width: '260px' }}>
               <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
-                type="text"
+                type="text" 
                 className="input-field"
-                placeholder="दुकान/नाम या फ़ोन नंबर से खोजें..."
+                placeholder="Search by store, name, or phone..."
                 style={{ paddingLeft: '38px' }}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -368,7 +368,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
               style={{ gap: '6px' }}
             >
               <Plus size={18} />
-              <span>नया रिटेलर जोड़ें (+)</span>
+              <span>Add Retailer (+)</span>
             </button>
           </div>
 
@@ -379,7 +379,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
         <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #c2410c' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '4px' }}>
-            <span>कुल बाज़ार बकाया (Total Dues)</span>
+            <span>Total Market Dues</span>
             <IndianRupee size={16} color="#c2410c" />
           </div>
           <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#c2410c' }}>
@@ -432,48 +432,48 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
 
       {/* Quick Aging Filter Bar */}
       <div className="glass-card" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', marginRight: '4px' }}>बकाया फ़िल्टर:</span>
+        <span style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-muted)', marginRight: '4px' }}>Due Filter:</span>
         <button 
           onClick={() => setAgingFilter('ALL')}
           className={`btn btn-sm ${agingFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ padding: '4px 10px', fontSize: '0.78rem' }}
         >
-          सभी ({parties.length})
+          All ({parties.length})
         </button>
         <button 
           onClick={() => setAgingFilter('WITH_BALANCE')}
           className={`btn btn-sm ${agingFilter === 'WITH_BALANCE' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ padding: '4px 10px', fontSize: '0.78rem' }}
         >
-          कुल उधार ({parties.filter(p => (p.balance || 0) > 0).length})
+          Total Dues ({parties.filter(p => (p.balance || 0) > 0).length})
         </button>
         <button 
           onClick={() => setAgingFilter('CURRENT')}
           className={`btn btn-sm ${agingFilter === 'CURRENT' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ padding: '4px 10px', fontSize: '0.78rem', background: agingFilter === 'CURRENT' ? '#10b981' : undefined }}
         >
-          0-15 दिन ({agingStats.currentCount})
+          0-15 Days ({agingStats.currentCount})
         </button>
         <button 
           onClick={() => setAgingFilter('DUE_SOON')}
           className={`btn btn-sm ${agingFilter === 'DUE_SOON' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ padding: '4px 10px', fontSize: '0.78rem', background: agingFilter === 'DUE_SOON' ? '#f59e0b' : undefined }}
         >
-          16-30 दिन ({agingStats.dueSoonCount})
+          16-30 Days ({agingStats.dueSoonCount})
         </button>
         <button 
           onClick={() => setAgingFilter('CRITICAL')}
           className={`btn btn-sm ${agingFilter === 'CRITICAL' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ padding: '4px 10px', fontSize: '0.78rem', background: agingFilter === 'CRITICAL' ? '#dc2626' : undefined, color: agingFilter === 'CRITICAL' ? '#fff' : undefined }}
         >
-          ⚠️ 30+ दिन अतिदेय ({agingStats.criticalCount})
+          ⚠️ 30+ Days Overdue ({agingStats.criticalCount})
         </button>
         <button 
           onClick={() => setAgingFilter('ZERO')}
           className={`btn btn-sm ${agingFilter === 'ZERO' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ padding: '4px 10px', fontSize: '0.78rem' }}
         >
-          शून्य बकाया ({parties.filter(p => !p.balance || p.balance <= 0).length})
+          Zero Balance ({parties.filter(p => !p.balance || p.balance <= 0).length})
         </button>
       </div>
 
@@ -518,7 +518,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                    <span>संपर्क: <strong style={{ color: 'var(--text-main)' }}>{party.contactPerson || 'N/A'}</strong></span>
+                    <span>Contact: <strong style={{ color: 'var(--text-main)' }}>{party.contactPerson || 'N/A'}</strong></span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--primary)', fontWeight: '600' }}>
                       <Phone size={14} />
                       <span>{party.phone || 'N/A'}</span>
@@ -547,10 +547,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   
                   <div style={{ textAlign: 'right' }}>
                     <span className={`badge ${hasDebt ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.82rem', padding: '6px 14px' }}>
-                      {hasDebt ? `बकाया: ₹${party.balance.toLocaleString('en-IN')}` : 'चुका दिया (No Debt)'}
+                      {hasDebt ? `Due: ₹${party.balance.toLocaleString('en-IN')}` : 'No Debt'}
                     </span>
                     <div style={{ fontSize: '0.76rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                      कुल बिल: {partyInvoicesCount} {hasDebt && agingInfo.oldestDays > 0 ? `• ${agingInfo.oldestDays} दिन` : ''}
+                      Total Bills: {partyInvoicesCount} {hasDebt && agingInfo.oldestDays > 0 ? `• ${agingInfo.oldestDays} days` : ''}
                     </div>
                   </div>
 
@@ -561,10 +561,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                         onClick={() => handleSendWhatsAppReminder(party)}
                         className="btn btn-sm"
                         style={{ background: '#25d366', color: '#ffffff', border: 'none', gap: '5px', fontWeight: '700', padding: '6px 10px', boxShadow: '0 2px 6px rgba(37, 211, 102, 0.3)' }}
-                        title="1-Click WhatsApp Payment Reminder / तकादा"
+                        title="1-Click WhatsApp Payment Reminder"
                       >
                         <Send size={13} />
-                        <span>तकादा</span>
+                        <span>Reminder</span>
                       </button>
                     )}
 
@@ -573,10 +573,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       onClick={() => handleOpenAddUdhar(party)}
                       className="btn btn-secondary btn-sm"
                       style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', gap: '4px', fontWeight: '700' }}
-                      title="नया उधार / क्रेडिट दर्ज करें"
+                      title="Add Manual Credit / Outstanding"
                     >
                       <ArrowUpRight size={14} />
-                      <span>+ उधार</span>
+                      <span>+ Credit</span>
                     </button>
 
                     {hasDebt && (
@@ -586,7 +586,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                         style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', gap: '4px', fontWeight: '700' }}
                       >
                         <ArrowDownRight size={14} />
-                        <span>पेमेंट लें</span>
+                        <span>Collect Pay</span>
                       </button>
                     )}
 
@@ -594,7 +594,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       onClick={() => handleOpenEdit(party)}
                       className="btn btn-secondary btn-sm"
                       style={{ padding: '7px 10px' }}
-                      title="एडिट करें"
+                      title="Edit Party"
                     >
                       <Edit3 size={14} />
                     </button>
@@ -603,7 +603,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       onClick={() => handleDeleteRetailer(party)}
                       className="btn btn-secondary btn-sm"
                       style={{ padding: '7px 10px', background: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }}
-                      title="रिटेलर डिलीट करें"
+                      title="Delete Retailer"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -643,13 +643,13 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                         {party.name}
                       </h4>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        संपर्क: {party.contactPerson || 'N/A'}
+                        Contact: {party.contactPerson || 'N/A'}
                       </p>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                       <span className={`badge ${hasDebt ? 'badge-warning' : 'badge-success'}`}>
-                        {hasDebt ? `बकाया: ₹${party.balance}` : 'चुका दिया (No Debt)'}
+                        {hasDebt ? `Due: ₹${party.balance}` : 'No Debt'}
                       </span>
                       {hasDebt && agingInfo.bucket === 'CRITICAL' && (
                         <span className="badge badge-danger" style={{ fontSize: '0.65rem' }}>
@@ -683,7 +683,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 {/* Bottom Actions */}
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
-                    कुल बिल: {partyInvoicesCount}
+                    Total Bills: {partyInvoicesCount}
                   </span>
 
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -693,10 +693,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                         onClick={() => handleSendWhatsAppReminder(party)}
                         className="btn btn-sm"
                         style={{ background: '#25d366', color: '#ffffff', border: 'none', gap: '4px', fontWeight: '700', padding: '5px 8px', fontSize: '0.74rem' }}
-                        title="1-Click WhatsApp Payment Reminder / तकादा"
+                        title="1-Click WhatsApp Payment Reminder"
                       >
                         <Send size={12} />
-                        <span>तकादा</span>
+                        <span>Reminder</span>
                       </button>
                     )}
 
@@ -704,10 +704,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       onClick={() => handleOpenAddUdhar(party)}
                       className="btn btn-secondary btn-sm"
                       style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', gap: '4px', fontWeight: '700', padding: '5px 8px', fontSize: '0.75rem' }}
-                      title="नया उधार / क्रेडिट दर्ज करें"
+                      title="Add Manual Credit / Outstanding"
                     >
                       <ArrowUpRight size={13} />
-                      <span>+ उधार</span>
+                      <span>+ Credit</span>
                     </button>
 
                     {hasDebt && (
@@ -717,7 +717,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                         style={{ background: '#fff7ed', color: '#c2410c', border: '1px solid #ffedd5', gap: '4px', fontWeight: '700', padding: '5px 8px', fontSize: '0.75rem' }}
                       >
                         <ArrowDownRight size={13} />
-                        <span>पेमेंट लें</span>
+                        <span>Collect Pay</span>
                       </button>
                     )}
 
@@ -725,7 +725,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       onClick={() => handleOpenEdit(party)}
                       className="btn btn-secondary btn-sm"
                       style={{ padding: '5px 8px' }}
-                      title="एडिट करें"
+                      title="Edit Party"
                     >
                       <Edit3 size={13} />
                     </button>
@@ -734,7 +734,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                       onClick={() => handleDeleteRetailer(party)}
                       className="btn btn-secondary btn-sm"
                       style={{ padding: '5px 8px', background: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }}
-                      title="रिटेलर डिलीट करें"
+                      title="Delete Retailer"
                     >
                       <Trash2 size={13} />
                     </button>
@@ -753,7 +753,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
           <div className="modal-content">
             <div className="modal-header">
               <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                {editingParty ? '✏️ रिटेलर खाता अपडेट करें' : '👥 नया रिटेलर / ग्राहक जोड़ें'}
+                {editingParty ? '✏️ Edit Retailer Account' : '👥 Add New Retailer / Customer'}
               </h3>
               <button 
                 onClick={() => setPartyModalOpen(false)}
@@ -767,75 +767,75 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
               <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">दुकान / रिटेलर का नाम (Shop Name) *</label>
+                  <label className="form-label">Shop / Retailer Name *</label>
                   <input 
                     type="text" 
                     className="input-field"
                     required
-                    placeholder="उदा. गुप्ता किराना & जनरल स्टोर"
+                    placeholder="e.g. Gupta Kirana & General Store"
                     value={formData.name}
                     onChange={e => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">दुकानदार / संपर्क व्यक्ति (Contact Person)</label>
+                  <label className="form-label">Contact Person / Owner</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. रमाकांत गुप्ता"
+                    placeholder="e.g. Ramakant Gupta"
                     value={formData.contactPerson}
                     onChange={e => setFormData({...formData, contactPerson: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">फ़ोन नंबर (Mobile No) *</label>
+                  <label className="form-label">Phone Number (Mobile) *</label>
                   <input 
                     type="text" 
                     className="input-field"
                     required
-                    placeholder="उदा. 9811223344"
+                    placeholder="e.g. 9811223344"
                     value={formData.phone}
                     onChange={e => setFormData({...formData, phone: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">शहर / क्षेत्र (City / Area)</label>
+                  <label className="form-label">City / Area</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. रोहिणी, दिल्ली"
+                    placeholder="e.g. Rohini, Delhi"
                     value={formData.city}
                     onChange={e => setFormData({...formData, city: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">GSTIN नंबर (यदि उपलब्ध हो)</label>
+                  <label className="form-label">GSTIN (If Available)</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. 07BAPPG4321A1Z2"
+                    placeholder="e.g. 07BAPPG4321A1Z2"
                     value={formData.gstin}
                     onChange={e => setFormData({...formData, gstin: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">दुकान का पूरा पता (Address)</label>
+                  <label className="form-label">Full Address</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. शॉप नं 4, मेन मार्केट, रोहिणी सेक्टर 7"
+                    placeholder="e.g. Shop No 4, Main Market, Sector 7"
                     value={formData.address}
                     onChange={e => setFormData({...formData, address: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">क्रेडिट लिमिट (Credit Limit ₹)</label>
+                  <label className="form-label">Credit Limit (₹)</label>
                   <input 
                     type="number" 
                     className="input-field"
@@ -845,7 +845,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">प्रारंभिक बकाया / उधार (Opening Balance ₹)</label>
+                  <label className="form-label">Opening Balance / Due (₹)</label>
                   <input 
                     type="number" 
                     className="input-field"
@@ -862,11 +862,11 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   onClick={() => setPartyModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
                   <Save size={16} />
-                  <span>खाता सेव करें (Save Party)</span>
+                  <span>Save Party</span>
                 </button>
               </div>
             </form>
@@ -881,7 +881,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
             <div className="modal-header" style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#991b1b', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ArrowUpRight size={20} color="#dc2626" />
-                <span>📝 नया उधार दर्ज करें (Add Udhar Balance)</span>
+                <span>📝 Add Credit / Outstanding Balance</span>
               </h3>
               <button 
                 onClick={() => setUdharModalOpen(false)}
@@ -896,18 +896,18 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 <div style={{ marginBottom: '16px', padding: '14px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
                   <p style={{ fontWeight: '700', color: '#1e293b' }}>{selectedPartyForUdhar?.name}</p>
                   <p style={{ fontSize: '0.88rem', color: '#dc2626', marginTop: '2px', fontWeight: '600' }}>
-                    वर्तमान बकाया उधार: <strong>₹{selectedPartyForUdhar?.balance?.toLocaleString('en-IN')}</strong>
+                    Current Outstanding Due: <strong>₹{selectedPartyForUdhar?.balance?.toLocaleString('en-IN')}</strong>
                   </p>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">नया उधार / बकाया रकम (Amount to Add ₹) *</label>
+                  <label className="form-label">New Credit / Due Amount (₹) *</label>
                   <input 
                     type="number" 
                     className="input-field"
                     required
                     min="1"
-                    placeholder="उदा. 2500"
+                    placeholder="e.g. 2500"
                     value={udharAmount}
                     onChange={e => setUdharAmount(e.target.value)}
                     autoFocus
@@ -915,11 +915,11 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">उधार का विवरण (Remarks / Notes)</label>
+                  <label className="form-label">Remarks / Notes</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. बकाया बिल भुगतान न करना / सामान का उधार"
+                    placeholder="e.g. Pending bill dues / goods on credit"
                     value={udharNotes}
                     onChange={e => setUdharNotes(e.target.value)}
                   />
@@ -932,14 +932,14 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   onClick={() => setUdharModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="btn btn-primary"
                   style={{ background: '#dc2626', borderColor: '#b91c1c' }}
                 >
-                  उधार जोड़ें (+ ₹{udharAmount || 0})
+                  Add Credit (+ ₹{udharAmount || 0})
                 </button>
               </div>
             </form>
@@ -953,7 +953,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
           <div className="modal-content" style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                💵 बकाया पेमेंट जमा करें (Payment Receipt)
+                💵 Record Payment Receipt
               </h3>
               <button 
                 onClick={() => setPaymentModalOpen(false)}
@@ -968,19 +968,19 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 <div style={{ marginBottom: '16px', padding: '14px', background: '#fff7ed', borderRadius: '8px', border: '1px solid #ffedd5' }}>
                   <p style={{ fontWeight: '700', color: 'var(--text-main)' }}>{selectedPartyForPayment?.name}</p>
                   <p style={{ fontSize: '0.88rem', color: '#c2410c', marginTop: '2px', fontWeight: '600' }}>
-                    वर्तमान कुल बकाया उधार: <strong>₹{selectedPartyForPayment?.balance}</strong>
+                    Current Total Outstanding Due: <strong>₹{selectedPartyForPayment?.balance}</strong>
                   </p>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">प्राप्त हुई रकम (Received Amount ₹) *</label>
+                  <label className="form-label">Received Amount (₹) *</label>
                   <input 
                     type="number" 
                     className="input-field" 
                     required
                     min="1"
                     max={selectedPartyForPayment?.balance}
-                    placeholder="उदा. 5000"
+                    placeholder="e.g. 5000"
                     value={receivedAmount}
                     onChange={e => setReceivedAmount(e.target.value)}
                   />
@@ -988,7 +988,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
 
                 {/* Quick Preset Buttons */}
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>त्वरित राशि:</span>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Quick Amounts:</span>
                   {[500, 1000, 2000, 5000].filter(a => a <= (selectedPartyForPayment?.balance || 0)).map(amt => (
                     <button
                       key={amt}
@@ -1006,27 +1006,27 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     className="btn btn-secondary btn-sm"
                     style={{ padding: '3px 8px', fontSize: '0.74rem', fontWeight: '700', color: '#059669', borderColor: '#a7f3d0' }}
                   >
-                    पूरा बकाया (₹{selectedPartyForPayment?.balance})
+                    Full Balance (₹{selectedPartyForPayment?.balance})
                   </button>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">भुगतान का माध्यम (Payment Mode)</label>
+                  <label className="form-label">Payment Mode</label>
                   <select 
                     className="input-field select-field"
                     value={paymentMode}
                     onChange={e => setPaymentMode(e.target.value)}
                   >
-                    <option value="Cash">नकद (Cash)</option>
+                    <option value="Cash">Cash</option>
                     <option value="UPI">UPI / GPay / PhonePe / QR</option>
-                    <option value="Bank">बैंक ट्रांसफर / NEFT / RTGS / Cheque</option>
+                    <option value="Bank">Bank Transfer / NEFT / RTGS / Cheque</option>
                   </select>
                 </div>
 
                 {/* Connected Bank Account Selection for Non-Cash */}
                 {(paymentMode === 'Bank' || paymentMode === 'UPI') && bankAccounts.length > 0 && (
                   <div className="form-group">
-                    <label className="form-label">जमा बैंक खाता (Deposit Bank Account)</label>
+                    <label className="form-label">Deposit Bank Account</label>
                     <select 
                       className="input-field select-field"
                       value={selectedBankId}
@@ -1042,7 +1042,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 )}
 
                 <div className="form-group">
-                  <label className="form-label">विवरण (Remarks / Notes)</label>
+                  <label className="form-label">Remarks / Notes</label>
                   <input 
                     type="text" 
                     className="input-field"
@@ -1061,7 +1061,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                     style={{ cursor: 'pointer' }}
                   />
                   <label htmlFor="autoSendWhatsApp" style={{ fontSize: '0.82rem', color: '#166534', cursor: 'pointer', fontWeight: '600', margin: 0 }}>
-                    जमा रसीद तुरंत WhatsApp पर भेजें (Send Receipt)
+                    Send Receipt on WhatsApp Instantly
                   </label>
                 </div>
               </div>
@@ -1072,11 +1072,11 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                   onClick={() => setPaymentModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
                   <CheckCircle2 size={16} />
-                  <span>भुगतान दर्ज करें (₹{receivedAmount || 0})</span>
+                  <span>Record Payment (₹{receivedAmount || 0})</span>
                 </button>
               </div>
             </form>

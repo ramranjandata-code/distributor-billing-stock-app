@@ -45,7 +45,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
 
   const sendWhatsAppReminder = (party) => {
     const cleanPhone = party.phone ? party.phone.replace(/[^0-9]/g, '') : '';
-    const message = `नमस्ते ${party.name} जी,\n\n${business?.name || 'DistroPulse Distributor'} से आपका कुल बकाया उधार (Khata Balance) ₹${party.balance?.toLocaleString('en-IN')} है।\n\nकृपया जल्द से जल्द भुगतान करने की कृपा करें।\nधन्यवाद!`;
+    const message = `Hello ${party.name},\n\nYour total outstanding balance with ${business?.name || 'DistroPulse Distributor'} is ₹${party.balance?.toLocaleString('en-IN')}.\n\nKindly arrange the payment at your earliest convenience.\nThank you!`;
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}&text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -147,7 +147,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             position: 'relative',
             transition: 'all 0.2s ease-in-out'
           }}
-          title="उधार रिटेलर्स की सूची देखने के लिए क्लिक करें"
+          title="Click to view list of credit retailers"
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-muted)' }}>{t('khata_balance')}</span>
@@ -163,7 +163,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
               {dueParties.length} {t('due_on_retailers')}
             </p>
             <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '2px' }}>
-              सूची देखें <ChevronRight size={14} />
+              View List <ChevronRight size={14} />
             </span>
           </div>
         </div>
@@ -177,10 +177,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             </div>
           </div>
           <h3 style={{ fontSize: '1.6rem', fontWeight: '800', color: lowStockProducts.length > 0 ? '#f87171' : '#10b981' }}>
-            {lowStockProducts.length} आइटम्स
+            {lowStockProducts.length} Items
           </h3>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            {lowStockProducts.length > 0 ? 'तुरंत री-ऑर्डर करने की आवश्यकता' : 'सभी प्रोडक्ट्स का स्टॉक पर्याप्त है'}
+            {lowStockProducts.length > 0 ? 'Urgent reorder required' : 'Stock level is healthy for all products'}
           </p>
         </div>
       </div>
@@ -193,21 +193,21 @@ export default function Dashboard({ products, parties, invoices, business, setAc
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertTriangle size={20} color="#f59e0b" />
-              <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>लो-स्टॉक चेतावनी (Low Stock Warnings)</h3>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Low Stock Warnings</h3>
             </div>
             <button 
               onClick={() => setActiveTab('inventory')}
               className="btn btn-secondary btn-sm"
             >
-              सभी देखें
+              View All
             </button>
           </div>
 
           {lowStockProducts.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>
               <CheckCircle2 size={36} color="#10b981" style={{ margin: '0 auto 10px auto' }} />
-              <p style={{ fontWeight: '600', color: 'var(--text-main)' }}>स्टॉक स्थिति उत्तम है!</p>
-              <p style={{ fontSize: '0.82rem' }}>किसी भी प्रोडक्ट का स्टॉक लिमिट से नीचे नहीं है।</p>
+              <p style={{ fontWeight: '600', color: 'var(--text-main)' }}>Stock levels are optimal!</p>
+              <p style={{ fontSize: '0.82rem' }}>No products are currently below the reorder threshold.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -230,10 +230,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span className="badge badge-danger" style={{ fontSize: '0.75rem' }}>
-                      बचा स्टॉक: {prod.currentStock} {prod.unit}
+                      Stock: {prod.currentStock} {prod.unit}
                     </span>
                     <p style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '2px' }}>
-                      न्यूनतम: {prod.minStockLimit}
+                      Min Limit: {prod.minStockLimit}
                     </p>
                   </div>
                 </div>
@@ -247,31 +247,31 @@ export default function Dashboard({ products, parties, invoices, business, setAc
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Receipt size={20} color="var(--primary)" />
-              <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>हाल ही के बिल (Recent Bills)</h3>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '700' }}>Recent Bills</h3>
             </div>
             <button 
               onClick={() => setActiveTab('invoices')}
               className="btn btn-secondary btn-sm"
             >
-              सभी इनवॉइस
+              All Invoices
             </button>
           </div>
 
           {recentInvoices.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>
               <Clock size={36} style={{ margin: '0 auto 10px auto' }} />
-              <p>कोई बिल रिकॉर्ड नहीं मिला।</p>
+              <p>No invoice records found.</p>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '8px 10px' }}>इनवॉइस नं</th>
-                    <th style={{ padding: '8px 10px' }}>रिटेलर (Party)</th>
-                    <th style={{ padding: '8px 10px' }}>रकम</th>
-                    <th style={{ padding: '8px 10px' }}>स्थिति</th>
-                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>प्रिंट</th>
+                    <th style={{ padding: '8px 10px' }}>Invoice No</th>
+                    <th style={{ padding: '8px 10px' }}>Retailer (Party)</th>
+                    <th style={{ padding: '8px 10px' }}>Amount</th>
+                    <th style={{ padding: '8px 10px' }}>Status</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Print</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -328,10 +328,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
               <div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#9a3412', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <IndianRupee size={22} color="#c2410c" />
-                  <span>💳 बाजार बकाया / उधार रिटेलर्स लिस्ट (Market Udhar Summary)</span>
+                  <span>💳 Market Outstanding / Retailers Due Summary</span>
                 </h3>
                 <p style={{ fontSize: '0.86rem', color: '#ea580c', marginTop: '3px', fontWeight: '600' }}>
-                  कुल मार्केट बकाया (Total Market Udhar): <strong style={{ fontSize: '1.05rem', color: '#9a3412' }}>₹{totalOutstandingBalance.toLocaleString('en-IN')}</strong> ({dueParties.length} रिटेलर्स पर बाकी)
+                  Total Market Due: <strong style={{ fontSize: '1.05rem', color: '#9a3412' }}>₹{totalOutstandingBalance.toLocaleString('en-IN')}</strong> ({dueParties.length} retailers pending)
                 </p>
               </div>
               <button 
@@ -361,7 +361,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                 <input 
                   type="text" 
                   className="input-field" 
-                  placeholder="दुकान का नाम, फोन नंबर या एरिया लिखकर खोजें..." 
+                  placeholder="Search by store name, phone number, or area..." 
                   style={{ paddingLeft: '38px', width: '100%', fontSize: '0.88rem' }}
                   value={udharSearchTerm}
                   onChange={e => setUdharSearchTerm(e.target.value)}
@@ -376,10 +376,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                 <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
                   <CheckCircle2 size={44} color="#10b981" style={{ margin: '0 auto 12px auto' }} />
                   <h4 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                    {udharSearchTerm ? 'कोई मैचिंग बकाया रिटेलर नहीं मिला' : 'कोई बकाया उधार नहीं है! 🎉'}
+                    {udharSearchTerm ? 'No matching retailers found' : 'No outstanding balance! 🎉'}
                   </h4>
                   <p style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                    {udharSearchTerm ? 'कृपया खोज शब्द बदलें' : 'सभी रिटेलर्स का खाता चुकता है।'}
+                    {udharSearchTerm ? 'Please try a different search term' : 'All retailer accounts are settled.'}
                   </p>
                 </div>
               ) : (
@@ -394,7 +394,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                         border: '1px solid #ffedd5',
                         display: 'flex',
                         alignItems: 'center',
-                        justify: 'space-between',
+                        justifyContent: 'space-between',
                         flexWrap: 'wrap',
                         gap: '14px'
                       }}
@@ -410,7 +410,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                           </h4>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px', fontSize: '0.82rem', color: '#64748b' }}>
-                          <span>संपर्क: <strong style={{ color: '#334155' }}>{party.contactPerson || 'N/A'}</strong></span>
+                          <span>Contact: <strong style={{ color: '#334155' }}>{party.contactPerson || 'N/A'}</strong></span>
                           {party.phone && (
                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#0284c7', fontWeight: '600' }}>
                               <Phone size={13} />
@@ -425,7 +425,7 @@ export default function Dashboard({ products, parties, invoices, business, setAc
 
                       {/* Center Balance Amount */}
                       <div style={{ textAlign: 'right', minWidth: '130px' }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#9a3412' }}>कुल बकाया उधार:</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: '600', color: '#9a3412' }}>Total Outstanding:</span>
                         <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#c2410c' }}>
                           ₹{party.balance?.toLocaleString('en-IN')}
                         </div>
@@ -438,10 +438,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                             onClick={() => sendWhatsAppReminder(party)}
                             className="btn btn-secondary btn-sm"
                             style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontWeight: '700', gap: '5px' }}
-                            title="WhatsApp पेमेंट रिमाइंडर भेजें"
+                            title="Send WhatsApp Payment Reminder"
                           >
                             <MessageCircle size={14} color="#16a34a" />
-                            <span>WhatsApp रिमाइंडर</span>
+                            <span>WhatsApp Reminder</span>
                           </button>
                         )}
 
@@ -452,10 +452,10 @@ export default function Dashboard({ products, parties, invoices, business, setAc
                           }}
                           className="btn btn-primary btn-sm"
                           style={{ gap: '4px', fontWeight: '700' }}
-                          title="खाते में जाएं"
+                          title="View Ledger"
                         >
                           <Eye size={14} />
-                          <span>खाता देखें</span>
+                          <span>View Ledger</span>
                         </button>
                       </div>
 
@@ -468,13 +468,13 @@ export default function Dashboard({ products, parties, invoices, business, setAc
             {/* Modal Footer */}
             <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                कुल {filteredDueParties.length} रिटेलर्स सूची में प्रदर्शित हैं
+                Showing {filteredDueParties.length} retailers in list
               </span>
               <button 
                 onClick={() => setUdharModalOpen(false)}
                 className="btn btn-secondary"
               >
-                बंद करें (Close)
+                Close
               </button>
             </div>
 

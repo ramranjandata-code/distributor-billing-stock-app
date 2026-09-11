@@ -58,7 +58,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     e.preventDefault();
     saveBusinessInfo(formData);
     refreshAllData();
-    alert('✅ डिस्ट्रीब्यूटर फर्म डिटेल्स सफलतापूर्वक सेव हो गई हैं!');
+    alert('✅ Distributor firm details saved successfully!');
   };
 
   const handleOpenAddProduct = () => {
@@ -121,17 +121,17 @@ export default function Settings({ business, products, refreshAllData, lang, cha
   };
 
   const handleDeleteItem = (id, name) => {
-    if (window.confirm(`क्या आप '${name}' को इन्वेंट्री से हटाना चाहते हैं?`)) {
+    if (window.confirm(`Are you sure you want to delete '${name}' from inventory?`)) {
       deleteProduct(id);
       refreshAllData();
     }
   };
 
   const handleClearSampleProducts = () => {
-    if (window.confirm('⚠️ क्या आप सभी टेस्ट/सैंपल डेटा (Products, Retailers, Bills) को हटाकर बिल्कुल नया और साफ ऐप शुरू करना चाहते हैं?')) {
+    if (window.confirm('⚠️ Are you sure you want to clear all demo data (Products, Retailers, Invoices) and start fresh?')) {
       clearAllSampleData();
       refreshAllData();
-      alert('🗑️ सभी सैंपल प्रोडक्ट्स, रिटेलर्स एवं बिल डेटा पूरी तरह से डिलीट कर दिया गया है!');
+      alert('🗑️ All demo products, retailers, and invoice data have been cleared successfully!');
     }
   };
 
@@ -153,7 +153,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     const syncRes = await performFullSync();
     refreshAllData();
     setCloudSyncStatus({ loading: false, msg: syncRes.message });
-    alert('✅ Supabase Cloud DB क्रेडेंशियल्स सफलतापूर्वक अपडेट और सिंक हो गए हैं!');
+    alert('✅ Supabase Cloud DB credentials updated and synced successfully!');
   };
 
   const handlePushToCloud = async () => {
@@ -173,10 +173,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     const ok = await fetchCloudData();
     setCloudSyncStatus({ loading: false, msg: ok ? 'Successfully pulled Cloud DB data!' : 'Failed to pull Cloud DB data.' });
     if (ok) {
-      alert('✅ ऑनलाइन क्लाउड डेटाबेस से सारा डेटा सिंक हो गया है!');
+      alert('✅ All data synced from cloud database successfully!');
       refreshAllData();
     } else {
-      alert('⚠️ क्लाउड सिंक नहीं हो सका। कृपया Supabase URL & Key की जांच करें।');
+      alert('⚠️ Cloud sync failed. Please check your Supabase URL & Key.');
     }
   };
 
@@ -191,7 +191,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           style={{ gap: '6px' }}
         >
           <Store size={16} />
-          <span>फर्म डिटेल्स (Firm Profile)</span>
+          <span>Firm Profile</span>
         </button>
 
         <button 
@@ -200,7 +200,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           style={{ gap: '6px' }}
         >
           <Boxes size={16} />
-          <span>आइटम्स जोड़ें & प्रबंधित करें (Add Items)</span>
+          <span>Manage Items</span>
         </button>
 
       </div>
@@ -211,14 +211,14 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Store size={24} color="var(--primary)" />
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>डिस्ट्रीब्यूटर फर्म प्रोफ़ाइल (Firm Info)</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Distributor Firm Profile</h2>
             </div>
           </div>
 
           <form onSubmit={handleSaveFirmProfile}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div className="form-group">
-                <label className="form-label">फर्म का नाम (Distributor Name) *</label>
+                <label className="form-label">Distributor / Firm Name *</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -229,7 +229,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">प्रोप्राइटर का नाम (Owner Name)</label>
+                <label className="form-label">Owner / Proprietor Name</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -239,7 +239,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">GSTIN नंबर *</label>
+                <label className="form-label">GSTIN Number *</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -250,7 +250,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">मोबाइल / फ़ोन नंबर *</label>
+                <label className="form-label">Mobile / Phone Number *</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -261,7 +261,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">ईमेल आईडी (Firm Email ID)</label>
+                <label className="form-label">Firm Email ID</label>
                 <input 
                   type="email" 
                   className="input-field"
@@ -272,7 +272,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">पूरा पता (Distributor Address)</label>
+                <label className="form-label">Distributor Address</label>
                 <textarea 
                   rows={2}
                   className="input-field"
@@ -282,7 +282,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">बैंक का नाम (Bank Name)</label>
+                <label className="form-label">Bank Name</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -292,7 +292,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">खाता संख्या (Account Number)</label>
+                <label className="form-label">Account Number</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -302,7 +302,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">IFSC कोड</label>
+                <label className="form-label">IFSC Code</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -312,7 +312,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">इनवॉइस प्रिफिक्स (Invoice Prefix)</label>
+                <label className="form-label">Invoice Prefix</label>
                 <input 
                   type="text" 
                   className="input-field"
@@ -325,7 +325,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" className="btn btn-primary" style={{ gap: '8px' }}>
                 <Save size={18} />
-                <span>प्रोफाइल सेव करें (Save Profile)</span>
+                <span>Save Profile</span>
               </button>
             </div>
           </form>
@@ -339,10 +339,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                📦 अपने प्रोडक्ट्स जोड़ें (Add Your FMCG Items)
+                📦 Manage Products
               </h2>
               <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                अपने बिकने वाले सामान (Wafers, Chocolates, Biscuits) यहाँ प्रबंधन व एडिट करें।
+                Manage and update FMCG products, pricing, and carton packing.
               </p>
             </div>
 
@@ -353,7 +353,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 style={{ gap: '6px' }}
               >
                 <Plus size={18} />
-                <span>नया आइटम जोड़ें (+ Add Item)</span>
+                <span>Add Item (+)</span>
               </button>
             </div>
           </div>
@@ -362,12 +362,12 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           {products.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '50px 20px', color: 'var(--text-muted)' }}>
               <PackageCheck size={48} style={{ margin: '0 auto 12px auto', opacity: 0.4 }} />
-              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '6px' }}>आपकी इन्वेंट्री लिस्ट खाली है</h3>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '6px' }}>Your Inventory List is Empty</h3>
               <p style={{ fontSize: '0.86rem', marginBottom: '16px' }}>
-                ऊपर दिए गए <strong>'नया आइटम जोड़ें (+ Add Item)'</strong> बटन पर क्लिक करके Wafers, Chocolate, Cold Drinks आदि जोड़ें।
+                Click the <strong>'Add Item (+)'</strong> button above to add products.
               </p>
               <button onClick={handleOpenAddProduct} className="btn btn-primary">
-                पहला प्रोडक्ट जोड़ें (+)
+                Add First Product (+)
               </button>
             </div>
           ) : (
@@ -375,12 +375,12 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '10px' }}>प्रोडक्ट का नाम</th>
-                    <th style={{ padding: '10px' }}>कैटेगरी</th>
+                    <th style={{ padding: '10px' }}>Product Name</th>
+                    <th style={{ padding: '10px' }}>Category</th>
                     <th style={{ padding: '10px', textAlign: 'right' }}>MRP (₹)</th>
-                    <th style={{ padding: '10px', textAlign: 'right' }}>बिक्री दर (₹)</th>
-                    <th style={{ padding: '10px', textAlign: 'center' }}>वर्तमान स्टॉक</th>
-                    <th style={{ padding: '10px', textAlign: 'right' }}>एक्शन</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Sale Price (₹)</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>Current Stock</th>
+                    <th style={{ padding: '10px', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -409,7 +409,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                             onClick={() => handleOpenEditProduct(prod)}
                             className="btn btn-secondary btn-sm"
                             style={{ padding: '4px 8px' }}
-                            title="एडिट करें"
+                            title="Edit Product"
                           >
                             <Edit3 size={14} />
                           </button>
@@ -417,7 +417,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                             onClick={() => handleDeleteItem(prod.id, prod.name)}
                             className="btn btn-secondary btn-sm"
                             style={{ padding: '4px 8px', color: '#f87171' }}
-                            title="हटाएं"
+                            title="Delete Product"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -440,9 +440,9 @@ export default function Settings({ business, products, refreshAllData, lang, cha
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Database size={24} color="var(--primary)" />
               <div>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>☁️ क्लाउड डेटाबेस सेटिंग्स (Supabase Cloud DB)</h2>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>☁️ Cloud Database Settings (Supabase Cloud DB)</h2>
                 <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
-                  अपने स्टॉक, बिल और रिटेलर बकाया का डेटा 24x7 ऑनलाइन क्लाउड डेटाबेस पर रखें।
+                  Keep your stock, invoices, and retailer balances synchronized 24x7 on cloud database.
                 </p>
               </div>
             </div>
@@ -456,10 +456,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           <div style={{ marginBottom: '20px', padding: '14px 18px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h4 style={{ fontSize: '0.96rem', fontWeight: '700', color: '#047857' }}>
-                ⚡ ऑटोमैटिक रीअल-टाइम सिंक एक्टिवेट है (Real-Time Auto-Sync Active)
+                ⚡ Real-Time Auto-Sync Active
               </h4>
               <p style={{ fontSize: '0.82rem', color: '#065f46', marginTop: '2px' }}>
-                आप जब भी नया बिल बनाएंगे, स्टॉक अपडेट करेंगे या नया रिटेलर जोड़ेंगे, डेटा अपने-आप तुरंत Supabase Cloud DB में सेव हो जाएगा।
+                Whenever you create an invoice, update stock, or add a retailer, data automatically syncs with Supabase Cloud DB.
               </p>
             </div>
             
@@ -469,7 +469,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', gap: '6px' }}
             >
               <Trash2 size={15} />
-              <span>🗑️ डिलीट ऑल सैंपल डेटा (Clear All Demo Data)</span>
+              <span>🗑️ Clear All Demo Data</span>
             </button>
           </div>
 
@@ -477,10 +477,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h4 style={{ fontSize: '0.96rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                🔄 1-क्लिक मैनुअल बैकअप व रिस्टोर (Manual Backup & Restore)
+                🔄 1-Click Manual Backup & Restore
               </h4>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                ऑटो-सिंक के अलावा यदि आप चाहें तो किसी भी समय 1-क्लिक में क्लाउड पर पूरा बैकअप भेज या डाउनलोड कर सकते हैं।
+                In addition to auto-sync, you can push or pull a complete backup of your data to the cloud at any time.
               </p>
             </div>
 
@@ -524,7 +524,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 <input 
                   type="url" 
                   className="input-field"
-                  placeholder="उदा. https://your-project-id.supabase.co"
+                  placeholder="e.g. https://your-project-id.supabase.co"
                   value={supabaseConfig.url} 
                   onChange={e => setSupabaseConfig({...supabaseConfig, url: e.target.value})}
                 />
@@ -554,11 +554,11 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 disabled={cloudSyncStatus.loading}
               >
                 <RefreshCw size={16} className={cloudSyncStatus.loading ? 'spin' : ''} />
-                <span>टेस्ट कनेक्शन (Test Connection)</span>
+                <span>Test Connection</span>
               </button>
               <button type="submit" className="btn btn-primary" style={{ gap: '8px' }} disabled={cloudSyncStatus.loading}>
                 <Save size={18} />
-                <span>क्रेडेंशियल्स सेव करें (Save Credentials)</span>
+                <span>Save Credentials</span>
               </button>
             </div>
           </form>
@@ -569,9 +569,9 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               📖 Supabase Setup Instructions (2-Min Setup)
             </h4>
             <ol style={{ fontSize: '0.84rem', color: 'var(--text-muted)', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <li>[supabase.com](https://supabase.com) पर मुफ़्त अकाउंट बनाकर New Project तैयार करें।</li>
-              <li>Project Settings → API से <strong>Project URL</strong> और <strong>anon key</strong> कॉपी करके ऊपर पेस्ट करें।</li>
-              <li>प्रोजेक्ट रूट में बनी फाइल <code>supabase_schema.sql</code> के कोड को Supabase SQL Editor में Run कर दें।</li>
+              <li>Create a free project at [supabase.com](https://supabase.com).</li>
+              <li>Copy <strong>Project URL</strong> and <strong>anon key</strong> from Project Settings → API and paste above.</li>
+              <li>Run the SQL script from <code>supabase_schema.sql</code> in the Supabase SQL Editor.</li>
             </ol>
           </div>
 
@@ -584,7 +584,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
           <div className="modal-content">
             <div className="modal-header">
               <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                {editingProd ? '✏️ प्रोडक्ट की जानकारी एडिट करें' : '📦 नया प्रोडक्ट जोड़ें (Add New FMCG Item)'}
+                {editingProd ? '✏️ Edit Product Details' : '📦 Add New Product'}
               </h3>
               <button 
                 onClick={() => setItemModalOpen(false)}
@@ -598,61 +598,61 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">प्रोडक्ट का पूरा नाम (Item Name) *</label>
+                  <label className="form-label">Product Name *</label>
                   <input 
                     type="text" 
                     className="input-field"
                     required
-                    placeholder="उदा. Lays Wafers / Dairy Milk Chocolate / Good Day Biscuit"
+                    placeholder="e.g. Lays Wafers / Dairy Milk Chocolate / Good Day Biscuit"
                     value={prodFormData.name}
                     onChange={e => setProdFormData({...prodFormData, name: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">कैटेगरी (Category)</label>
+                  <label className="form-label">Category</label>
                   <select 
                     className="input-field select-field"
                     value={prodFormData.category}
                     onChange={e => setProdFormData({...prodFormData, category: e.target.value})}
                   >
-                    <option value="Snacks & Wafers">Snacks & Wafers (वेफर्स व चिप्स)</option>
-                    <option value="Chocolates & Confectionery">Chocolates & Confectionery (चॉकलेट व टॉफी)</option>
-                    <option value="Biscuits & Bakery">Biscuits & Bakery (बिस्कुट व नमकीन)</option>
-                    <option value="Cold Drinks & Beverages">Cold Drinks & Beverages (कोल्ड ड्रिंक्स व जूस)</option>
-                    <option value="Personal Care & Soaps">Personal Care & Soaps (साबुन व शैम्पू)</option>
-                    <option value="General FMCG Grocery">General FMCG Grocery (सामान्य किराना)</option>
+                    <option value="Snacks & Wafers">Snacks & Wafers</option>
+                    <option value="Chocolates & Confectionery">Chocolates & Confectionery</option>
+                    <option value="Biscuits & Bakery">Biscuits & Bakery</option>
+                    <option value="Cold Drinks & Beverages">Cold Drinks & Beverages</option>
+                    <option value="Personal Care & Soaps">Personal Care & Soaps</option>
+                    <option value="General FMCG Grocery">General FMCG Grocery</option>
                   </select>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">ब्रांड / कंपनी नाम (Brand)</label>
+                  <label className="form-label">Brand / Company Name</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. PepsiCo / Cadbury / Parle / Britannia"
+                    placeholder="e.g. PepsiCo / Cadbury / Parle / Britannia"
                     value={prodFormData.brand}
                     onChange={e => setProdFormData({...prodFormData, brand: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">SKU / आइटम कोड (Optional)</label>
+                  <label className="form-label">SKU / Item Code (Optional)</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. WAF-LAY-20G"
+                    placeholder="e.g. WAF-LAY-20G"
                     value={prodFormData.sku}
                     onChange={e => setProdFormData({...prodFormData, sku: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">HSN कोड</label>
+                  <label className="form-label">HSN Code</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="उदा. 19059040"
+                    placeholder="e.g. 19059040"
                     value={prodFormData.hsn}
                     onChange={e => setProdFormData({...prodFormData, hsn: e.target.value})}
                   />
@@ -665,45 +665,45 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     step="0.01"
                     className="input-field"
                     required
-                    placeholder="उदा. 20"
+                    placeholder="e.g. 20"
                     value={prodFormData.mrp}
                     onChange={e => setProdFormData({...prodFormData, mrp: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">बिक्री दर (Sale Price ₹) *</label>
+                  <label className="form-label">Sale Price (₹) *</label>
                   <input 
                     type="number" 
                     step="0.01"
                     className="input-field"
                     required
-                    placeholder="उदा. 17.5"
+                    placeholder="e.g. 17.5"
                     value={prodFormData.salePrice}
                     onChange={e => setProdFormData({...prodFormData, salePrice: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">खरीद दर (Purchase Price ₹)</label>
+                  <label className="form-label">Purchase Price (₹)</label>
                   <input 
                     type="number" 
                     step="0.01"
                     className="input-field"
-                    placeholder="उदा. 15.0"
+                    placeholder="e.g. 15.0"
                     value={prodFormData.purchasePrice}
                     onChange={e => setProdFormData({...prodFormData, purchasePrice: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">GST दर (%)</label>
+                  <label className="form-label">GST Rate (%)</label>
                   <select 
                     className="input-field select-field"
                     value={prodFormData.gstRate}
                     onChange={e => setProdFormData({...prodFormData, gstRate: e.target.value})}
                   >
-                    <option value="0">0% (GST मुक्त)</option>
+                    <option value="0">0% (GST Exempt)</option>
                     <option value="5">5% GST</option>
                     <option value="12">12% GST</option>
                     <option value="18">18% GST</option>
@@ -712,13 +712,13 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">1 कार्टन/पेटी में पीस (Pcs Per Carton) *</label>
+                  <label className="form-label">Pieces Per Carton / Case *</label>
                   <input 
                     type="number" 
                     min="1"
                     className="input-field"
                     required
-                    placeholder="उदा. 24"
+                    placeholder="e.g. 24"
                     value={prodFormData.pcsPerCarton}
                     onChange={e => {
                       const val = e.target.value;
@@ -736,28 +736,28 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">स्टॉक की इकाई (Unit)</label>
+                  <label className="form-label">Unit of Measure</label>
                   <select 
                     className="input-field select-field"
                     value={prodFormData.unit}
                     onChange={e => setProdFormData({...prodFormData, unit: e.target.value})}
                   >
-                    <option value="Pcs">Pcs (पीस)</option>
-                    <option value="Box">Box (बॉक्स / डिब्बा)</option>
-                    <option value="Pack">Pack (पैकेट)</option>
-                    <option value="Carton">Carton (पेटी / कार्टन)</option>
-                    <option value="Kg">Kg (किग्रा)</option>
+                    <option value="Pcs">Pcs (Pieces)</option>
+                    <option value="Box">Box</option>
+                    <option value="Pack">Pack</option>
+                    <option value="Carton">Carton / Case</option>
+                    <option value="Kg">Kg (Kilograms)</option>
                   </select>
                 </div>
 
                 {/* Carton & Loose Pieces Input Section */}
                 <div className="form-group" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                   <label className="form-label" style={{ fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>
-                    📦 शुरुआती स्टॉक प्रविष्टि (Cartons & Loose Pcs Entry)
+                    📦 Initial Stock Entry (Cartons & Loose Pieces)
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '8px' }}>
                     <div>
-                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>कार्टन / पेटी (Cartons)</label>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Cartons / Cases</label>
                       <input 
                         type="number" 
                         min="0"
@@ -780,7 +780,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     </div>
 
                     <div>
-                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>खुले पीस (Loose Pcs)</label>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Loose Pieces</label>
                       <input 
                         type="number" 
                         min="0"
@@ -803,7 +803,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     </div>
 
                     <div>
-                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>कुल नग (Total Stock)</label>
+                      <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Stock (Units)</label>
                       <input 
                         type="number" 
                         className="input-field"
@@ -823,11 +823,11 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                   onClick={() => setItemModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
                   <Save size={16} />
-                  <span>प्रोडक्ट सेव करें (Save Item)</span>
+                  <span>Save Product</span>
                 </button>
               </div>
             </form>

@@ -179,7 +179,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const handleSaveNewParty = (e) => {
     e.preventDefault();
     if (!newPartyData.name || !newPartyData.phone) {
-      alert('⚠️ कृपया दुकान/रिटेलर का नाम और फ़ोन नंबर दर्ज करें!');
+      alert('⚠️ Please enter retailer/store name and mobile number!');
       return;
     }
 
@@ -209,7 +209,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   const handleAddToCart = (product) => {
     if (product.currentStock <= 0) {
-      alert(`⚠️ '${product.name}' का स्टॉक ख़त्म (Out of stock) है!`);
+      alert(`⚠️ '${product.name}' is out of stock!`);
       return;
     }
 
@@ -220,7 +220,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       const existing = cart[existingIndex];
       const newQty = existing.qty + 1;
       if (newQty > product.currentStock) {
-        alert(`⚠️ स्टॉक की अधिकतम सीमा (${formatCartonStock(product.currentStock, pcsPerCtn)}) तक पहुंच चुके हैं!`);
+        alert(`⚠️ Maximum stock limit (${formatCartonStock(product.currentStock, pcsPerCtn)}) reached!`);
         return;
       }
       const updated = [...cart];
@@ -263,7 +263,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       return;
     }
     if (newQty > item.maxStock) {
-      alert(`⚠️ अधिकतम उपलब्ध स्टॉक ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs) है!`);
+      alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
       return;
     }
 
@@ -282,7 +282,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     const newTotal = (ctn * pcsPerCtn) + loose;
 
     if (newTotal > item.maxStock) {
-      alert(`⚠️ अधिकतम उपलब्ध स्टॉक ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs) है!`);
+      alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
       return;
     }
 
@@ -300,7 +300,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     const newTotal = (ctn * pcsPerCtn) + loose;
 
     if (newTotal > item.maxStock) {
-      alert(`⚠️ अधिकतम उपलब्ध स्टॉक ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs) है!`);
+      alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
       return;
     }
 
@@ -393,7 +393,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   const handleSaveAndPrintBill = (asDraft = false) => {
     if (cart.length === 0) {
-      alert('⚠️ बिल में कम से कम 1 प्रोडक्ट जोड़ना आवश्यक है!');
+      alert('⚠️ Please add at least 1 product to the bill!');
       return;
     }
 
@@ -499,7 +499,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShoppingBag size={18} color="var(--primary)" />
-              <span>{posMode === 'FAST_TOUCH' ? '⚡ Fast POS Touch Counter' : 'प्रोडक्ट्स खोजें & जोड़ें'}</span>
+              <span>{posMode === 'FAST_TOUCH' ? '⚡ Fast POS Touch Counter' : 'Search & Add Products'}</span>
             </h3>
 
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -557,7 +557,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
             <input 
               type="text"
               className="input-field"
-              placeholder="नाम, SKU या ब्रांड से खोजें..."
+              placeholder="Search by name, SKU or brand..."
               style={{ paddingLeft: '38px', fontSize: '0.84rem' }}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
@@ -631,7 +631,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Receipt size={22} color="var(--primary)" />
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>वर्तमान बिल (Current Invoice)</h3>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>Current Invoice</h3>
               </div>
 
               <select 
@@ -640,9 +640,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 value={taxMode}
                 onChange={e => setTaxMode(e.target.value)}
               >
-                <option value="INTRA">राज्य के भीतर (CGST + SGST)</option>
-                <option value="INTER">राज्य के बाहर (IGST)</option>
-                <option value="NONE">बिना GST (Non-GST / Estimate)</option>
+                <option value="INTRA">Intra-State (CGST + SGST)</option>
+                <option value="INTER">Inter-State (IGST)</option>
+                <option value="NONE">Non-GST / Estimate</option>
               </select>
             </div>
 
@@ -651,7 +651,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
               
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <label className="form-label" style={{ marginBottom: 0 }}>
-                  रिटेलर / ग्राहक चुनें (Select Party)
+                  Select Retailer / Customer
                 </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button 
@@ -674,7 +674,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     style={{ padding: '3px 10px', fontSize: '0.78rem', gap: '4px' }}
                   >
                     <UserPlus size={14} />
-                    <span>+ नया रिटेलर</span>
+                    <span>+ New Retailer</span>
                   </button>
                 </div>
               </div>
@@ -696,10 +696,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       }
                     }}
                   >
-                    <option value="">-- नकद ग्राहक (Cash Sale) --</option>
+                    <option value="">-- Cash Sale / Walk-in --</option>
                     {parties.map(party => (
                       <option key={party.id} value={party.id}>
-                        {party.name} {party.phone ? `(${party.phone})` : ''} {party.balance > 0 ? `[उधार: ₹${party.balance}]` : ''}
+                        {party.name} {party.phone ? `(${party.phone})` : ''} {party.balance > 0 ? `[Due: ₹${party.balance}]` : ''}
                       </option>
                     ))}
                   </select>
@@ -713,7 +713,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       <input 
                         type="text"
                         className="input-field"
-                        placeholder="उदा. नकद वाक-इन कस्टमर (या नाम/नंबर से खोजें...)"
+                        placeholder="e.g. Cash Walk-in Customer (or search name/phone...)"
                         style={{ paddingLeft: '32px' }}
                         value={customerName}
                         onFocus={() => setShowPartySuggestions(true)}
@@ -745,13 +745,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         }}
                       >
                         <div style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', background: '#f8fafc', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>🔍 रिटेलर खोज परिणाम ({filteredParties.length})</span>
-                          <span onClick={() => setShowPartySuggestions(false)} style={{ cursor: 'pointer', color: '#c2410c' }}>✕ बंद करें</span>
+                          <span>🔍 Retailer Search Results ({filteredParties.length})</span>
+                          <span onClick={() => setShowPartySuggestions(false)} style={{ cursor: 'pointer', color: '#c2410c' }}>✕ Close</span>
                         </div>
 
                         {filteredParties.length === 0 ? (
                           <div style={{ padding: '12px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                            कोई रिटेलर नहीं मिला ('{customerName}' को नकद ग्राहक माना जाएगा)
+                            No retailer found ('{customerName}' will be treated as cash customer)
                           </div>
                         ) : (
                           filteredParties.map(p => (
@@ -771,14 +771,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
                                 <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{p.name}</strong>
                                 {p.balance > 0 && (
                                   <span style={{ fontSize: '0.75rem', color: '#c2410c', background: '#fff7ed', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
-                                    उधार: ₹{p.balance}
+                                    Due: ₹{p.balance}
                                   </span>
                                 )}
                               </div>
                               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ color: '#c2410c', fontWeight: '600', flexShrink: 0 }}>📍 पता:</span>
+                                <span style={{ color: '#c2410c', fontWeight: '600', flexShrink: 0 }}>📍 Address:</span>
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {p.address || p.city || 'पता दर्ज नहीं है (No Address)'}
+                                  {p.address || p.city || 'No Address recorded'}
                                 </span>
                               </div>
                             </div>
@@ -795,10 +795,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         {selectedParty?.name}
                       </div>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        📍 पता: {selectedParty?.address || selectedParty?.city || 'N/A'} {selectedParty?.phone ? `| 📞 ${selectedParty.phone}` : ''}
+                        📍 Address: {selectedParty?.address || selectedParty?.city || 'N/A'} {selectedParty?.phone ? `| 📞 ${selectedParty.phone}` : ''}
                       </p>
                       <p style={{ fontSize: '0.8rem', fontWeight: '800', color: selectedParty?.balance > 0 ? '#c2410c' : '#10b981', marginTop: '2px' }}>
-                        मौजूदा बकाया उधार: ₹{selectedParty?.balance || 0}
+                        Current Outstanding Due: ₹{selectedParty?.balance || 0}
                       </p>
                     </div>
 
@@ -807,9 +807,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       onClick={() => handleSelectPartyFromList(null)}
                       className="btn btn-sm btn-secondary"
                       style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#c2410c' }}
-                      title="पार्टी सेलेक्ट रिसेट करें"
+                      title="Reset party selection"
                     >
-                      ✕ बदलें
+                      ✕ Change
                     </button>
                   </div>
                 )}
@@ -825,18 +825,18 @@ export default function Billing({ products, parties, business, refreshAllData, h
             {cart.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
                 <ShoppingBag size={40} style={{ margin: '0 auto 10px auto', opacity: 0.4 }} />
-                <p style={{ fontWeight: '600' }}>बिल कार्ट खाली है!</p>
-                <p style={{ fontSize: '0.8rem' }}>बाएं तरफ से प्रोडक्ट्स पर क्लिक करके बिल में जोड़ें।</p>
+                <p style={{ fontWeight: '600' }}>Bill cart is empty!</p>
+                <p style={{ fontSize: '0.8rem' }}>Click on products from the left panel to add them to the bill.</p>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '8px 4px' }}>आइटम</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>मात्रा</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'right' }}>दर (₹)</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>छूट (Disc)</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'right' }}>कुल (₹)</th>
+                    <th style={{ padding: '8px 4px' }}>Item</th>
+                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>Quantity</th>
+                    <th style={{ padding: '8px 4px', textAlign: 'right' }}>Rate (₹)</th>
+                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>Disc</th>
+                    <th style={{ padding: '8px 4px', textAlign: 'right' }}>Total (₹)</th>
                     <th style={{ padding: '8px 2px' }}></th>
                   </tr>
                 </thead>
@@ -863,7 +863,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                                   type="number"
                                   min="0"
                                   placeholder="0"
-                                  title="कार्टन (Cartons)"
+                                  title="Cartons"
                                   style={{ width: '56px', padding: '5px 6px', textAlign: 'center', fontSize: '0.88rem', fontWeight: '800', borderRadius: '6px' }}
                                   className="input-field"
                                   value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / (item.pcsPerCarton || 24))}
@@ -880,7 +880,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                                   type="number"
                                   min="0"
                                   placeholder="0"
-                                  title="खुले पीस (Loose Pcs)"
+                                  title="Loose Pcs"
                                   style={{ width: '56px', padding: '5px 6px', textAlign: 'center', fontSize: '0.88rem', fontWeight: '800', borderRadius: '6px' }}
                                   className="input-field"
                                   value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
@@ -969,7 +969,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
           <div style={{ background: '#f1f5f9', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
               <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                मूल्य निर्धारण (Pricing Mode):
+                Pricing Mode:
               </span>
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button
@@ -986,7 +986,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     cursor: 'pointer'
                   }}
                 >
-                  थोक (Rate + GST Extra)
+                  Wholesale (Rate + GST Extra)
                 </button>
                 <button
                   type="button"
@@ -1002,14 +1002,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     cursor: 'pointer'
                   }}
                 >
-                  MRP / कर सहित (Tax Incl.)
+                  MRP / Tax Incl.
                 </button>
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
               <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                टैक्स क्षेत्र (Supply Region):
+                Supply Region:
                 {selectedParty?.gstin && (
                   <span style={{ fontSize: '0.68rem', color: '#059669', background: '#d1fae5', padding: '1px 5px', borderRadius: '4px' }}>
                     Auto GSTIN
@@ -1071,23 +1071,23 @@ export default function Billing({ products, parties, business, refreshAllData, h
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', marginBottom: '12px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '10px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-              <span>सकल सब-टोटल (Gross Subtotal):</span>
+              <span>Gross Subtotal:</span>
               <span>₹{grossSubTotal.toFixed(2)}</span>
             </div>
 
             {itemDiscountsTotal > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
-                <span>आइटम छूट (Item Discounts):</span>
+                <span>Item Discounts:</span>
                 <span>- ₹{itemDiscountsTotal.toFixed(2)}</span>
               </div>
             )}
 
             {/* Overall Bill Discount (% vs ₹) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: 'var(--text-muted)' }}>कुल बिल छूट (Overall Bill Discount):</span>
+              <span style={{ color: 'var(--text-muted)' }}>Overall Bill Discount:</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <input 
-                  type="number"
+                  type="number" 
                   step="0.01"
                   style={{ width: '75px', padding: '3px 6px', textAlign: 'right' }}
                   className="input-field"
@@ -1117,29 +1117,29 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
             {/* Taxable Amount */}
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: '600' }}>
-              <span>कर योग्य मूल्य (Taxable Amount):</span>
+              <span>Taxable Amount:</span>
               <span>₹{taxableSubtotal.toFixed(2)}</span>
             </div>
 
             {taxMode === 'NONE' ? (
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: '700' }}>
-                <span>GST टैक्स:</span>
-                <span>बिना GST (Non-GST / Exempt 0%)</span>
+                <span>GST Tax:</span>
+                <span>Non-GST / Exempt (0%)</span>
               </div>
             ) : taxMode === 'INTRA' ? (
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  <span>CGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                  <span>CGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                   <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{cgst.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  <span>SGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                  <span>SGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                   <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{sgst.toFixed(2)}</span>
                 </div>
               </>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                <span>IGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                <span>IGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                 <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{igst.toFixed(2)}</span>
               </div>
             )}
@@ -1152,14 +1152,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   checked={roundOffEnabled} 
                   onChange={e => setRoundOffEnabled(e.target.checked)} 
                 />
-                <span>राउंड ऑफ (Auto Round Off):</span>
+                <span>Auto Round Off:</span>
               </label>
               <span>{roundOff >= 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}</span>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>कुल देय राशि (Grand Total):</span>
+            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>Grand Total:</span>
             <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--primary)' }}>
               ₹{grandTotal.toFixed(2)}
             </span>
@@ -1172,28 +1172,28 @@ export default function Billing({ products, parties, business, refreshAllData, h
               onClick={() => setPaymentStatus('PAID')}
               className={`btn btn-sm ${paymentStatus === 'PAID' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              नकद / चुकता (PAID)
+              Cash / Paid
             </button>
             <button 
               type="button"
               onClick={() => setPaymentStatus('UNPAID')}
               className={`btn btn-sm ${paymentStatus === 'UNPAID' ? 'btn-danger' : 'btn-secondary'}`}
             >
-              उधार (CREDIT)
+              Credit (Unpaid)
             </button>
             <button 
               type="button"
               onClick={() => setPaymentStatus('PARTIAL')}
               className={`btn btn-sm ${paymentStatus === 'PARTIAL' ? 'badge-warning' : 'btn-secondary'}`}
             >
-              आंशिक (PARTIAL)
+              Partial Payment
             </button>
           </div>
 
           {/* Payment Mode Selector */}
           <div style={{ marginBottom: '12px' }}>
             <label className="form-label" style={{ fontSize: '0.78rem', marginBottom: '4px' }}>
-              भुगतान माध्यम (Payment Method):
+              Payment Method:
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
               {['CASH', 'UPI', 'NEFT', 'CHEQUE'].map(mode => (
@@ -1291,7 +1291,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '8px 10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
               <div>
                 <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
-                  Payment Terms (शर्तें):
+                  Payment Terms:
                 </label>
                 <select 
                   className="input-field select-field" 
@@ -1308,7 +1308,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
               <div>
                 <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
-                  Due Date (अंतिम तिथि):
+                  Due Date:
                 </label>
                 <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', padding: '5px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
                   📅 {computedDueDate}
@@ -1328,7 +1328,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 style={{ padding: '12px', gap: '8px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800', fontSize: '0.9rem' }}
               >
                 <Zap size={18} />
-                <span>Confirm & Post (बिल बनाएं)</span>
+                <span>Confirm & Post Invoice</span>
               </button>
               <button 
                 onClick={() => handleSaveAndPrintBill(true)}
@@ -1338,7 +1338,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 title="Save as Draft without deducting stock or updating ledger yet"
               >
                 <FileText size={16} />
-                <span>Save Draft (ड्राफ्ट)</span>
+                <span>Save Draft</span>
               </button>
             </div>
 
@@ -1378,10 +1378,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
             <div className="modal-header">
               <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <UserPlus size={20} color="var(--primary)" />
-                <span>👥 नया रिटेलर / ग्राहक जोड़ें</span>
+                <span>👥 Add New Retailer / Customer</span>
               </h3>
               <button 
-                type="button"
+                type="button" 
                 onClick={() => setPartyModalOpen(false)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
@@ -1393,88 +1393,88 @@ export default function Billing({ products, parties, business, refreshAllData, h
               <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">दुकान / रिटेलर का नाम (Shop Name) *</label>
+                  <label className="form-label">Shop / Retailer Name *</label>
                   <input 
                     type="text" 
-                    className="input-field"
+                    className="input-field" 
                     required
-                    placeholder="उदा. गुप्ता किराना & जनरल स्टोर"
+                    placeholder="e.g. Gupta Kirana & General Store"
                     value={newPartyData.name}
                     onChange={e => setNewPartyData({...newPartyData, name: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">दुकानदार / संपर्क व्यक्ति (Contact Person)</label>
+                  <label className="form-label">Contact Person</label>
                   <input 
                     type="text" 
-                    className="input-field"
-                    placeholder="उदा. रमाकांत गुप्ता"
+                    className="input-field" 
+                    placeholder="e.g. Ramakant Gupta"
                     value={newPartyData.contactPerson}
                     onChange={e => setNewPartyData({...newPartyData, contactPerson: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">फ़ोन नंबर (Mobile No) *</label>
+                  <label className="form-label">Mobile Number *</label>
                   <input 
                     type="text" 
-                    className="input-field"
+                    className="input-field" 
                     required
-                    placeholder="उदा. 9811223344"
+                    placeholder="e.g. 9811223344"
                     value={newPartyData.phone}
                     onChange={e => setNewPartyData({...newPartyData, phone: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">शहर / क्षेत्र (City / Area)</label>
+                  <label className="form-label">City / Area</label>
                   <input 
                     type="text" 
-                    className="input-field"
-                    placeholder="उदा. रोहिणी, दिल्ली"
+                    className="input-field" 
+                    placeholder="e.g. Rohini, Delhi"
                     value={newPartyData.city}
                     onChange={e => setNewPartyData({...newPartyData, city: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">GSTIN नंबर (यदि उपलब्ध हो)</label>
+                  <label className="form-label">GSTIN Number (if available)</label>
                   <input 
                     type="text" 
-                    className="input-field"
-                    placeholder="उदा. 07BAPPG4321A1Z2"
+                    className="input-field" 
+                    placeholder="e.g. 07BAPPG4321A1Z2"
                     value={newPartyData.gstin}
                     onChange={e => setNewPartyData({...newPartyData, gstin: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label className="form-label">दुकान का पूरा पता (Address)</label>
+                  <label className="form-label">Complete Shop Address</label>
                   <input 
                     type="text" 
-                    className="input-field"
-                    placeholder="उदा. शॉप नं 4, मेन मार्केट, रोहिणी सेक्टर 7"
+                    className="input-field" 
+                    placeholder="e.g. Shop No. 4, Main Market, Rohini Sector 7"
                     value={newPartyData.address}
                     onChange={e => setNewPartyData({...newPartyData, address: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">क्रेडिट लिमिट (Credit Limit ₹)</label>
+                  <label className="form-label">Credit Limit (₹)</label>
                   <input 
                     type="number" 
-                    className="input-field"
+                    className="input-field" 
                     value={newPartyData.creditLimit}
                     onChange={e => setNewPartyData({...newPartyData, creditLimit: e.target.value})}
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">प्रारंभिक बकाया / उधार (Opening Balance ₹)</label>
+                  <label className="form-label">Opening Due / Balance (₹)</label>
                   <input 
                     type="number" 
-                    className="input-field"
+                    className="input-field" 
                     value={newPartyData.balance}
                     onChange={e => setNewPartyData({...newPartyData, balance: e.target.value})}
                   />
@@ -1488,11 +1488,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   onClick={() => setPartyModalOpen(false)}
                   className="btn btn-secondary"
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
                   <Save size={16} />
-                  <span>खाता सेव करें (Save Party)</span>
+                  <span>Save Party Account</span>
                 </button>
               </div>
             </form>

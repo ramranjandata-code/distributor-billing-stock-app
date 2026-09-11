@@ -164,7 +164,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
   const handleSaveNewParty = (e) => {
     e.preventDefault();
     if (!newPartyData.name || !newPartyData.phone) {
-      alert('⚠️ कृपया दुकान/रिटेलर का नाम और फ़ोन नंबर दर्ज करें!');
+      alert('⚠️ Please enter retailer/store name and mobile number!');
       return;
     }
 
@@ -570,7 +570,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '800', margin: 0 }}>
                   <UserCheck size={16} color="#059669" />
-                  <span>दुकानदार / रिटेलर (Retailer Shop) *</span>
+                  <span>Retailer / Shop *</span>
                 </label>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button 
@@ -579,7 +579,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                     className="btn btn-sm btn-secondary"
                     style={{ fontSize: '0.72rem', padding: '3px 8px' }}
                   >
-                    नकद / Walk-in
+                    Cash / Walk-in
                   </button>
                   <button 
                     type="button"
@@ -597,9 +597,9 @@ export default function FieldEBilling({ products = [], parties = [], business, r
               <div style={{ position: 'relative' }}>
                 <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                 <input 
-                  type="text"
+                  type="text" 
                   className="form-control"
-                  placeholder="दुकानदार का नाम, फ़ोन या GSTIN खोजें..."
+                  placeholder="Search retailer name, phone, or GSTIN..."
                   value={partySearchTerm}
                   onFocus={() => setShowPartySuggestions(true)}
                   onChange={e => {
@@ -626,7 +626,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   }}>
                     {filteredPartySuggestions.length === 0 ? (
                       <div style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                        कोई व्यापारी नहीं मिला
+                        No retailer found
                       </div>
                     ) : (
                       filteredPartySuggestions.map(p => (
@@ -690,11 +690,11 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
                     <span style={{ color: Number(selectedParty.balance) > 0 ? '#dc2626' : '#059669', fontWeight: '700' }}>
-                      खाता बकाया (Balance): ₹{Number(selectedParty.balance || 0).toLocaleString('en-IN')}
+                      Balance: ₹{Number(selectedParty.balance || 0).toLocaleString('en-IN')}
                     </span>
                     {Number(selectedParty.creditLimit) > 0 && (
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        लिमिट: ₹{Number(selectedParty.creditLimit).toLocaleString('en-IN')}
+                        Limit: ₹{Number(selectedParty.creditLimit).toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>
@@ -702,13 +702,13 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   {Number(selectedParty.balance) > Number(selectedParty.creditLimit) && Number(selectedParty.creditLimit) > 0 && (
                     <div style={{ marginTop: '4px', color: '#b45309', background: '#fef3c7', padding: '3px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <BadgeAlert size={12} />
-                      <span>उधार लिमिट पार हो चुकी है! सतर्क रहें।</span>
+                      <span>Credit limit exceeded! Exercise caution.</span>
                     </div>
                   )}
                 </div>
               ) : (
                 <div style={{ marginTop: '6px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                  काउंटर नकद ग्राहक (Walk-in Cash Sale)
+                  Counter Cash Sale (Walk-in)
                 </div>
               )}
             </div>
@@ -718,7 +718,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '700' }}>
                   <Building size={16} color="var(--primary)" />
-                  <span>वेयरहाउस (Source Stock):</span>
+                  <span>Warehouse (Source Stock):</span>
                 </div>
                 <select 
                   className="form-control"
@@ -739,7 +739,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   ref={barcodeInputRef}
                   type="text"
                   className="form-control"
-                  placeholder="बारकोड स्कैन करें या SKU दर्ज करें [Enter]..."
+                  placeholder="Scan barcode or enter SKU [Enter]..."
                   value={barcodeInput}
                   onChange={e => setBarcodeInput(e.target.value)}
                   style={{ paddingLeft: '34px', fontSize: '0.86rem', fontWeight: '600' }}
@@ -764,10 +764,10 @@ export default function FieldEBilling({ products = [], parties = [], business, r
             <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-main)' }}>
-                  प्रोडक्ट कैटलॉग (Products)
+                  Product Catalog
                 </span>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                  {filteredProducts.length} उपलब्ध
+                  {filteredProducts.length} Available
                 </span>
               </div>
 
@@ -776,7 +776,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                 <input 
                   type="text"
                   className="form-control"
-                  placeholder="आइटम का नाम, ब्रांड, SKU खोजें..."
+                  placeholder="Search item name, brand, SKU..."
                   value={searchProduct}
                   onChange={e => setSearchProduct(e.target.value)}
                   style={{ paddingLeft: '32px', fontSize: '0.85rem' }}
@@ -786,7 +786,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
               <div style={{ maxHeight: '360px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {filteredProducts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
-                    कोई प्रोडक्ट नहीं मिला
+                    No products found
                   </div>
                 ) : (
                   filteredProducts.map(p => {
@@ -808,7 +808,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                         <div style={{ maxWidth: '65%' }}>
                           <div style={{ fontWeight: '700', fontSize: '0.84rem', color: 'var(--text-main)' }}>{p.name}</div>
                           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                            दर: <strong>₹{Number(p.salePrice || p.mrp).toLocaleString('en-IN')}</strong> • GST: {p.gstRate}% • स्टॉक: {formatCartonStock(p.currentStock, p.pcsPerCarton)}
+                            Rate: <strong>₹{Number(p.salePrice || p.mrp).toLocaleString('en-IN')}</strong> • GST: {p.gstRate}% • Stock: {formatCartonStock(p.currentStock, p.pcsPerCarton)}
                           </div>
                         </div>
 
@@ -835,7 +835,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ShoppingCart size={18} color="#059669" />
-                <span>ई-बिलिंग कार्ट ({orderCart.length} Items)</span>
+                <span>e-Billing Cart ({orderCart.length} Items)</span>
               </h3>
               {orderCart.length > 0 && (
                 <button 
@@ -850,8 +850,8 @@ export default function FieldEBilling({ products = [], parties = [], business, r
             {orderCart.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 12px', color: 'var(--text-muted)' }}>
                 <ShoppingCart size={36} style={{ margin: '0 auto 8px auto', opacity: 0.3 }} />
-                <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: '700' }}>कार्ट अभी खाली है</p>
-                <p style={{ fontSize: '0.76rem', marginTop: '4px' }}>कैटलॉग से प्रोडक्ट चुनें या बारकोड स्कैन करें।</p>
+                <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: '700' }}>Cart is currently empty</p>
+                <p style={{ fontSize: '0.76rem', marginTop: '4px' }}>Select products from the catalog or scan barcodes.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -950,7 +950,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
                           {/* Editable Price */}
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>दर: ₹</span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Rate: ₹</span>
                             <input 
                               type="number"
                               step="0.01"
@@ -1007,7 +1007,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   <div style={{ background: '#f1f5f9', padding: '8px 10px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
                       <span style={{ fontSize: '0.74rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                        मूल्य निर्धारण (Pricing):
+                        Pricing Mode:
                       </span>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
@@ -1024,7 +1024,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                             cursor: 'pointer'
                           }}
                         >
-                          थोक (Rate + GST Extra)
+                          Wholesale (Rate + GST Extra)
                         </button>
                         <button
                           type="button"
@@ -1040,14 +1040,14 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                             cursor: 'pointer'
                           }}
                         >
-                          MRP / कर सहित
+                          MRP / Tax Incl.
                         </button>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
                       <span style={{ fontSize: '0.74rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        टैक्स क्षेत्र (Supply Region):
+                        Supply Region:
                         {selectedParty?.gstin && (
                           <span style={{ fontSize: '0.64rem', color: '#059669', background: '#d1fae5', padding: '1px 4px', borderRadius: '4px' }}>
                             Auto GSTIN
@@ -1110,20 +1110,20 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   {/* Math Breakdown Lines */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.82rem', borderBottom: '1px dashed var(--border-color)', paddingBottom: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
-                      <span>सकल सब-टोटल (Gross Subtotal):</span>
+                      <span>Gross Subtotal:</span>
                       <span>₹{grossSubTotal.toFixed(2)}</span>
                     </div>
 
                     {itemDiscountsTotal > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
-                        <span>आइटम छूट (Item Discounts):</span>
+                        <span>Item Discounts:</span>
                         <span>- ₹{itemDiscountsTotal.toFixed(2)}</span>
                       </div>
                     )}
 
                     {/* Overall Bill Discount */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>कुल बिल छूट (Overall Bill Discount):</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Overall Bill Discount:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                         <input 
                           type="number"
@@ -1155,30 +1155,30 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
                     {/* Taxable Amount */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: '600' }}>
-                      <span>कर योग्य मूल्य (Taxable Amount):</span>
+                      <span>Taxable Amount:</span>
                       <span>₹{taxableSubtotal.toFixed(2)}</span>
                     </div>
 
                     {/* GST Breakdown */}
                     {taxMode === 'NONE' ? (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: '700' }}>
-                        <span>GST टैक्स:</span>
+                        <span>GST Tax:</span>
                         <span>Non-GST Bill (0%)</span>
                       </div>
                     ) : taxMode === 'INTRA' ? (
                       <>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                          <span>CGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                          <span>CGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                           <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{cgst.toFixed(2)}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                          <span>SGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                          <span>SGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                           <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{sgst.toFixed(2)}</span>
                         </div>
                       </>
                     ) : (
                       <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                        <span>IGST {pricingType === 'EXCLUSIVE' ? '(दर पर अतिरिक्त)' : '(दर में शामिल)'}:</span>
+                        <span>IGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                         <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{igst.toFixed(2)}</span>
                       </div>
                     )}
@@ -1191,7 +1191,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                           checked={roundOffEnabled} 
                           onChange={e => setRoundOffEnabled(e.target.checked)} 
                         />
-                        <span>राउंड ऑफ (Auto Round Off):</span>
+                        <span>Auto Round Off:</span>
                       </label>
                       <span>{roundOff >= 0 ? `+₹${roundOff.toFixed(2)}` : `-₹${Math.abs(roundOff).toFixed(2)}`}</span>
                     </div>
@@ -1200,7 +1200,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   {/* Grand Total Row */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-main)' }}>
-                      कुल देय राशि (Grand Total):
+                      Grand Total:
                     </span>
                     <span style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669' }}>
                       ₹{grandTotal.toFixed(2)}
@@ -1215,7 +1215,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                       style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.78rem', cursor: 'pointer', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
                     >
                       <Truck size={14} />
-                      <span>{ewayBillOpen ? '▼ Hide Transport & e-Way Bill Details' : '▶ Add Transport & e-Way Bill Details (गाड़ी व ट्रांसपोर्ट)'}</span>
+                      <span>{ewayBillOpen ? '▼ Hide Transport & e-Way Bill Details' : '▶ Add Transport & e-Way Bill Details'}</span>
                     </button>
 
                     {ewayBillOpen && (
@@ -1272,7 +1272,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                         cursor: 'pointer'
                       }}
                     >
-                      नकद / चुकता (PAID)
+                      Cash / Paid
                     </button>
                     <button 
                       type="button"
@@ -1288,7 +1288,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                         cursor: 'pointer'
                       }}
                     >
-                      उधार (CREDIT)
+                      Credit (Unpaid)
                     </button>
                     <button 
                       type="button"
@@ -1304,7 +1304,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                         cursor: 'pointer'
                       }}
                     >
-                      आंशिक (PARTIAL)
+                      Partial Payment
                     </button>
                   </div>
 
@@ -1313,14 +1313,14 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <input 
                         type="number"
-                        placeholder="जमा राशि (Paid ₹)"
+                        placeholder="Paid Amount (₹)"
                         className="form-control"
                         value={paidAmount}
                         onChange={e => setPaidAmount(e.target.value)}
                         style={{ fontSize: '0.82rem' }}
                       />
                       <span style={{ fontSize: '0.76rem', color: '#dc2626', fontWeight: '700' }}>
-                        बकाया: ₹{Math.max(0, grandTotal - (Number(paidAmount) || 0)).toFixed(2)}
+                        Due: ₹{Math.max(0, grandTotal - (Number(paidAmount) || 0)).toFixed(2)}
                       </span>
                     </div>
                   )}
@@ -1351,7 +1351,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   {/* Remarks / Memo Input */}
                   <input 
                     type="text"
-                    placeholder="रिमार्क्स / नोट (e.g. Order Delivery Memo)"
+                    placeholder="Remarks / Note (e.g. Order Delivery Memo)"
                     className="form-control"
                     style={{ fontSize: '0.78rem', padding: '5px 8px' }}
                     value={notes}
@@ -1374,7 +1374,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                     }}
                   >
                     <CheckCircle size={18} />
-                    <span>ऑर्डर व GST ई-बिल जारी करें (Book & Generate Bill)</span>
+                    <span>Generate GST e-Bill & Book Order</span>
                   </button>
                 </div>
               </div>
@@ -1541,7 +1541,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <UserPlus size={18} color="#059669" />
-                <span>+ नया व्यापारी / दुकानदार जोड़ें</span>
+                <span>+ Add New Retailer / Customer</span>
               </h3>
               <button onClick={() => setPartyModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 <X size={18} />
@@ -1550,7 +1550,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
             <form onSubmit={handleSaveNewParty} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div>
-                <label className="form-label" style={{ fontSize: '0.78rem' }}>दुकान / पार्टी का नाम *</label>
+                <label className="form-label" style={{ fontSize: '0.78rem' }}>Store / Retailer Name *</label>
                 <input 
                   type="text" 
                   className="form-control" 
@@ -1563,7 +1563,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>संपर्क व्यक्ति (Owner)</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Contact Person (Owner)</label>
                   <input 
                     type="text" 
                     className="form-control" 
@@ -1573,7 +1573,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>मोबाइल नंबर *</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Mobile Number *</label>
                   <input 
                     type="tel" 
                     className="form-control" 
@@ -1587,7 +1587,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>शहर / कस्बा (City)</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>City / Town</label>
                   <input 
                     type="text" 
                     className="form-control" 
@@ -1597,7 +1597,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>GSTIN नंबर (वैकल्पिक)</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>GSTIN Number (Optional)</label>
                   <input 
                     type="text" 
                     className="form-control" 
@@ -1609,11 +1609,11 @@ export default function FieldEBilling({ products = [], parties = [], business, r
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: '0.78rem' }}>पूरा पता (Address)</label>
+                <label className="form-label" style={{ fontSize: '0.78rem' }}>Complete Address</label>
                 <input 
                   type="text" 
                   className="form-control" 
-                  placeholder="दुकान नंबर, सड़क, लैंडमार्क..."
+                  placeholder="Shop number, street, landmark..."
                   value={newPartyData.address}
                   onChange={e => setNewPartyData({ ...newPartyData, address: e.target.value })}
                 />
@@ -1621,7 +1621,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>उधार लिमिट (Credit Limit ₹)</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Credit Limit (₹)</label>
                   <input 
                     type="number" 
                     className="form-control" 
@@ -1630,7 +1630,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>प्रारंभिक बकाया (Balance ₹)</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Opening Balance (₹)</label>
                   <input 
                     type="number" 
                     className="form-control" 
@@ -1647,14 +1647,14 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   className="btn btn-secondary"
                   style={{ fontSize: '0.85rem' }}
                 >
-                  रद्द करें
+                  Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="btn btn-primary"
                   style={{ fontSize: '0.85rem', fontWeight: '700' }}
                 >
-                  व्यापारी सहेजें (Save Retailer)
+                  Save Retailer
                 </button>
               </div>
             </form>
@@ -1671,25 +1671,25 @@ export default function FieldEBilling({ products = [], parties = [], business, r
               <CheckCircle size={32} />
             </div>
 
-            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0 }}>ई-बिल सफलतापूर्वक जारी हुआ!</h3>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: 0 }}>e-Bill Generated Successfully!</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '4px' }}>
-              Invoice <strong>#{orderSuccessModal.invoice.invoiceNo}</strong> • स्टॉक तुरंत अपडेट हुआ
+              Invoice <strong>#{orderSuccessModal.invoice.invoiceNo}</strong> • Stock updated instantly
             </p>
 
             {/* Bill Summary Strip */}
             <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', margin: '14px 0', textAlign: 'left', fontSize: '0.84rem', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span><strong>व्यापारी:</strong></span>
+                <span><strong>Retailer:</strong></span>
                 <span>{orderSuccessModal.invoice.customerName || orderSuccessModal.invoice.partyName}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                <span><strong>बिल राशि (Grand Total):</strong></span>
+                <span><strong>Grand Total:</strong></span>
                 <span style={{ fontWeight: '800', color: '#059669', fontSize: '1.05rem' }}>
                   ₹{Number(orderSuccessModal.invoice.grandTotal).toLocaleString('en-IN')}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                <span><strong>भुगतान स्थिति:</strong></span>
+                <span><strong>Payment Status:</strong></span>
                 <span style={{ fontWeight: '700' }}>{orderSuccessModal.invoice.paymentStatus} ({orderSuccessModal.invoice.paymentMode})</span>
               </div>
             </div>
@@ -1723,7 +1723,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                 style={{ background: '#25D366', color: '#ffffff', border: 'none', padding: '10px', fontWeight: '700', gap: '8px', borderRadius: '8px' }}
               >
                 <Send size={16} />
-                <span>WhatsApp पर बिल व रसीद भेजें</span>
+                <span>Send Bill & Receipt on WhatsApp</span>
               </button>
 
               <button 
@@ -1735,14 +1735,14 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                 style={{ padding: '10px', fontWeight: '700', gap: '6px', borderRadius: '8px' }}
               >
                 <Printer size={16} />
-                <span>बिल प्रिंट / PDF डाउनलोड करें</span>
+                <span>Print Bill / Download PDF</span>
               </button>
 
               <button 
                 onClick={() => setOrderSuccessModal(null)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.82rem', marginTop: '4px' }}
               >
-                बंद करें और अगला ऑर्डर लें (Next Order)
+                Close & Start Next Order
               </button>
             </div>
           </div>

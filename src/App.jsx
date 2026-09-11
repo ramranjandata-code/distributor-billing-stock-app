@@ -295,7 +295,7 @@ export default function App() {
             <button 
               onClick={handleAppReload}
               className="btn btn-secondary"
-              title="ऐप रिफ्रेश करें (App Reload - F5)"
+              title="Refresh App (Reload - F5)"
               style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <RefreshCw size={16} />

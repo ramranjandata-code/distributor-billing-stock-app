@@ -76,7 +76,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   };
 
   const handleDelete = () => {
-    if (window.confirm(`⚠️ क्या आप सचमुच इनवॉइस #${invoice.invoiceNo} को डिलीट करना चाहते हैं?\n\n• इस इनवॉइस के सभी स्टॉक आइटम्स गोदाम में वापस जुड़ जाएंगे।\n• रिटेलर का बकाया उधार स्वतः एडजस्ट हो जाएगा।`)) {
+    if (window.confirm(`⚠️ Are you sure you want to delete Invoice #${invoice.invoiceNo}?\n\n• All stock items will be automatically returned to the warehouse.\n• Retailer outstanding balance will be automatically adjusted.`)) {
       deleteInvoice(invoice.id);
       if (refreshAllData) refreshAllData();
       onClose();

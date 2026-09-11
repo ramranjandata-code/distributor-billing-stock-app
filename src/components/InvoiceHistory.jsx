@@ -91,7 +91,7 @@ export default function InvoiceHistory({
 
   const handleDelete = (e, inv) => {
     e.stopPropagation();
-    if (window.confirm(`⚠️ क्या आप सचमुच इनवॉइस #${inv.invoiceNo} (${inv.partyName || inv.customerName}) को डिलीट करना चाहते हैं?\n\n• स्टॉक गोदाम में स्वतः वापस जुड़ जाएगा।\n• रिटेलर का बकाया उधार एडजस्ट हो जाएगा।`)) {
+    if (window.confirm(`⚠️ Are you sure you want to delete Invoice #${inv.invoiceNo} (${inv.partyName || inv.customerName})?\n\n• Stock will be automatically restored to the warehouse.\n• Retailer balance ledger will be adjusted.`)) {
       deleteInvoice(inv.id);
       if (refreshAllData) refreshAllData();
     }
