@@ -72,6 +72,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
   // Party Search & Add Party Modal State
   const [partySearchTerm, setPartySearchTerm] = useState('');
   const [showPartySuggestions, setShowPartySuggestions] = useState(false);
+  const [upperPartySearchTerm, setUpperPartySearchTerm] = useState('');
+  const [showUpperPartySuggestions, setShowUpperPartySuggestions] = useState(false);
   const [partyModalOpen, setPartyModalOpen] = useState(false);
   const initialNewPartyState = {
     name: '',
@@ -144,6 +146,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setCustomerName('Walk-in Customer');
     setCustomerPhone('');
     setPartySearchTerm('');
+    setUpperPartySearchTerm('Walk-in Customer');
+    setShowPartySuggestions(false);
+    setShowUpperPartySuggestions(false);
     setPaymentStatus('PAID');
     setPaymentMode('CASH');
   };
@@ -161,19 +166,36 @@ export default function Billing({ products, parties, business, refreshAllData, h
     );
   });
 
+  // Filter parties for upper customer search bar
+  const filteredPartiesForUpper = parties.filter(p => {
+    const term = (upperPartySearchTerm || '').trim().toLowerCase();
+    if (!term) return true;
+    return (
+      (p.name && p.name.toLowerCase().includes(term)) ||
+      (p.phone && p.phone.includes(term)) ||
+      (p.contactPerson && p.contactPerson.toLowerCase().includes(term)) ||
+      (p.city && p.city.toLowerCase().includes(term)) ||
+      (p.address && p.address.toLowerCase().includes(term)) ||
+      (p.gstin && p.gstin.toLowerCase().includes(term))
+    );
+  });
+
   const handleSelectPartyFromList = (p) => {
     if (p) {
       setSelectedPartyId(p.id);
       setCustomerName(p.name);
-      setCustomerPhone(p.phone);
+      setCustomerPhone(p.phone || '');
       setPartySearchTerm(p.name);
+      setUpperPartySearchTerm(p.name);
     } else {
       setSelectedPartyId('');
       setCustomerName('');
       setCustomerPhone('');
       setPartySearchTerm('');
+      setUpperPartySearchTerm('');
     }
     setShowPartySuggestions(false);
+    setShowUpperPartySuggestions(false);
   };
 
   const handleSaveNewParty = (e) => {
@@ -249,6 +271,32 @@ export default function Billing({ products, parties, business, refreshAllData, h
           itemDiscountVal: 0
         }
       ]);
+    }
+  };
+
+  // Barcode / SKU scan or Enter key handler directly inside Product Search Bar
+  const handleProductSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const code = searchTerm.trim();
+      if (!code) return;
+
+      const matchedProduct = products.find(p => 
+        (p.sku && p.sku.toLowerCase() === code.toLowerCase()) ||
+        (p.barcode && p.barcode.toLowerCase() === code.toLowerCase()) ||
+        (p.id && p.id.toLowerCase() === code.toLowerCase()) ||
+        (p.name && p.name.toLowerCase() === code.toLowerCase())
+      );
+
+      if (matchedProduct) {
+        handleAddToCart(matchedProduct);
+        setBarcodeScanAlert(`✅ Added: ${matchedProduct.name}`);
+        setTimeout(() => setBarcodeScanAlert(null), 2500);
+        setSearchTerm('');
+      } else {
+        setBarcodeScanAlert(`❌ No item found matching: "${code}"`);
+        setTimeout(() => setBarcodeScanAlert(null), 2500);
+      }
     }
   };
 
@@ -461,6 +509,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       setSelectedPartyId('');
       setCustomerName('');
       setCustomerPhone('');
+      setUpperPartySearchTerm('');
       setDiscountValue(0);
       setPaymentStatus('PAID');
       setPaidAmount('');
@@ -482,6 +531,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setSelectedPartyId('');
     setCustomerName('');
     setCustomerPhone('');
+    setUpperPartySearchTerm('');
     setDiscountValue(0);
     setPaymentStatus('PAID');
     setPaidAmount('');
@@ -498,51 +548,263 @@ export default function Billing({ products, parties, business, refreshAllData, h
         <div className="glass-card" style={{ padding: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShoppingBag size={18} color="var(--primary)" />
-              <span>Search & Add Products</span>
+              <Search size={18} color="var(--primary)" />
+              <span>Search Customer & Products</span>
             </h3>
+            {selectedParty ? (
+              <span style={{ fontSize: '0.75rem', color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                ✓ {selectedParty.name}
+              </span>
+            ) : customerName ? (
+              <span style={{ fontSize: '0.75rem', color: '#0284c7', background: '#f0f9ff', padding: '2px 8px', borderRadius: '12px', fontWeight: '600' }}>
+                👤 {customerName}
+              </span>
+            ) : null}
           </div>
 
-          {/* Barcode Scanner Input Row */}
-          <form onSubmit={handleBarcodeScan} style={{ marginBottom: '10px' }}>
-            <div style={{ position: 'relative', display: 'flex', gap: '6px' }}>
-              <Barcode size={18} color="var(--primary)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                ref={barcodeInputRef}
-                type="text"
-                className="input-field"
-                placeholder="Scan Barcode / Enter SKU (Auto-Add on Enter)..."
-                style={{ paddingLeft: '36px', fontSize: '0.84rem', borderColor: 'var(--primary)' }}
-                value={barcodeInput}
-                onChange={e => setBarcodeInput(e.target.value)}
-              />
+          {/* Upper Search Bar: Customer / Retailer Search */}
+          <div style={{ position: 'relative', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <User 
+                  size={18} 
+                  color={selectedParty ? '#059669' : 'var(--primary)'} 
+                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} 
+                />
+                <input 
+                  type="text"
+                  className="input-field"
+                  placeholder="Search Customer / Retailer (Name, Phone, City, GSTIN)..."
+                  style={{ 
+                    paddingLeft: '36px', 
+                    paddingRight: (selectedParty || customerName || upperPartySearchTerm) ? '32px' : '10px',
+                    fontSize: '0.84rem', 
+                    borderColor: selectedParty ? '#10b981' : 'var(--primary)',
+                    background: selectedParty ? '#f0fdf4' : undefined,
+                    fontWeight: selectedParty ? '600' : 'normal'
+                  }}
+                  value={
+                    selectedParty 
+                      ? `${selectedParty.name}${selectedParty.phone ? ` (${selectedParty.phone})` : ''}${selectedParty.balance > 0 ? ` - Due: ₹${selectedParty.balance}` : ''}`
+                      : (upperPartySearchTerm || customerName || '')
+                  }
+                  onFocus={() => {
+                    if (selectedParty) {
+                      setUpperPartySearchTerm('');
+                    }
+                    setShowUpperPartySuggestions(true);
+                  }}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSelectedPartyId('');
+                    setUpperPartySearchTerm(val);
+                    setCustomerName(val);
+                    setShowUpperPartySuggestions(true);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (filteredPartiesForUpper.length > 0) {
+                        handleSelectPartyFromList(filteredPartiesForUpper[0]);
+                        setShowUpperPartySuggestions(false);
+                      } else if (upperPartySearchTerm.trim()) {
+                        setCustomerName(upperPartySearchTerm.trim());
+                        setShowUpperPartySuggestions(false);
+                      }
+                    }
+                  }}
+                />
+                {(selectedParty || customerName || upperPartySearchTerm) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleSelectPartyFromList(null);
+                      setUpperPartySearchTerm('');
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#dc2626',
+                      fontSize: '15px',
+                      fontWeight: 'bold',
+                      padding: '2px 6px',
+                      borderRadius: '50%',
+                      lineHeight: 1
+                    }}
+                    title="Clear Customer (Reset to Walk-in)"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
               <button 
-                type="submit" 
+                type="button" 
+                onClick={() => {
+                  setNewPartyData(initialNewPartyState);
+                  setPartyModalOpen(true);
+                }}
                 className="btn btn-primary"
-                style={{ padding: '0 12px', fontSize: '0.78rem', whiteSpace: 'nowrap', fontWeight: '700' }}
+                style={{ padding: '0 12px', fontSize: '0.78rem', whiteSpace: 'nowrap', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}
+                title="Register New Customer / Retailer"
               >
-                Scan Add
+                <UserPlus size={14} />
+                <span>+ New</span>
               </button>
             </div>
-            {barcodeScanAlert && (
-              <div style={{ fontSize: '0.75rem', fontWeight: '700', color: barcodeScanAlert.startsWith('✅') ? '#059669' : '#dc2626', marginTop: '4px' }}>
-                {barcodeScanAlert}
+
+            {/* Live Autocomplete Dropdown for Customer Search */}
+            {showUpperPartySuggestions && (
+              <div 
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 999,
+                  background: '#ffffff',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.18)',
+                  border: '1px solid var(--border-color)',
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  marginTop: '4px'
+                }}
+              >
+                <div style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', background: '#f8fafc', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>👥 Select Customer / Retailer ({filteredPartiesForUpper.length})</span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <span 
+                      onClick={() => {
+                        handleWalkInCounterSale();
+                        setUpperPartySearchTerm('Walk-in Customer');
+                        setShowUpperPartySuggestions(false);
+                      }}
+                      style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: '700' }}
+                    >
+                      ⚡ Walk-in Sale
+                    </span>
+                    <span onClick={() => setShowUpperPartySuggestions(false)} style={{ cursor: 'pointer', color: '#c2410c' }}>✕ Close</span>
+                  </div>
+                </div>
+
+                {filteredPartiesForUpper.length === 0 ? (
+                  <div style={{ padding: '14px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    <div>No retailer found for "{upperPartySearchTerm || customerName}"</div>
+                    <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setSelectedPartyId('');
+                          setCustomerName(upperPartySearchTerm.trim() || 'Walk-in Customer');
+                          setShowUpperPartySuggestions(false);
+                        }}
+                        className="btn btn-sm btn-secondary"
+                        style={{ fontSize: '0.74rem' }}
+                      >
+                        ⚡ Use as Cash Customer
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setNewPartyData({ ...initialNewPartyState, name: upperPartySearchTerm.trim() });
+                          setShowUpperPartySuggestions(false);
+                          setPartyModalOpen(true);
+                        }}
+                        className="btn btn-sm btn-primary"
+                        style={{ fontSize: '0.74rem' }}
+                      >
+                        + Create Retailer
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  filteredPartiesForUpper.map(p => (
+                    <div 
+                      key={p.id}
+                      onClick={() => {
+                        handleSelectPartyFromList(p);
+                        setShowUpperPartySuggestions(false);
+                      }}
+                      style={{
+                        padding: '9px 12px',
+                        borderBottom: '1px solid #f1f5f9',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdf4'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <strong style={{ fontSize: '0.88rem', color: 'var(--text-main)' }}>{p.name}</strong>
+                        {p.balance > 0 ? (
+                          <span style={{ fontSize: '0.74rem', color: '#c2410c', background: '#fff7ed', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>
+                            Due: ₹{p.balance}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: '#059669', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                            Nil Due
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {p.phone && <span>📞 {p.phone}</span>}
+                        {(p.city || p.address) && <span>📍 {p.city || p.address}</span>}
+                        {p.gstin && <span>GSTIN: {p.gstin}</span>}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
-          </form>
+          </div>
 
-          {/* Standard Text Search */}
+          {/* Lower Search Bar: Product Search & Barcode Scanner */}
           <div style={{ position: 'relative' }}>
             <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
               type="text"
               className="input-field"
-              placeholder="Search by name, SKU or brand..."
-              style={{ paddingLeft: '38px', fontSize: '0.84rem' }}
+              placeholder="Search products by name, SKU or brand (or scan barcode & Enter)..."
+              style={{ paddingLeft: '38px', paddingRight: searchTerm ? '32px' : '10px', fontSize: '0.84rem' }}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
+              onKeyDown={handleProductSearchKeyDown}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#dc2626',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  padding: '2px 6px'
+                }}
+                title="Clear Product Search"
+              >
+                ✕
+              </button>
+            )}
           </div>
+
+          {barcodeScanAlert && (
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: barcodeScanAlert.startsWith('✅') ? '#059669' : '#dc2626', marginTop: '6px' }}>
+              {barcodeScanAlert}
+            </div>
+          )}
         </div>
 
         {/* Product Quick Add List (Horizontal Row or Fast Touch Tiles) */}
