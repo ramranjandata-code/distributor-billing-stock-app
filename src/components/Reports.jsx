@@ -427,19 +427,36 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     return Object.values(map);
   }, [filteredInvoices]);
 
-  // Export GSTR-1 CSV
+  // Export GSTR-1 CSV (Table 4A B2B, Table 7 B2C Small, Table 12 HSN Summary)
   const handleExportGstr1Csv = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Section,Invoice No,Date,Customer Name,GSTIN,Taxable Value,CGST,SGST,IGST,Total Amount\n';
+    csvContent += '--- GSTR-1 TABLE 4A: TAXABLE OUTWARD SUPPLIES TO REGISTERED PERSONS (B2B) ---\n';
+    csvContent += 'Table,GSTIN of Recipient,Receiver Name,Invoice No,Invoice Date,Invoice Value,Place of Supply,Reverse Charge,Invoice Type,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
 
-    // B2B Section
+    // Table 4A: B2B Invoices
     b2bInvoices.forEach(inv => {
-      csvContent += `B2B,"${inv.invoiceNo}","${inv.date?.split('T')[0]}","${inv.partyName || inv.customerName}","${inv.partyGstin}",${getInvTaxable(inv).toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},${Number(inv.grandTotal || 0).toFixed(2)}\n`;
+      const pos = inv.partyGstin ? inv.partyGstin.substring(0, 2) : '07';
+      const taxable = getInvTaxable(inv);
+      const rate = inv.items?.[0]?.gstRate || 18;
+      csvContent += `4A,"${inv.partyGstin}","${inv.partyName || inv.customerName}","${inv.invoiceNo}","${inv.date?.split('T')[0]}",${Number(inv.grandTotal || 0).toFixed(2)},"${pos}-State",N,Regular,${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
     });
 
-    // B2C Section
+    csvContent += '\n--- GSTR-1 TABLE 7: TAXABLE SUPPLIES TO UNREGISTERED PERSONS (B2C SMALL) ---\n';
+    csvContent += 'Table,Type,Place of Supply,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
+
+    // Table 7: B2C Small Invoices
     b2cInvoices.forEach(inv => {
-      csvContent += `B2C_SMALL,"${inv.invoiceNo}","${inv.date?.split('T')[0]}","${inv.partyName || inv.customerName || 'Cash Consumer'}","URP",${getInvTaxable(inv).toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},${Number(inv.grandTotal || 0).toFixed(2)}\n`;
+      const taxable = getInvTaxable(inv);
+      const rate = inv.items?.[0]?.gstRate || 18;
+      csvContent += `7,OE,"07-Delhi",${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
+    });
+
+    csvContent += '\n--- GSTR-1 TABLE 12: HSN SUMMARY OF OUTWARD SUPPLIES ---\n';
+    csvContent += 'Table,HSN Code,Description,UQC,Total Quantity,Total Value,Taxable Value,Integrated Tax Amount,Central Tax Amount,State Tax Amount,Cess Amount\n';
+
+    // Table 12: HSN Summary
+    hsnMap.forEach(h => {
+      csvContent += `12,"${h.hsn}","${h.description}","${h.uqc}",${h.totalQty},${(h.taxableValue + h.totalTax).toFixed(2)},${h.taxableValue.toFixed(2)},${h.igst.toFixed(2)},${h.cgst.toFixed(2)},${h.sgst.toFixed(2)},0.00\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -1513,6 +1530,110 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* GSTR-1 Table 4A: B2B Invoices */}
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
+                  🏢 GSTR-1 तालिका 4A: पंजीकृत खरीदारों को बाह्य आपूर्ति (Table 4A - B2B Invoices)
+                </h3>
+                <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>{b2bInvoices.length} Registered Buyers</span>
+              </div>
+
+              {b2bInvoices.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                  इस अवधि में कोई B2B इनवॉइस नहीं है।
+                </p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                        <th style={{ padding: '8px' }}>GSTIN</th>
+                        <th style={{ padding: '8px' }}>पार्टी नाम</th>
+                        <th style={{ padding: '8px' }}>इनवॉइस नं.</th>
+                        <th style={{ padding: '8px' }}>तारीख</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल मूल्य (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>कर-योग्य (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>CGST (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>SGST (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>IGST (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {b2bInvoices.map((inv, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>{inv.partyGstin}</td>
+                          <td style={{ padding: '8px', fontWeight: '700' }}>{inv.partyName || inv.customerName}</td>
+                          <td style={{ padding: '8px' }}>{inv.invoiceNo}</td>
+                          <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{inv.date?.split('T')[0]}</td>
+                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>₹{Number(inv.grandTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxable(inv).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(inv.cgst || 0).toFixed(2)}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(inv.sgst || 0).toFixed(2)}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(inv.igst || 0).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* GSTR-1 Table 7: B2C Small Invoices */}
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
+                  🛒 GSTR-1 तालिका 7: अपंजीकृत उपभोक्ताओं को आपूर्ति (Table 7 - B2C Small Supplies)
+                </h3>
+                <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>{b2cInvoices.length} Consumer Bills</span>
+              </div>
+
+              {b2cInvoices.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                  इस अवधि में कोई B2C Small इनवॉइस नहीं है।
+                </p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                        <th style={{ padding: '8px' }}>आपूर्ति प्रकार (Type)</th>
+                        <th style={{ padding: '8px' }}>आपूर्ति राज्य (POS)</th>
+                        <th style={{ padding: '8px', textAlign: 'center' }}>बिल संख्या</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल इनवॉइस मूल्य (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>कर-योग्य मूल्य (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>CGST (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>SGST (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>कुल कर (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '8px', fontWeight: '700' }}>OE (Other Intra/Inter)</td>
+                        <td style={{ padding: '8px' }}>07-Delhi (Local)</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{b2cInvoices.length}</td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>
+                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>
+                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxable(i), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.cgst) || 0), 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.sgst) || 0), 0).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>
+                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.cgst || 0) + Number(i.sgst || 0) + Number(i.igst || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             {/* HSN Summary */}
