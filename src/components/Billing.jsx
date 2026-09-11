@@ -499,40 +499,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShoppingBag size={18} color="var(--primary)" />
-              <span>{posMode === 'FAST_TOUCH' ? '⚡ Fast POS Touch Counter' : 'Search & Add Products'}</span>
+              <span>Search & Add Products</span>
             </h3>
-
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button 
-                type="button"
-                onClick={() => setPosMode('STANDARD')}
-                className={`btn ${posMode === 'STANDARD' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '4px 8px', fontSize: '0.72rem', fontWeight: '700' }}
-              >
-                Standard
-              </button>
-              <button 
-                type="button"
-                onClick={() => setPosMode('FAST_TOUCH')}
-                className={`btn ${posMode === 'FAST_TOUCH' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '4px 8px', fontSize: '0.72rem', fontWeight: '700', gap: '4px' }}
-              >
-                <Zap size={12} />
-                <span>Fast POS</span>
-              </button>
-              {setActiveTab && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('invoices')}
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: '0.72rem', fontWeight: '700', gap: '4px' }}
-                  title="View All Past Invoices & Billed Records"
-                >
-                  <FileText size={12} />
-                  <span>Invoice Records</span>
-                </button>
-              )}
-            </div>
           </div>
 
           {/* Barcode Scanner Input Row */}
