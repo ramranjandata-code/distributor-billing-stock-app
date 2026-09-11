@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  LayoutGrid,
   LayoutDashboard, 
   Receipt, 
   Package, 
@@ -16,6 +17,7 @@ import {
 
 export default function Navigation({ activeTab, setActiveTab, business, mobileOpen, setMobileOpen, lowStockCount, t }) {
   const navItems = [
+    { id: 'home', label: 'App Launcher (Home)', icon: LayoutGrid, badge: 'Apps', badgeColor: 'badge-info' },
     { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
     { id: 'billing', label: t('billing'), icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
     { id: 'field_ebilling', label: t('field_ebilling'), icon: Smartphone, badge: 'Field', badgeColor: 'badge-info' },
@@ -42,7 +44,11 @@ export default function Navigation({ activeTab, setActiveTab, business, mobileOp
       <aside className={`sidebar no-print ${mobileOpen ? 'mobile-open' : ''}`}>
         {/* Sidebar Header */}
         <div style={{ padding: '20px 18px', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div 
+            onClick={() => { setActiveTab('home'); setMobileOpen(false); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
+            title="Go to App Launcher (Home)"
+          >
             <div style={{ 
               width: '42px', 
               height: '42px', 

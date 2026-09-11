@@ -22,13 +22,14 @@ import Reports from './components/Reports';
 import AuditSecurity from './components/AuditSecurity';
 import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
+import AppLauncher from './components/AppLauncher';
 
-import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer } from 'lucide-react';
+import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer, LayoutGrid } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
 import { isSupabaseConnected } from './utils/supabaseClient';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('home');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState(getAppLanguage());
 
@@ -142,6 +143,31 @@ export default function App() {
     alert('Firm settings updated successfully!');
   };
 
+  if (activeTab === 'home') {
+    return (
+      <>
+        <AppLauncher 
+          setActiveTab={setActiveTab}
+          business={business}
+          products={products}
+          parties={parties}
+          invoices={invoices}
+          cloudConnected={cloudConnected}
+          lastSyncedTime={lastSyncedTime}
+          triggerManualSync={triggerManualSync}
+        />
+        {selectedInvoiceForPrint && (
+          <InvoicePrintModal 
+            invoice={selectedInvoiceForPrint} 
+            business={business}
+            onClose={() => setSelectedInvoiceForPrint(null)}
+            refreshAllData={refreshAllData}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
@@ -169,6 +195,16 @@ export default function App() {
           gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <button 
+              className="btn btn-secondary no-print"
+              onClick={() => setActiveTab('home')}
+              title="Return to App Launcher (Home)"
+              style={{ gap: '6px', padding: '7px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center' }}
+            >
+              <LayoutGrid size={17} color="var(--primary)" />
+              <span style={{ fontWeight: '700', fontSize: '0.84rem' }}>Apps</span>
+            </button>
+
             <button 
               className="btn btn-secondary no-print"
               onClick={() => setMobileOpen(!mobileOpen)}
