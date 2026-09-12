@@ -79,24 +79,6 @@ export default function AppLauncher({
       )
     },
     {
-      id: 'field_ebilling',
-      name: 'Sales & Field App',
-      category: 'Operations',
-      description: 'Salesman Field Orders, Van Stock & Payment Collection',
-      gradient: 'linear-gradient(135deg, #ea580c 0%, #db2777 100%)',
-      shadowColor: 'rgba(234, 88, 12, 0.4)',
-      badge: 'Field App',
-      badgeBg: 'rgba(234, 88, 12, 0.25)',
-      badgeColor: '#fdba74',
-      icon: (
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="20" x2="18" y2="10" />
-          <line x1="12" y1="20" x2="12" y2="4" />
-          <line x1="6" y1="20" x2="6" y2="14" />
-        </svg>
-      )
-    },
-    {
       id: 'invoices',
       name: 'Invoice History',
       category: 'Records',

@@ -14,7 +14,6 @@ import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
 import Billing from './components/Billing';
-import FieldEBilling from './components/FieldEBilling';
 import Parties from './components/Parties';
 import ConnectedBanking from './components/ConnectedBanking';
 import InvoiceHistory from './components/InvoiceHistory';
@@ -217,7 +216,6 @@ export default function App() {
               <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>
                 {activeTab === 'dashboard' && translate('dashboard_title')}
                 {activeTab === 'billing' && translate('create_bill')}
-                {activeTab === 'field_ebilling' && 'Salesman Field eBilling & Collection'}
                 {activeTab === 'inventory' && translate('inventory_title')}
                 {activeTab === 'parties' && translate('parties_title')}
                 {activeTab === 'banking' && 'Connected Banking & Reconciliation'}
@@ -361,17 +359,6 @@ export default function App() {
             handlePrintInvoice={handlePrintInvoice}
             setActiveTab={setActiveTab}
             t={translate}
-          />
-        )}
-
-        {activeTab === 'field_ebilling' && (
-          <FieldEBilling 
-            products={products}
-            parties={parties}
-            business={business}
-            refreshAllData={refreshAllData}
-            handlePrintInvoice={handlePrintInvoice}
-            setActiveTab={setActiveTab}
           />
         )}
 
