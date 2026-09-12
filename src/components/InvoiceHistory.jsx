@@ -114,15 +114,25 @@ export default function InvoiceHistory({
         gap: '14px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#714B67', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ 
+            width: '42px', 
+            height: '42px', 
+            borderRadius: '10px', 
+            background: 'linear-gradient(135deg, #10b981, #059669)', 
+            color: '#ffffff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+          }}>
             <FileText size={22} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: '#1e293b' }}>
-              Customer Invoices & Billing (Odoo Invoicing Suite)
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)' }}>
+              Customer Invoices & Billing Records
             </h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-              Document lifecycle, partial/full payment reconciliation, credit notes & double-entry preview
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Invoice history, payment reconciliation, credit notes & billing ledgers
             </p>
           </div>
         </div>
@@ -132,9 +142,7 @@ export default function InvoiceHistory({
             onClick={() => setSelectedInvoiceForEdit({})}
             className="btn btn-primary"
             style={{ 
-              background: '#714B67', 
-              borderColor: '#714B67', 
-              fontWeight: '800', 
+              fontWeight: '700', 
               padding: '8px 16px', 
               display: 'flex', 
               alignItems: 'center', 
@@ -142,7 +150,7 @@ export default function InvoiceHistory({
             }}
           >
             <Plus size={16} />
-            <span>+ New Invoice (Odoo Studio)</span>
+            <span>+ New Invoice</span>
           </button>
 
           {setActiveTab && (
@@ -167,7 +175,7 @@ export default function InvoiceHistory({
             background: '#ffffff', 
             borderRadius: '12px', 
             padding: '16px', 
-            border: odooStatusFilter === 'draft' ? '2px solid #714B67' : '1px solid #e2e8f0', 
+            border: odooStatusFilter === 'draft' ? '2px solid var(--primary)' : '1px solid #e2e8f0', 
             cursor: 'pointer',
             transition: 'all 0.2s',
             boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
@@ -180,7 +188,7 @@ export default function InvoiceHistory({
           <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#1e293b', marginTop: '6px' }}>
             ₹{draftTotal.toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '0.72rem', color: '#714B67', fontWeight: '700', marginTop: '4px' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700', marginTop: '4px' }}>
             Awaiting Confirmation / Pro-forma
           </div>
         </div>
@@ -285,9 +293,9 @@ export default function InvoiceHistory({
                   padding: '5px 12px',
                   borderRadius: '20px',
                   border: '1px solid',
-                  borderColor: odooStatusFilter === tab.id ? '#714B67' : '#e2e8f0',
-                  background: odooStatusFilter === tab.id ? '#714B67' : '#ffffff',
-                  color: odooStatusFilter === tab.id ? '#ffffff' : '#475569',
+                  borderColor: odooStatusFilter === tab.id ? 'var(--primary)' : 'var(--border-color)',
+                  background: odooStatusFilter === tab.id ? 'var(--primary)' : 'var(--bg-card)',
+                  color: odooStatusFilter === tab.id ? '#ffffff' : 'var(--text-muted)',
                   fontSize: '0.78rem',
                   fontWeight: '700',
                   cursor: 'pointer',
@@ -319,11 +327,11 @@ export default function InvoiceHistory({
       <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
         
         <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', color: '#1e293b' }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-main)' }}>
             Invoices & Credit Notes ({sortedInvoices.length} Documents)
           </h3>
-          <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-            Click any row to open full Odoo Form Studio
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Click any row to view & manage invoice details
           </span>
         </div>
 
@@ -366,9 +374,9 @@ export default function InvoiceHistory({
                       onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
                     >
                       {/* Invoice Number */}
-                      <td style={{ padding: '10px 14px', fontWeight: '800', color: isCreditNote ? '#dc2626' : '#714B67' }}>
+                      <td style={{ padding: '10px 14px', fontWeight: '800', color: isCreditNote ? '#dc2626' : 'var(--primary)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {isCreditNote ? <RotateCcw size={14} color="#dc2626" /> : <FileText size={14} color="#714B67" />}
+                          {isCreditNote ? <RotateCcw size={14} color="#dc2626" /> : <FileText size={14} color="var(--primary)" />}
                           <span>{inv.invoiceNo}</span>
                         </div>
                       </td>
@@ -434,7 +442,7 @@ export default function InvoiceHistory({
                           <button 
                             onClick={() => setSelectedInvoiceForEdit(inv)}
                             className="btn btn-secondary btn-sm"
-                            title="Open in Odoo Form Studio"
+                            title="Open Invoice Details"
                             style={{ padding: '4px 8px', fontSize: '0.74rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px' }}
                           >
                             <Eye size={12} />

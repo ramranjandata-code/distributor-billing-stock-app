@@ -469,7 +469,7 @@ export default function OdooInvoiceForm({
               <button 
                 onClick={handleConfirmPost}
                 className="btn btn-primary btn-sm"
-                style={{ background: '#714B67', borderColor: '#714B67', color: '#fff', fontWeight: '800', padding: '7px 14px' }}
+                style={{ fontWeight: '800', padding: '7px 14px' }}
               >
                 Confirm Invoice
               </button>
@@ -568,7 +568,7 @@ export default function OdooInvoiceForm({
                 padding: '6px 14px',
                 fontSize: '0.8rem',
                 fontWeight: '800',
-                background: invoice.state === 'draft' ? '#714B67' : 'transparent',
+                background: invoice.state === 'draft' ? '#4f46e5' : 'transparent',
                 color: invoice.state === 'draft' ? '#ffffff' : '#64748b',
                 transition: 'all 0.2s'
               }}>
@@ -826,10 +826,10 @@ export default function OdooInvoiceForm({
               style={{
                 padding: '10px 18px',
                 border: 'none',
-                borderBottom: activeNotebookTab === 'lines' ? '3px solid #714B67' : '3px solid transparent',
+                borderBottom: activeNotebookTab === 'lines' ? '3px solid #059669' : '3px solid transparent',
                 background: 'none',
                 fontWeight: activeNotebookTab === 'lines' ? '800' : '600',
-                color: activeNotebookTab === 'lines' ? '#714B67' : '#64748b',
+                color: activeNotebookTab === 'lines' ? '#059669' : '#64748b',
                 fontSize: '0.92rem',
                 cursor: 'pointer',
                 display: 'flex',
@@ -847,10 +847,10 @@ export default function OdooInvoiceForm({
               style={{
                 padding: '10px 18px',
                 border: 'none',
-                borderBottom: activeNotebookTab === 'other_info' ? '3px solid #714B67' : '3px solid transparent',
+                borderBottom: activeNotebookTab === 'other_info' ? '3px solid #059669' : '3px solid transparent',
                 background: 'none',
                 fontWeight: activeNotebookTab === 'other_info' ? '800' : '600',
-                color: activeNotebookTab === 'other_info' ? '#714B67' : '#64748b',
+                color: activeNotebookTab === 'other_info' ? '#059669' : '#64748b',
                 fontSize: '0.92rem',
                 cursor: 'pointer',
                 display: 'flex',
@@ -868,10 +868,10 @@ export default function OdooInvoiceForm({
               style={{
                 padding: '10px 18px',
                 border: 'none',
-                borderBottom: activeNotebookTab === 'accounting' ? '3px solid #714B67' : '3px solid transparent',
+                borderBottom: activeNotebookTab === 'accounting' ? '3px solid #059669' : '3px solid transparent',
                 background: 'none',
                 fontWeight: activeNotebookTab === 'accounting' ? '800' : '600',
-                color: activeNotebookTab === 'accounting' ? '#714B67' : '#64748b',
+                color: activeNotebookTab === 'accounting' ? '#059669' : '#64748b',
                 fontSize: '0.92rem',
                 cursor: 'pointer',
                 display: 'flex',
@@ -889,10 +889,10 @@ export default function OdooInvoiceForm({
               style={{
                 padding: '10px 18px',
                 border: 'none',
-                borderBottom: activeNotebookTab === 'chatter' ? '3px solid #714B67' : '3px solid transparent',
+                borderBottom: activeNotebookTab === 'chatter' ? '3px solid #059669' : '3px solid transparent',
                 background: 'none',
                 fontWeight: activeNotebookTab === 'chatter' ? '800' : '600',
-                color: activeNotebookTab === 'chatter' ? '#714B67' : '#64748b',
+                color: activeNotebookTab === 'chatter' ? '#059669' : '#64748b',
                 fontSize: '0.92rem',
                 cursor: 'pointer',
                 display: 'flex',
@@ -1030,7 +1030,7 @@ export default function OdooInvoiceForm({
                                     value={item.cartonQty !== undefined ? item.cartonQty : Math.floor((item.qty || 1) / (item.pcsPerCarton || 24))}
                                     onChange={e => handleUpdateLine(index, 'cartonQty', e.target.value)}
                                   />
-                                  <span style={{ fontSize: '0.72rem', color: '#714B67', fontWeight: '800' }}>Ctn</span>
+                                  <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: '800' }}>Ctn</span>
                                   <span>+</span>
                                   <input 
                                     type="number"
@@ -1108,7 +1108,7 @@ export default function OdooInvoiceForm({
                     type="button" 
                     onClick={handleAddLine}
                     className="btn btn-secondary btn-sm"
-                    style={{ fontWeight: '700', fontSize: '0.82rem', color: '#714B67' }}
+                    style={{ fontWeight: '700', fontSize: '0.82rem', color: '#059669' }}
                   >
                     + Add a line
                   </button>
@@ -1391,7 +1391,7 @@ export default function OdooInvoiceForm({
                 ) : (
                   (invoice.chatter || []).map((c, i) => (
                     <div key={c.id || i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.82rem' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#714B67', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', flexShrink: 0 }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#059669', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', flexShrink: 0 }}>
                         {c.author ? c.author.charAt(0).toUpperCase() : 'U'}
                       </div>
                       <div style={{ flex: 1 }}>
