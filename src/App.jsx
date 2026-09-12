@@ -90,6 +90,9 @@ export default function App() {
   };
 
   const handleConfirmDiscard = () => {
+    try {
+      localStorage.removeItem('distro_active_billing_draft');
+    } catch (e) {}
     billingGuard?.discard?.();
     setShowUnsavedModal(false);
     if (pendingTab) {

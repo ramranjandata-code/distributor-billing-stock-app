@@ -36,13 +36,30 @@ import {
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab, onRegisterNavigationGuard }) {
-  const [cart, setCart] = useState([]);
-  const [selectedPartyId, setSelectedPartyId] = useState('');
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [pricingType, setPricingType] = useState('INCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
-  const [taxMode, setTaxMode] = useState('INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
-  const [roundOffEnabled, setRoundOffEnabled] = useState(true);
+  // Check for saved active billing draft in progress so navigation or reload doesn't wipe work
+  const getInitialDraft = () => {
+    try {
+      const raw = localStorage.getItem('distro_active_billing_draft');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.cart) && parsed.cart.length > 0) {
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('Error reading active billing draft:', e);
+    }
+    return null;
+  };
+
+  const initialDraft = getInitialDraft();
+
+  const [cart, setCart] = useState(() => initialDraft?.rawCart || initialDraft?.cart || []);
+  const [selectedPartyId, setSelectedPartyId] = useState(() => initialDraft?.selectedPartyId || '');
+  const [customerName, setCustomerName] = useState(() => initialDraft?.customerName || '');
+  const [customerPhone, setCustomerPhone] = useState(() => initialDraft?.customerPhone || '');
+  const [pricingType, setPricingType] = useState(() => initialDraft?.pricingType || 'INCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
+  const [taxMode, setTaxMode] = useState(() => initialDraft?.taxMode || 'INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
+  const [roundOffEnabled, setRoundOffEnabled] = useState(() => initialDraft?.roundOffEnabled !== undefined ? initialDraft.roundOffEnabled : true);
 
   // Enterprise POS & Barcode State
   const [posMode, setPosMode] = useState('STANDARD'); // 'STANDARD' or 'FAST_TOUCH'
@@ -52,21 +69,26 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   // Multi-Warehouse Source
   const warehouses = fetchWarehouses();
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(warehouses[0]?.id || 'wh_main');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(() => initialDraft?.selectedWarehouseId || warehouses[0]?.id || 'wh_main');
 
-  // Odoo Payment Terms & Due Date
-  const [paymentTerms, setPaymentTerms] = useState('immediate');
+  // Payment Terms & Due Date
+  const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
   const invoiceDate = new Date().toISOString().split('T')[0];
   const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
 
   // e-Way Bill & Transport State
-  const [ewayBillOpen, setEwayBillOpen] = useState(false);
-  const [ewayBillData, setEwayBillData] = useState({
+  const [ewayBillOpen, setEwayBillOpen] = useState(() => !!initialDraft?.ewayBillOpen);
+  const [ewayBillData, setEwayBillData] = useState(() => initialDraft?.ewayBillData || {
     transporterName: '',
     vehicleNo: '',
     distanceKm: '',
     ewayBillNo: ''
   });
+
+  // Track draft invoice reference so saving updates instead of duplicating
+  const [activeDraftId, setActiveDraftId] = useState(() => initialDraft?.draftInvoiceId || null);
+  const [activeDraftNo, setActiveDraftNo] = useState(() => initialDraft?.draftInvoiceNo || null);
+  const [showDraftNotice, setShowDraftNotice] = useState(() => !!(initialDraft && initialDraft.cart?.length > 0));
 
   // Digital Payments & Instant Share Modal
   const [checkoutModal, setCheckoutModal] = useState(null); // holds { invoice, upiQrUrl }
@@ -74,7 +96,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   // Party Search & Add Party Modal State
   const [partySearchTerm, setPartySearchTerm] = useState('');
   const [showPartySuggestions, setShowPartySuggestions] = useState(false);
-  const [upperPartySearchTerm, setUpperPartySearchTerm] = useState('');
+  const [upperPartySearchTerm, setUpperPartySearchTerm] = useState(() => initialDraft?.upperPartySearchTerm || '');
   const [showUpperPartySuggestions, setShowUpperPartySuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const customerSearchContainerRef = useRef(null);
@@ -113,13 +135,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [newPartyData, setNewPartyData] = useState(initialNewPartyState);
 
   // Overall Bill Discount
-  const [discountType, setDiscountType] = useState('AMOUNT'); // 'AMOUNT' (₹) or 'PERCENT' (%)
-  const [discountValue, setDiscountValue] = useState(0);
+  const [discountType, setDiscountType] = useState(() => initialDraft?.discountType || 'AMOUNT'); // 'AMOUNT' (₹) or 'PERCENT' (%)
+  const [discountValue, setDiscountValue] = useState(() => initialDraft?.discountValue || 0);
 
-  const [paymentStatus, setPaymentStatus] = useState('PAID'); // PAID, UNPAID, PARTIAL
-  const [paidAmount, setPaidAmount] = useState('');
-  const [paymentMode, setPaymentMode] = useState('CASH'); // CASH, UPI, NEFT, CHEQUE
-  const [notes, setNotes] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState(() => initialDraft?.paymentStatus || 'PAID'); // PAID, UNPAID, PARTIAL
+  const [paidAmount, setPaidAmount] = useState(() => initialDraft?.paidAmount || '');
+  const [paymentMode, setPaymentMode] = useState(() => initialDraft?.paymentMode || 'CASH'); // CASH, UPI, NEFT, CHEQUE
+  const [notes, setNotes] = useState(() => initialDraft?.notes || '');
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -575,6 +597,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
     const totalDiscountCombined = itemDiscountsTotal + overallDiscountAmt;
 
     const invoicePayload = {
+      id: activeDraftId || undefined,
+      invoiceNo: activeDraftNo || undefined,
       partyId: selectedPartyId || null,
       partyName: partyNameFinal,
       partyPhone: partyPhoneFinal,
@@ -604,27 +628,46 @@ export default function Billing({ products, parties, business, refreshAllData, h
       state: asDraft ? 'draft' : 'posted',
       warehouseId: selectedWarehouseId,
       ewayBill: ewayBillOpen ? ewayBillData : null,
-      notes: notes || (asDraft ? 'Draft invoice saved during navigation' : '')
+      notes: notes || (asDraft ? 'Draft invoice saved' : '')
     };
 
     const savedInv = saveInvoice(invoicePayload);
     refreshAllData();
 
     if (asDraft) {
+      // Save draft state to localStorage so it is NOT wiped when returning to Invoicing
+      const draftState = {
+        cart,
+        rawCart: cart,
+        selectedPartyId,
+        customerName,
+        customerPhone,
+        upperPartySearchTerm,
+        pricingType,
+        taxMode,
+        discountValue,
+        discountType,
+        roundOffEnabled,
+        paymentStatus,
+        paidAmount,
+        paymentMode,
+        paymentTerms,
+        notes,
+        selectedWarehouseId,
+        ewayBillOpen,
+        ewayBillData,
+        draftInvoiceId: savedInv.id,
+        draftInvoiceNo: savedInv.invoiceNo,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem('distro_active_billing_draft', JSON.stringify(draftState));
+      setActiveDraftId(savedInv.id);
+      setActiveDraftNo(savedInv.invoiceNo);
+      setShowDraftNotice(true);
+
       if (!silent) {
-        alert(`📝 Odoo Draft Invoice #${savedInv.invoiceNo} saved successfully! Stock has NOT been deducted yet. You can confirm or edit it anytime from Invoices history.`);
+        alert(`📝 Draft Invoice #${savedInv.invoiceNo} saved successfully! Stock has NOT been deducted yet. You can confirm or continue editing anytime.`);
       }
-      // Clear bill state
-      setCart([]);
-      setSelectedPartyId('');
-      setCustomerName('');
-      setCustomerPhone('');
-      setUpperPartySearchTerm('');
-      setDiscountValue(0);
-      setPaymentStatus('PAID');
-      setPaidAmount('');
-      setNotes('');
-      setEwayBillOpen(false);
       return savedInv;
     }
 
@@ -636,7 +679,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
       });
     });
     
-    // Clear bill state
+    // Clear bill state and remove draft on successful post
+    localStorage.removeItem('distro_active_billing_draft');
     setCart([]);
     setSelectedPartyId('');
     setCustomerName('');
@@ -647,9 +691,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setPaidAmount('');
     setNotes('');
     setEwayBillOpen(false);
+    setActiveDraftId(null);
+    setActiveDraftNo(null);
+    setShowDraftNotice(false);
   };
 
   const handleDiscardBill = () => {
+    localStorage.removeItem('distro_active_billing_draft');
     setCart([]);
     setSelectedPartyId('');
     setCustomerName('');
@@ -660,7 +708,62 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setPaidAmount('');
     setNotes('');
     setEwayBillOpen(false);
+    setActiveDraftId(null);
+    setActiveDraftNo(null);
+    setShowDraftNotice(false);
   };
+
+  // Auto-persist active draft in progress so navigation or reload never wipes work
+  useEffect(() => {
+    if (cart.length > 0) {
+      const draftState = {
+        cart,
+        rawCart: cart,
+        selectedPartyId,
+        customerName,
+        customerPhone,
+        upperPartySearchTerm,
+        pricingType,
+        taxMode,
+        discountValue,
+        discountType,
+        roundOffEnabled,
+        paymentStatus,
+        paidAmount,
+        paymentMode,
+        paymentTerms,
+        notes,
+        selectedWarehouseId,
+        ewayBillOpen,
+        ewayBillData,
+        draftInvoiceId: activeDraftId,
+        draftInvoiceNo: activeDraftNo,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem('distro_active_billing_draft', JSON.stringify(draftState));
+    }
+  }, [
+    cart, 
+    selectedPartyId, 
+    customerName, 
+    customerPhone, 
+    upperPartySearchTerm, 
+    pricingType, 
+    taxMode, 
+    discountValue, 
+    discountType, 
+    roundOffEnabled, 
+    paymentStatus, 
+    paidAmount, 
+    paymentMode, 
+    paymentTerms, 
+    notes, 
+    selectedWarehouseId, 
+    ewayBillOpen, 
+    ewayBillData, 
+    activeDraftId, 
+    activeDraftNo
+  ]);
 
   // Register navigation guard with parent App
   useEffect(() => {
@@ -714,7 +817,66 @@ export default function Billing({ products, parties, business, refreshAllData, h
   }, [cart]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(440px, 1.4fr)', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {showDraftNotice && cart.length > 0 && (
+        <div style={{
+          background: '#ecfdf5',
+          border: '1px solid #a7f3d0',
+          borderRadius: '10px',
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ 
+              width: '34px', 
+              height: '34px', 
+              borderRadius: '8px', 
+              background: '#d1fae5', 
+              color: '#059669', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <div style={{ fontWeight: '800', color: '#065f46', fontSize: '0.92rem' }}>
+                Saved Draft Active {activeDraftNo ? `(#${activeDraftNo})` : ''}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#047857' }}>
+                Your invoice with <strong>{cart.length} item(s)</strong> has been preserved. You can continue editing, add products, or confirm the bill.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleDiscardBill}
+              className="btn btn-secondary btn-sm"
+              style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#ffffff', fontWeight: '700', fontSize: '0.78rem', padding: '6px 12px' }}
+              title="Discard this draft invoice and start fresh"
+            >
+              Discard & Start Fresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowDraftNotice(false)}
+              style={{ background: 'none', border: 'none', color: '#047857', cursor: 'pointer', padding: '4px' }}
+              title="Dismiss banner"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(440px, 1.4fr)', gap: '20px' }}>
       
       {/* LEFT COLUMN: Product Catalog & Search */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2313,6 +2475,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
         </div>
       )}
 
+      </div>
     </div>
   );
 }
