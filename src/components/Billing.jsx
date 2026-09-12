@@ -35,7 +35,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 
-export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab }) {
+export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab, onRegisterNavigationGuard }) {
   const [cart, setCart] = useState([]);
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -547,10 +547,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
     }
   };
 
-  const handleSaveAndPrintBill = (asDraft = false) => {
+  const handleSaveAndPrintBill = (asDraft = false, silent = false) => {
     if (cart.length === 0) {
-      alert('⚠️ Please add at least 1 product to the bill!');
-      return;
+      if (!silent) alert('⚠️ Please add at least 1 product to the bill!');
+      return null;
     }
 
     const partyNameFinal = selectedParty ? selectedParty.name : (customerName || 'Cash Customer');
@@ -604,14 +604,16 @@ export default function Billing({ products, parties, business, refreshAllData, h
       state: asDraft ? 'draft' : 'posted',
       warehouseId: selectedWarehouseId,
       ewayBill: ewayBillOpen ? ewayBillData : null,
-      notes
+      notes: notes || (asDraft ? 'Draft invoice saved during navigation' : '')
     };
 
     const savedInv = saveInvoice(invoicePayload);
     refreshAllData();
 
     if (asDraft) {
-      alert(`📝 Odoo Draft Invoice #${savedInv.invoiceNo} saved successfully! Stock has NOT been deducted yet. You can confirm or edit it anytime from Invoices history.`);
+      if (!silent) {
+        alert(`📝 Odoo Draft Invoice #${savedInv.invoiceNo} saved successfully! Stock has NOT been deducted yet. You can confirm or edit it anytime from Invoices history.`);
+      }
       // Clear bill state
       setCart([]);
       setSelectedPartyId('');
@@ -623,7 +625,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       setPaidAmount('');
       setNotes('');
       setEwayBillOpen(false);
-      return;
+      return savedInv;
     }
 
     // Generate dynamic UPI QR code for instant payment
@@ -646,6 +648,70 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setNotes('');
     setEwayBillOpen(false);
   };
+
+  const handleDiscardBill = () => {
+    setCart([]);
+    setSelectedPartyId('');
+    setCustomerName('');
+    setCustomerPhone('');
+    setUpperPartySearchTerm('');
+    setDiscountValue(0);
+    setPaymentStatus('PAID');
+    setPaidAmount('');
+    setNotes('');
+    setEwayBillOpen(false);
+  };
+
+  // Register navigation guard with parent App
+  useEffect(() => {
+    if (onRegisterNavigationGuard) {
+      onRegisterNavigationGuard({
+        isDirty: cart.length > 0,
+        itemCount: cart.length,
+        saveDraft: () => handleSaveAndPrintBill(true, true),
+        discard: handleDiscardBill
+      });
+    }
+  }, [
+    cart, 
+    processedCartItems, 
+    selectedPartyId, 
+    customerName, 
+    customerPhone, 
+    pricingType, 
+    taxMode, 
+    discountValue, 
+    discountType, 
+    roundOffEnabled, 
+    paymentStatus, 
+    paidAmount, 
+    notes, 
+    selectedWarehouseId, 
+    ewayBillOpen, 
+    ewayBillData
+  ]);
+
+  // Clean up navigation guard when unmounting
+  useEffect(() => {
+    return () => {
+      if (onRegisterNavigationGuard) {
+        onRegisterNavigationGuard(null);
+      }
+    };
+  }, []);
+
+  // Catch accidental browser reload or tab close when cart has items
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (cart.length > 0) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes in your invoice. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [cart]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(440px, 1.4fr)', gap: '20px' }}>

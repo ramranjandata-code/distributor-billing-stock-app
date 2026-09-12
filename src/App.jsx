@@ -23,7 +23,7 @@ import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 import AppLauncher from './components/AppLauncher';
 
-import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer, LayoutGrid } from 'lucide-react';
+import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer, LayoutGrid, AlertCircle, Trash2, X } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
 import { isSupabaseConnected } from './utils/supabaseClient';
 
@@ -62,7 +62,57 @@ export default function App() {
     setIsSyncing(false);
   };
 
+  // Navigation Guard for Active Unsaved Bill
+  const [billingGuard, setBillingGuard] = useState(null);
+  const [pendingTab, setPendingTab] = useState(null);
+  const [showUnsavedModal, setShowUnsavedModal] = useState(false);
+
+  const navigateToTab = (targetTab) => {
+    if (activeTab === 'billing' && targetTab !== 'billing' && billingGuard?.isDirty) {
+      setPendingTab(targetTab);
+      setShowUnsavedModal(true);
+      return;
+    }
+    setActiveTab(targetTab);
+  };
+
+  const handleConfirmSaveDraft = () => {
+    billingGuard?.saveDraft?.();
+    setShowUnsavedModal(false);
+    if (pendingTab) {
+      if (pendingTab === 'reload') {
+        window.location.reload();
+      } else {
+        setActiveTab(pendingTab);
+      }
+      setPendingTab(null);
+    }
+  };
+
+  const handleConfirmDiscard = () => {
+    billingGuard?.discard?.();
+    setShowUnsavedModal(false);
+    if (pendingTab) {
+      if (pendingTab === 'reload') {
+        window.location.reload();
+      } else {
+        setActiveTab(pendingTab);
+      }
+      setPendingTab(null);
+    }
+  };
+
+  const handleCancelNavigation = () => {
+    setShowUnsavedModal(false);
+    setPendingTab(null);
+  };
+
   const handleAppReload = () => {
+    if (activeTab === 'billing' && billingGuard?.isDirty) {
+      setPendingTab('reload');
+      setShowUnsavedModal(true);
+      return;
+    }
     window.location.reload();
   };
 
@@ -146,7 +196,7 @@ export default function App() {
     return (
       <>
         <AppLauncher 
-          setActiveTab={setActiveTab}
+          setActiveTab={navigateToTab}
           business={business}
           products={products}
           parties={parties}
@@ -172,7 +222,7 @@ export default function App() {
       {/* Sidebar Navigation */}
       <Navigation 
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navigateToTab}
         business={business}
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
@@ -196,7 +246,7 @@ export default function App() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <button 
               className="btn btn-secondary no-print"
-              onClick={() => setActiveTab('home')}
+              onClick={() => navigateToTab('home')}
               title="Return to App Launcher (Home)"
               style={{ gap: '6px', padding: '7px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center' }}
             >
@@ -263,7 +313,7 @@ export default function App() {
               </div>
             ) : (
               <div 
-                onClick={() => setActiveTab('settings')}
+                onClick={() => navigateToTab('settings')}
                 title="Offline Mode - Click to setup Cloud"
                 style={{ 
                   cursor: 'pointer', 
@@ -294,7 +344,7 @@ export default function App() {
 
             {lowStockProducts.length > 0 && (
               <button 
-                onClick={() => setActiveTab('inventory')}
+                onClick={() => navigateToTab('inventory')}
                 className="badge badge-danger" 
                 style={{ cursor: 'pointer', padding: '8px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
@@ -316,7 +366,7 @@ export default function App() {
 
             {activeTab !== 'billing' && (
               <button 
-                onClick={() => setActiveTab('billing')}
+                onClick={() => navigateToTab('billing')}
                 className="btn btn-primary"
                 style={{ gap: '6px' }}
               >
@@ -344,7 +394,7 @@ export default function App() {
             parties={parties}
             invoices={invoices}
             business={business}
-            setActiveTab={setActiveTab}
+            setActiveTab={navigateToTab}
             handlePrintInvoice={handlePrintInvoice}
             t={translate}
           />
@@ -357,8 +407,9 @@ export default function App() {
             business={business}
             refreshAllData={refreshAllData}
             handlePrintInvoice={handlePrintInvoice}
-            setActiveTab={setActiveTab}
+            setActiveTab={navigateToTab}
             t={translate}
+            onRegisterNavigationGuard={setBillingGuard}
           />
         )}
 
@@ -375,7 +426,7 @@ export default function App() {
             parties={parties}
             invoices={invoices}
             refreshAllData={refreshAllData}
-            setActiveTab={setActiveTab}
+            setActiveTab={navigateToTab}
             t={translate}
           />
         )}
@@ -395,7 +446,7 @@ export default function App() {
             parties={parties}
             products={products}
             business={business}
-            setActiveTab={setActiveTab}
+            setActiveTab={navigateToTab}
             handlePrintInvoice={handlePrintInvoice}
             refreshAllData={refreshAllData}
             t={translate}
@@ -430,6 +481,99 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Unsaved Invoice Confirmation Popup Modal */}
+      {showUnsavedModal && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: '460px', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{ 
+                  width: '42px', 
+                  height: '42px', 
+                  borderRadius: '12px', 
+                  background: '#fef3c7', 
+                  color: '#d97706', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexShrink: 0 
+                }}>
+                  <AlertCircle size={24} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', margin: '0 0 4px 0' }}>
+                    Unsaved Invoice in Progress
+                  </h3>
+                  <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    You have <strong style={{ color: 'var(--text-main)' }}>{billingGuard?.itemCount || 1} item(s)</strong> in your cart. Leaving now will discard your unsaved items.
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleCancelNavigation}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                title="Cancel"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Explanation box */}
+            <div style={{ 
+              background: '#f8fafc', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '10px', 
+              padding: '12px 14px', 
+              marginBottom: '20px',
+              fontSize: '0.8rem',
+              color: '#475569',
+              lineHeight: 1.5
+            }}>
+              💡 <strong>Save Draft:</strong> Saves this invoice safely to <em>Invoice Records</em> without deducting stock, so you can edit or confirm it anytime.<br />
+              🗑️ <strong>Discard:</strong> Empties the cart and exits the billing page.
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={handleConfirmSaveDraft}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '11px', fontSize: '0.9rem', fontWeight: '700', gap: '8px', justifyContent: 'center' }}
+              >
+                <Save size={18} />
+                <span>Save as Draft & Leave</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleCancelNavigation}
+                  className="btn btn-secondary"
+                  style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: '600', justifyContent: 'center' }}
+                >
+                  Keep Editing (Stay)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmDiscard}
+                  className="btn btn-danger"
+                  style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: '700', gap: '6px', justifyContent: 'center' }}
+                >
+                  <Trash2 size={16} />
+                  <span>Discard & Leave</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Invoice Printable Modal */}
       {selectedInvoiceForPrint && (
