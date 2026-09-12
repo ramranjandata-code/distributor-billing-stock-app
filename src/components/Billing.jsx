@@ -1824,30 +1824,6 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 <span>Save Draft</span>
               </button>
             </div>
-
-            {setActiveTab && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('invoices')}
-                style={{
-                  background: 'none',
-                  border: '1px dashed var(--primary)',
-                  color: 'var(--primary)',
-                  borderRadius: '8px',
-                  padding: '8px',
-                  fontSize: '0.78rem',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Sparkles size={14} />
-                <span>Switch to Odoo Invoice Studio & History ➔</span>
-              </button>
-            )}
           </div>
 
         </div>
