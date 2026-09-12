@@ -33,7 +33,8 @@ import {
   X,
   Save,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 import { 
   fetchBankTransactions, 
@@ -60,6 +61,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const [bankAccounts, setBankAccounts] = useState(fetchBankAccounts());
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [capitalModalOpen, setCapitalModalOpen] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
   const [expenseFilterType, setExpenseFilterType] = useState('ALL'); // 'ALL', 'DIRECT', 'OPERATING', 'DRAWING'
 
   const warehouses = fetchWarehouses();
@@ -581,95 +583,140 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* MODULE REPORT TABS (Hidden on Print) */}
-      <div className="glass-card no-print" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <button 
-            onClick={() => setReportTab('SALES')}
-            className={`btn btn-sm ${reportTab === 'SALES' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
+      {/* MODULE REPORT TABS & ACTIONS (Dropdown Selector) */}
+      <div className="glass-card no-print" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: '280px' }}>
+          <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+            <TrendingUp size={17} color="var(--primary)" />
+            <span>Select Report:</span>
+          </label>
+          <select 
+            className="input-field select-field"
+            value={reportTab}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === 'ACTION_EXPENSE') {
+                setExpenseModalOpen(true);
+              } else if (val === 'ACTION_CAPITAL') {
+                setCapitalModalOpen(true);
+              } else {
+                setReportTab(val);
+              }
+            }}
+            style={{ 
+              fontWeight: '700', 
+              fontSize: '0.88rem', 
+              minWidth: '260px', 
+              maxWidth: '380px',
+              flex: 1,
+              padding: '8px 36px 8px 12px',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
           >
-            <TrendingUp size={15} />
-            <span>Sales Analytics</span>
-          </button>
-
-          <button 
-            onClick={() => setReportTab('PNL')}
-            className={`btn btn-sm ${reportTab === 'PNL' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
-          >
-            <PieChart size={15} />
-            <span>Trading & P&L</span>
-          </button>
-
-          <button 
-            onClick={() => setReportTab('BALANCESHEET')}
-            className={`btn btn-sm ${reportTab === 'BALANCESHEET' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
-          >
-            <Scale size={15} />
-            <span>Balance Sheet</span>
-          </button>
-
-          <button 
-            onClick={() => setReportTab('EXPENSES')}
-            className={`btn btn-sm ${reportTab === 'EXPENSES' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
-          >
-            <Receipt size={15} />
-            <span>Expenses & Drawings</span>
-          </button>
-
-          <button 
-            onClick={() => setReportTab('GST')}
-            className={`btn btn-sm ${reportTab === 'GST' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
-          >
-            <ShieldCheck size={15} />
-            <span>GST Returns (GSTR-1 & 3B)</span>
-          </button>
-
-          <button 
-            onClick={() => setReportTab('DAYBOOK')}
-            className={`btn btn-sm ${reportTab === 'DAYBOOK' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
-          >
-            <BookOpen size={15} />
-            <span>Day Book</span>
-          </button>
-
-          <button 
-            onClick={() => setReportTab('STOCK')}
-            className={`btn btn-sm ${reportTab === 'STOCK' ? 'btn-primary' : 'btn-secondary'}`}
-            style={{ gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: '700' }}
-          >
-            <Package size={15} />
-            <span>Stock Valuation</span>
-          </button>
+            <optgroup label="📊 Financial & Stock Reports">
+              <option value="SALES">📈 Sales Analytics</option>
+              <option value="PNL">🥧 Trading & P&L</option>
+              <option value="BALANCESHEET">⚖️ Balance Sheet</option>
+              <option value="EXPENSES">🧾 Expenses & Drawings</option>
+              <option value="GST">🛡️ GST Returns (GSTR-1 & 3B)</option>
+              <option value="DAYBOOK">📖 Day Book</option>
+              <option value="STOCK">📦 Stock Valuation</option>
+            </optgroup>
+            <optgroup label="⚡ Accounting Actions">
+              <option value="ACTION_EXPENSE">➕ + Expense / Drawing</option>
+              <option value="ACTION_CAPITAL">💼 Capital Account</option>
+            </optgroup>
+          </select>
         </div>
 
-        {/* Action Controls: Add Expense & Capital setup */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {/* Action Controls: Actions Dropdown Menu */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             type="button"
-            onClick={() => setExpenseModalOpen(true)}
-            className="btn btn-primary btn-sm"
-            style={{ gap: '5px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: '700' }}
+            onClick={() => setActionsMenuOpen(!actionsMenuOpen)}
+            className="btn btn-secondary btn-sm"
+            style={{ gap: '6px', padding: '8px 14px', fontSize: '0.82rem', fontWeight: '700' }}
           >
-            <Plus size={14} />
-            <span>+ Expense / Drawing</span>
+            <Plus size={15} color="var(--primary)" />
+            <span>Actions</span>
+            <ChevronDown size={14} />
           </button>
 
-          <button
-            type="button"
-            onClick={() => setCapitalModalOpen(true)}
-            className="btn btn-secondary btn-sm"
-            style={{ gap: '5px', padding: '6px 12px', fontSize: '0.78rem', fontWeight: '700' }}
-            title="Configure Sole Proprietor Opening Capital"
-          >
-            <Briefcase size={14} />
-            <span>Capital Account</span>
-          </button>
+          {actionsMenuOpen && (
+            <>
+              <div 
+                style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                onClick={() => setActionsMenuOpen(false)} 
+              />
+              <div 
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 6px)',
+                  background: '#fff',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                  border: '1px solid var(--border-color)',
+                  zIndex: 50,
+                  minWidth: '220px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setActionsMenuOpen(false); setExpenseModalOpen(true); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 14px',
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    fontSize: '0.84rem',
+                    fontWeight: '600',
+                    color: 'var(--text-main)',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Plus size={15} color="#059669" />
+                  <span>+ Expense / Drawing</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActionsMenuOpen(false); setCapitalModalOpen(true); }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 14px',
+                    border: 'none',
+                    background: 'transparent',
+                    borderTop: '1px solid var(--border-color)',
+                    cursor: 'pointer',
+                    fontSize: '0.84rem',
+                    fontWeight: '600',
+                    color: 'var(--text-main)',
+                    textAlign: 'left',
+                    width: '100%',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <Briefcase size={15} color="#2563eb" />
+                  <span>Capital Account</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

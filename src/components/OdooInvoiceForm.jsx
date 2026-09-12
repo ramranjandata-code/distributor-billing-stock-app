@@ -72,7 +72,7 @@ export default function OdooInvoiceForm({
     dueDate: new Date().toISOString().split('T')[0],
     journal: 'INV',
     warehouseId: warehouses[0]?.id || 'wh_main',
-    pricingType: 'EXCLUSIVE',
+    pricingType: 'INCLUSIVE',
     taxMode: 'INTRA',
     roundOffEnabled: true,
     discountType: 'AMOUNT',
@@ -265,7 +265,7 @@ export default function OdooInvoiceForm({
   const taxableItems = (invoice.items || []).filter(item => !item.isSection && !item.isNote);
   const billCalc = calculateBillTotals({
     cartItems: taxableItems,
-    taxType: invoice.pricingType || 'EXCLUSIVE',
+    taxType: invoice.pricingType || 'INCLUSIVE',
     supplyType: invoice.taxMode === 'NONE' ? 'EXEMPT' : (invoice.taxMode || 'INTRA'),
     overallDiscountVal: invoice.discountValue || 0,
     overallDiscountType: invoice.discountType || 'AMOUNT',

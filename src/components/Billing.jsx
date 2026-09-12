@@ -40,7 +40,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [pricingType, setPricingType] = useState('EXCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
+  const [pricingType, setPricingType] = useState('INCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
   const [taxMode, setTaxMode] = useState('INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
   const [roundOffEnabled, setRoundOffEnabled] = useState(true);
 

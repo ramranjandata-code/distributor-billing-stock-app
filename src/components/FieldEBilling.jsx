@@ -87,7 +87,7 @@ export default function FieldEBilling({ products = [], parties = [], business, r
   const [orderCart, setOrderCart] = useState([]);
 
   // Pricing & Taxation Configuration
-  const [pricingType, setPricingType] = useState('EXCLUSIVE'); // 'EXCLUSIVE' (Wholesale: Rate + GST Extra) or 'INCLUSIVE' (MRP)
+  const [pricingType, setPricingType] = useState('INCLUSIVE'); // 'EXCLUSIVE' (Wholesale: Rate + GST Extra) or 'INCLUSIVE' (MRP)
   const [taxMode, setTaxMode] = useState('INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
   const [roundOffEnabled, setRoundOffEnabled] = useState(true);
 
