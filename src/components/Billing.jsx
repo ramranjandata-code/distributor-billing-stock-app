@@ -1901,33 +1901,6 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </button>
           </div>
 
-          {/* Payment Mode Selector */}
-          <div style={{ marginBottom: '12px' }}>
-            <label className="form-label" style={{ fontSize: '0.78rem', marginBottom: '4px' }}>
-              Payment Method:
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
-              {['CASH', 'UPI', 'NEFT', 'CHEQUE'].map(mode => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setPaymentMode(mode)}
-                  style={{
-                    padding: '6px 4px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border-color)',
-                    background: paymentMode === mode ? '#ecfdf5' : '#ffffff',
-                    color: paymentMode === mode ? '#059669' : 'var(--text-main)',
-                    fontWeight: '800',
-                    fontSize: '0.74rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Warehouse Source & e-Way Bill Accordion */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
