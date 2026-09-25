@@ -128,10 +128,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
   };
 
   const handleClearSampleProducts = () => {
-    if (window.confirm('⚠️ Are you sure you want to clear all demo data (Products, Retailers, Invoices) and start fresh?')) {
+    if (window.confirm('⚠️ Are you sure you want to clear all data (Products, Retailers, Invoices, Bank Accounts, Expenses) and start completely fresh?')) {
       clearAllSampleData();
       refreshAllData();
-      alert('🗑️ All demo products, retailers, and invoice data have been cleared successfully!');
+      alert('🗑️ All products, retailers, invoices, bank accounts, and expense records have been cleared successfully!');
     }
   };
 

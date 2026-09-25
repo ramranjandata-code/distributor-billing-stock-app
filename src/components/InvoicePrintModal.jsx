@@ -517,11 +517,13 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   color: '#000000',
                   lineHeight: '1.1'
                 }}>
-                  {business?.name || 'JAY MAA SHARDAY ENTERPRISES'}
+                  {business?.name || 'DISTRIBUTOR AGENCY'}
                 </h1>
-                <p style={{ margin: '1px 0 0 0', fontSize: paperFormat === 'A5' ? '0.66rem' : '0.78rem', color: '#1e293b', fontWeight: '500' }}>
-                  {business?.address || 'Main Wholesale Market, Transport Nagar, New Delhi - 110042'}
-                </p>
+                {business?.address && (
+                  <p style={{ margin: '1px 0 0 0', fontSize: paperFormat === 'A5' ? '0.66rem' : '0.78rem', color: '#1e293b', fontWeight: '500' }}>
+                    {business.address}
+                  </p>
+                )}
                 <div style={{ fontSize: paperFormat === 'A5' ? '0.64rem' : '0.75rem', fontWeight: '600', color: '#334155', marginTop: '1px' }}>
                   {business?.phone ? `Ph: ${business.phone}` : ''}
                   {business?.phone && business?.email ? '  |  ' : ''}

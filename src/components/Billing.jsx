@@ -2391,9 +2391,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
               <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#059669' }}>
                 ₹{Number(checkoutModal.invoice.grandTotal || 0).toLocaleString('en-IN')}
               </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                VPA: <strong>{business?.upiId || 'shreeganesh@upi'}</strong> • {business?.name}
-              </span>
+              {business?.upiId && (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  VPA: <strong>{business.upiId}</strong>{business?.name ? ` • ${business.name}` : ''}
+                </span>
+              )}
             </div>
 
             {/* Instant Sharing Buttons */}

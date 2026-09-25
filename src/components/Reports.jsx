@@ -74,7 +74,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     amount: '',
     date: new Date().toISOString().split('T')[0],
     paymentMode: 'CASH',
-    bankAccountId: bankAccounts[0]?.id || 'bank_1',
+    bankAccountId: bankAccounts[0]?.id || '',
     paidTo: '',
     notes: ''
   };
@@ -82,10 +82,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
   // Capital Form State
   const initialCapitalState = {
-    openingCapital: capital.openingCapital || 500000,
+    openingCapital: capital.openingCapital || 0,
     additionalCapital: capital.additionalCapital || 0,
-    asOfDate: capital.asOfDate || '2026-04-01',
-    notes: capital.notes || 'Opening capital as per books'
+    asOfDate: capital.asOfDate || new Date().toISOString().split('T')[0],
+    notes: capital.notes || ''
   };
   const [capitalFormData, setCapitalFormData] = useState(initialCapitalState);
 
@@ -786,13 +786,17 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
-                {business?.name || 'SHREE GANESH SALES AGENCY'}
+                {business?.name || 'DISTRIBUTOR AGENCY'}
               </h2>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                {business?.address || 'Authorized FMCG & Wholesale Distributor'}
-              </p>
+              {business?.address && (
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  {business.address}
+                </p>
+              )}
               <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', margin: '2px 0 0 0' }}>
-                GSTIN: {business?.gstin || 'N/A'} • Phone: {business?.phone || 'N/A'} • Proprietor: <strong>{business?.proprietor || capital.notes || 'Rajesh Verma'}</strong>
+                {business?.gstin ? `GSTIN: ${business.gstin} • ` : ''}
+                {business?.phone ? `Phone: ${business.phone}` : ''}
+                {business?.proprietor ? ` • Proprietor: ${business.proprietor}` : ''}
               </p>
             </div>
 

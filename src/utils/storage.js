@@ -19,35 +19,30 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_BUSINESS = {
-  name: "Shree Ganesh Sales Agency",
-  tagline: "Authorized FMCG & Wholesale Distributor",
-  proprietor: "Rajesh Kumar Verma",
-  gstin: "07AAACG1234F1Z8",
-  phone: "+91 98765 43210",
-  email: "sales@shreeganeshdistributors.com",
-  address: "Shop No. 12-14, Wholesale Grain Market, Transport Nagar, New Delhi - 110042",
-  bankName: "HDFC Bank Ltd.",
-  accountNo: "50200088991122",
-  ifsc: "HDFC0001234",
-  upiId: "shreeganesh@upi",
-  invoicePrefix: "SGA/26-27/",
-  terms: "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged on overdue payments.\n3. Subject to local jurisdiction."
+  name: "Distributor Agency",
+  tagline: "Wholesale & Distribution",
+  proprietor: "",
+  gstin: "",
+  phone: "",
+  email: "",
+  address: "",
+  bankName: "",
+  accountNo: "",
+  ifsc: "",
+  upiId: "",
+  invoicePrefix: "INV/26-27/",
+  terms: "1. Goods once sold will not be taken back.\n2. Subject to local jurisdiction."
 };
 
 const DEFAULT_WAREHOUSES = [
-  { id: 'wh_main', name: 'Main Central Godown', code: 'WH-01', location: 'Transport Nagar Depot', isDefault: true },
-  { id: 'wh_store', name: 'Shop Floor Counter', code: 'WH-02', location: 'Wholesale Grain Market', isDefault: false },
-  { id: 'wh_cold', name: 'Depot 2 (Transit/Cold Storage)', code: 'WH-03', location: 'Industrial Area Phase 1', isDefault: false }
+  { id: 'wh_main', name: 'Main Godown', code: 'WH-01', location: '', isDefault: true }
 ];
 
-const DEFAULT_BANK_ACCOUNTS = [
-  { id: 'bank_1', bankName: 'HDFC Bank Ltd', accountNo: '50200088991122', ifsc: 'HDFC0001234', upiId: 'shreeganesh@hdfcbank', branch: 'Transport Nagar', balance: 245000 },
-  { id: 'bank_2', bankName: 'State Bank of India', accountNo: '38920192831', ifsc: 'SBIN0001234', upiId: 'shreeganesh@sbi', branch: 'Main Branch', balance: 138500 }
-];
+const DEFAULT_BANK_ACCOUNTS = [];
 
 const DEFAULT_OPERATOR = {
   id: 'op_admin',
-  name: 'Rajesh Verma',
+  name: 'Admin',
   role: 'Admin / Owner',
   badge: 'ADMIN'
 };
@@ -65,72 +60,13 @@ const DEFAULT_INVOICES = [];
 const DEFAULT_PURCHASES = [];
 
 const DEFAULT_PROPRIETOR_CAPITAL = {
-  openingCapital: 500000,
+  openingCapital: 0,
   additionalCapital: 0,
-  asOfDate: '2026-04-01',
-  notes: 'Opening capital as per FY 2026-27 balance sheet'
+  asOfDate: new Date().toISOString().split('T')[0],
+  notes: ''
 };
 
-const DEFAULT_EXPENSES = [
-  {
-    id: 'exp_sample_1',
-    date: new Date().toISOString().split('T')[0],
-    category: 'Shop / Godown Rent',
-    type: 'OPERATING', // 'DIRECT', 'OPERATING', 'DRAWING'
-    amount: 15000,
-    paymentMode: 'BANK',
-    bankAccountId: 'bank_1',
-    paidTo: 'Shree Balaji Commercial Real Estate',
-    notes: 'Monthly godown rent',
-    voucherNo: 'VOUCH-2601'
-  },
-  {
-    id: 'exp_sample_2',
-    date: new Date().toISOString().split('T')[0],
-    category: 'Electricity & Utilities',
-    type: 'OPERATING',
-    amount: 3200,
-    paymentMode: 'BANK',
-    bankAccountId: 'bank_1',
-    paidTo: 'State Electricity Board',
-    notes: 'Godown electricity bill',
-    voucherNo: 'VOUCH-2602'
-  },
-  {
-    id: 'exp_sample_3',
-    date: new Date().toISOString().split('T')[0],
-    category: 'Vehicle Fuel & Transport',
-    type: 'OPERATING',
-    amount: 1800,
-    paymentMode: 'CASH',
-    paidTo: 'HP Fuel Station',
-    notes: 'Delivery van diesel refill',
-    voucherNo: 'VOUCH-2603'
-  },
-  {
-    id: 'exp_sample_4',
-    date: new Date().toISOString().split('T')[0],
-    category: 'Freight & Cartage Inward',
-    type: 'DIRECT',
-    amount: 2500,
-    paymentMode: 'CASH',
-    paidTo: 'Delhi Goods Transport Service',
-    notes: 'Cartage on factory goods arrival',
-    voucherNo: 'VOUCH-2604'
-  },
-  {
-    id: 'exp_sample_5',
-    date: new Date().toISOString().split('T')[0],
-    category: 'Proprietor Personal Drawings',
-    type: 'DRAWING',
-    amount: 8000,
-    paymentMode: 'BANK',
-    bankAccountId: 'bank_1',
-    paidTo: 'Rajesh Verma (Self)',
-    notes: 'Personal home groceries and family medical',
-    voucherNo: 'VOUCH-2605'
-  }
-];
+const DEFAULT_EXPENSES = [];
 
 export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24) => {
   const pcs = Number(pcsPerCarton) || 1;
@@ -174,24 +110,46 @@ export const setStorageData = (key, data) => {
 const SAMPLE_IDS = [
   'prod_1', 'prod_2', 'prod_3', 'prod_4', 'prod_5', 'prod_6', 'prod_7', 'prod_8',
   'party_1', 'party_2', 'party_3', 'party_4',
-  'inv_1001', 'inv_1002', 'pur_1'
+  'inv_1001', 'inv_1002', 'pur_1',
+  'exp_sample_1', 'exp_sample_2', 'exp_sample_3', 'exp_sample_4', 'exp_sample_5',
+  'bank_1', 'bank_2'
 ];
 
 // Initialize Storage with Defaults if missing
 export const initDataStorage = () => {
-  if (!localStorage.getItem(STORAGE_KEYS.BUSINESS)) {
+  // If no business or old dummy business exists, set clean default
+  const existingBiz = getStorageData(STORAGE_KEYS.BUSINESS, null);
+  if (!existingBiz || existingBiz.name === "Shree Ganesh Sales Agency" || existingBiz.gstin === "07AAACG1234F1Z8" || existingBiz.proprietor === "Rajesh Kumar Verma") {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   }
 
-  if (!localStorage.getItem(STORAGE_KEYS.WAREHOUSES)) {
+  // Clean warehouses if dummy locations exist
+  const existingWh = getStorageData(STORAGE_KEYS.WAREHOUSES, []);
+  const cleanedWh = existingWh.filter(w => 
+    w?.location !== 'Transport Nagar Depot' && 
+    w?.location !== 'Wholesale Grain Market' && 
+    w?.location !== 'Industrial Area Phase 1' &&
+    w?.name !== 'Depot 2 (Transit/Cold Storage)' &&
+    w?.name !== 'Shop Floor Counter'
+  );
+  if (cleanedWh.length === 0) {
     setStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+  } else {
+    setStorageData(STORAGE_KEYS.WAREHOUSES, cleanedWh);
   }
 
-  if (!localStorage.getItem(STORAGE_KEYS.BANK_ACCOUNTS)) {
-    setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, DEFAULT_BANK_ACCOUNTS);
-  }
+  // Clean dummy bank accounts (HDFC 50200088991122, SBI 38920192831, etc.)
+  const existingBanks = getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []).filter(b => 
+    b?.accountNo !== '50200088991122' && 
+    b?.accountNo !== '38920192831' && 
+    b?.id !== 'bank_1' && 
+    b?.id !== 'bank_2'
+  );
+  setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, existingBanks);
 
-  if (!localStorage.getItem(STORAGE_KEYS.CURRENT_OPERATOR)) {
+  // Clean operator if dummy name exists
+  const existingOp = getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, null);
+  if (!existingOp || existingOp.name === 'Rajesh Verma') {
     setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
   }
 
@@ -207,12 +165,12 @@ export const initDataStorage = () => {
         operator: 'System',
         action: 'SYSTEM_BOOT',
         module: 'Security & Audit',
-        details: 'DistroPulse Enterprise System initialized with secure audit logging.'
+        details: 'DistroPulse Enterprise System initialized.'
       }
     ]);
   }
 
-  // Force Clean of all sample data
+  // Force clean all sample products, parties, invoices, purchases
   const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => !SAMPLE_IDS.includes(p?.id));
   setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
 
@@ -224,6 +182,31 @@ export const initDataStorage = () => {
 
   const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
   setStorageData(STORAGE_KEYS.PURCHASES, existingPurchases);
+
+  // Clean dummy expenses
+  const existingExpenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => 
+    !e?.id?.startsWith('exp_sample_') &&
+    e?.voucherNo !== 'VOUCH-2601' &&
+    e?.voucherNo !== 'VOUCH-2602' &&
+    e?.voucherNo !== 'VOUCH-2603' &&
+    e?.voucherNo !== 'VOUCH-2604' &&
+    e?.voucherNo !== 'VOUCH-2605'
+  );
+  setStorageData(STORAGE_KEYS.EXPENSES, existingExpenses);
+
+  // Clean dummy proprietor capital
+  const existingCap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, null);
+  if (!existingCap || existingCap.notes === 'Opening capital as per FY 2026-27 balance sheet') {
+    setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+  }
+
+  // Clear draft if it contained dummy references
+  try {
+    const draft = localStorage.getItem('distro_active_billing_draft');
+    if (draft && (draft.includes('Shree Ganesh') || draft.includes('prod_') || draft.includes('party_'))) {
+      localStorage.removeItem('distro_active_billing_draft');
+    }
+  } catch (e) {}
 
   // Wipe Cloud DB sample rows as well
   const client = getSupabaseClient();
@@ -241,6 +224,17 @@ export const clearAllSampleData = () => {
   setStorageData(STORAGE_KEYS.PARTIES, []);
   setStorageData(STORAGE_KEYS.INVOICES, []);
   setStorageData(STORAGE_KEYS.PURCHASES, []);
+  setStorageData(STORAGE_KEYS.EXPENSES, []);
+  setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []);
+  setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []);
+  setStorageData(STORAGE_KEYS.STOCK_LEDGER, []);
+  setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+  setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  setStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+  setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
+  try {
+    localStorage.removeItem('distro_active_billing_draft');
+  } catch (e) {}
   const client = getSupabaseClient();
   if (client) {
     client.from('products').delete().neq('id', 'xyz_dummy_keep').then(() => {}).catch(console.error);
@@ -1118,8 +1112,7 @@ export const transferStockBetweenWarehouses = (productId, fromWhId, toWhId, qty,
 
 export const fetchStockLedger = () => getStorageData(STORAGE_KEYS.STOCK_LEDGER, []);
 
-// --- ENTERPRISE MODULE: CONNECTED BANKING & RECONCILIATION ---
-export const fetchBankAccounts = () => getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, DEFAULT_BANK_ACCOUNTS);
+export const fetchBankAccounts = () => getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []).filter(b => b?.accountNo !== '50200088991122' && b?.accountNo !== '38920192831' && b?.id !== 'bank_1' && b?.id !== 'bank_2');
 export const saveBankAccount = (acct) => {
   const accounts = fetchBankAccounts();
   let updated;
@@ -1169,7 +1162,7 @@ export const recordBankTransaction = (txn) => {
 };
 
 // --- ENTERPRISE MODULE: EXPENSES & SOLE PROPRIETOR CAPITAL ---
-export const fetchExpenses = () => getStorageData(STORAGE_KEYS.EXPENSES, DEFAULT_EXPENSES);
+export const fetchExpenses = () => getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => !e?.id?.startsWith('exp_sample_'));
 
 export const saveExpense = (exp) => {
   const expenses = fetchExpenses();
@@ -1255,7 +1248,13 @@ export const deleteExpense = (id) => {
   return true;
 };
 
-export const fetchProprietorCapital = () => getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+export const fetchProprietorCapital = () => {
+  const cap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+  if (cap?.notes === 'Opening capital as per FY 2026-27 balance sheet') {
+    return DEFAULT_PROPRIETOR_CAPITAL;
+  }
+  return cap;
+};
 
 export const saveProprietorCapital = (capitalData) => {
   const current = fetchProprietorCapital();

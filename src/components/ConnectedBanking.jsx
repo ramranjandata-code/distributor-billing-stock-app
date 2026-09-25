@@ -588,7 +588,7 @@ export default function ConnectedBanking({ parties = [], invoices = [], refreshA
                 <input 
                   type="text"
                   className="form-control"
-                  placeholder="e.g. 50200088991122"
+                  placeholder="e.g. 100023456789"
                   value={newAccountForm.accountNo}
                   onChange={e => setNewAccountForm({ ...newAccountForm, accountNo: e.target.value })}
                   required
@@ -601,7 +601,7 @@ export default function ConnectedBanking({ parties = [], invoices = [], refreshA
                   <input 
                     type="text"
                     className="form-control"
-                    placeholder="e.g. HDFC0001234"
+                    placeholder="e.g. SBIN0001234"
                     value={newAccountForm.ifsc}
                     onChange={e => setNewAccountForm({ ...newAccountForm, ifsc: e.target.value })}
                     required

@@ -43,10 +43,10 @@ export default function AuditSecurity({ refreshAllData }) {
 
   // Operator list
   const availableOperators = [
-    { id: 'op_admin', name: 'Rajesh Verma', role: 'Admin / Proprietor', badge: 'ADMIN' },
-    { id: 'op_billing', name: 'Sunil Sharma', role: 'Counter Billing Cashier', badge: 'BILLING' },
-    { id: 'op_store', name: 'Mahesh Yadav', role: 'Warehouse & Inventory Manager', badge: 'INVENTORY' },
-    { id: 'op_sales', name: 'Vikram Singh', role: 'Field Sales Representative', badge: 'FIELD' }
+    { id: 'op_admin', name: 'Admin', role: 'Admin / Proprietor', badge: 'ADMIN' },
+    { id: 'op_billing', name: 'Cashier', role: 'Counter Billing Cashier', badge: 'BILLING' },
+    { id: 'op_store', name: 'Store Manager', role: 'Warehouse & Inventory Manager', badge: 'INVENTORY' },
+    { id: 'op_sales', name: 'Sales Representative', role: 'Field Sales Representative', badge: 'FIELD' }
   ];
 
   const refreshLogs = () => {
