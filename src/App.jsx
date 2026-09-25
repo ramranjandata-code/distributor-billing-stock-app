@@ -222,13 +222,11 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Sidebar Navigation */}
+      {/* Top Full-Width Navigation Bar */}
       <Navigation 
         activeTab={activeTab}
         setActiveTab={navigateToTab}
         business={business}
-        mobileOpen={mobileOpen}
-        setMobileOpen={setMobileOpen}
         lowStockCount={lowStockProducts.length}
         t={translate}
       />
@@ -240,31 +238,13 @@ export default function App() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between', 
-          marginBottom: '24px',
-          paddingBottom: '16px',
+          marginBottom: '20px',
+          paddingBottom: '14px',
           borderBottom: '1px solid var(--border-color)',
           flexWrap: 'wrap',
           gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <button 
-              className="btn btn-secondary no-print"
-              onClick={() => navigateToTab('home')}
-              title="Return to App Launcher (Home)"
-              style={{ gap: '6px', padding: '7px 12px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center' }}
-            >
-              <LayoutGrid size={17} color="var(--primary)" />
-              <span style={{ fontWeight: '700', fontSize: '0.84rem' }}>Apps</span>
-            </button>
-
-            <button 
-              className="btn btn-secondary no-print"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              style={{ display: 'none', padding: '8px 12px' }}
-              id="mobile-menu-btn"
-            >
-              <Menu size={20} />
-            </button>
             <div>
               <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>
                 {activeTab === 'dashboard' && translate('dashboard_title')}
