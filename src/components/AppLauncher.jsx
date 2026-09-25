@@ -38,18 +38,18 @@ export default function AppLauncher({
   const unpaidInvoicesCount = invoices.filter(inv => inv.paymentStatus === 'UNPAID' || inv.paymentStatus === 'PARTIALLY_PAID').length;
   const totalStockItems = products.reduce((sum, p) => sum + (p.currentStock || 0), 0);
 
-  // App definitions mirroring Odoo's iconic launcher & user requirements
+  // App definitions mirroring DistroPulse signature green theme & modules
   const apps = [
     {
       id: 'dashboard',
       name: 'Main Dashboard',
       category: 'Analytics',
       description: 'KPIs, Diagrams, Pie Charts, Bar Graphs & Histograms',
-      gradient: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-      shadowColor: 'rgba(124, 58, 237, 0.4)',
+      gradient: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+      shadowColor: 'rgba(16, 185, 129, 0.25)',
       badge: 'Live Charts',
-      badgeBg: 'rgba(124, 58, 237, 0.25)',
-      badgeColor: '#c4b5fd',
+      badgeBg: '#ecfdf5',
+      badgeColor: '#059669',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="9" rx="1.5" />
@@ -65,10 +65,10 @@ export default function AppLauncher({
       category: 'Billing',
       description: 'Create Tax Invoice, POS Billing & Barcode Counter',
       gradient: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
-      shadowColor: 'rgba(2, 132, 199, 0.4)',
+      shadowColor: 'rgba(2, 132, 199, 0.25)',
       badge: todayInvoices.length > 0 ? `${todayInvoices.length} Today` : 'New Bill (+)',
-      badgeBg: 'rgba(2, 132, 199, 0.25)',
-      badgeColor: '#93c5fd',
+      badgeBg: todayInvoices.length > 0 ? '#e0f2fe' : '#dcfce7',
+      badgeColor: todayInvoices.length > 0 ? '#0284c7' : '#059669',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -83,11 +83,11 @@ export default function AppLauncher({
       name: 'Invoice History',
       category: 'Records',
       description: 'All Billed Records, Payment Status & Credit Notes',
-      gradient: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-      shadowColor: 'rgba(79, 70, 229, 0.4)',
+      gradient: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+      shadowColor: 'rgba(79, 70, 229, 0.25)',
       badge: unpaidInvoicesCount > 0 ? `${unpaidInvoicesCount} Pending` : `${invoices.length} Bills`,
-      badgeBg: unpaidInvoicesCount > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(79, 70, 229, 0.25)',
-      badgeColor: unpaidInvoicesCount > 0 ? '#fca5a5' : '#c7d2fe',
+      badgeBg: unpaidInvoicesCount > 0 ? '#fee2e2' : '#ede9fe',
+      badgeColor: unpaidInvoicesCount > 0 ? '#dc2626' : '#4f46e5',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -103,11 +103,11 @@ export default function AppLauncher({
       name: 'Inventory',
       category: 'Stock',
       description: 'Stock Ledger, Carton Packing & Godown Valuation',
-      gradient: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
-      shadowColor: 'rgba(5, 150, 105, 0.4)',
+      gradient: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 100%)',
+      shadowColor: 'rgba(13, 148, 136, 0.25)',
       badge: lowStockCount > 0 ? `⚠️ ${lowStockCount} Low` : `${products.length} Items`,
-      badgeBg: lowStockCount > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(16, 185, 129, 0.25)',
-      badgeColor: lowStockCount > 0 ? '#fca5a5' : '#86efac',
+      badgeBg: lowStockCount > 0 ? '#fee2e2' : '#dcfce7',
+      badgeColor: lowStockCount > 0 ? '#dc2626' : '#059669',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
@@ -121,11 +121,11 @@ export default function AppLauncher({
       name: 'Banking',
       category: 'Finance',
       description: 'Connected Bank Accounts, UPI Reconciliation & Transfers',
-      gradient: 'linear-gradient(135deg, #0891b2 0%, #1e40af 100%)',
-      shadowColor: 'rgba(8, 145, 178, 0.4)',
+      gradient: 'linear-gradient(135deg, #0891b2 0%, #0284c7 100%)',
+      shadowColor: 'rgba(8, 145, 178, 0.25)',
       badge: 'Live Auto',
-      badgeBg: 'rgba(8, 145, 178, 0.25)',
-      badgeColor: '#67e8f9',
+      badgeBg: '#cffafe',
+      badgeColor: '#0891b2',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="21" x2="21" y2="21" />
@@ -143,11 +143,11 @@ export default function AppLauncher({
       name: 'Reports',
       category: 'Accounting',
       description: 'Sole Proprietor P&L, GST Returns (GSTR-1, 3B) & Day Book',
-      gradient: 'linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%)',
-      shadowColor: 'rgba(217, 70, 239, 0.4)',
+      gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+      shadowColor: 'rgba(139, 92, 246, 0.25)',
       badge: 'P&L / GST',
-      badgeBg: 'rgba(217, 70, 239, 0.25)',
-      badgeColor: '#f0abfc',
+      badgeBg: '#f3e8ff',
+      badgeColor: '#7c3aed',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -160,11 +160,11 @@ export default function AppLauncher({
       name: 'Retailers & Khata',
       category: 'CRM & Credit',
       description: 'Retailer Accounts, Credit Limits & Balance Recovery',
-      gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-      shadowColor: 'rgba(245, 158, 11, 0.4)',
+      gradient: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
+      shadowColor: 'rgba(234, 88, 12, 0.25)',
       badge: duePartiesCount > 0 ? `${duePartiesCount} Udhar` : `${parties.length} Retailers`,
-      badgeBg: duePartiesCount > 0 ? 'rgba(245, 158, 11, 0.25)' : 'rgba(251, 191, 36, 0.2)',
-      badgeColor: '#fde68a',
+      badgeBg: duePartiesCount > 0 ? '#ffedd5' : '#fef3c7',
+      badgeColor: duePartiesCount > 0 ? '#ea580c' : '#d97706',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
@@ -179,11 +179,11 @@ export default function AppLauncher({
       name: 'Settings',
       category: 'System',
       description: 'Firm Profile, Cloud DB Credentials & Backup',
-      gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-      shadowColor: 'rgba(249, 115, 22, 0.4)',
+      gradient: 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+      shadowColor: 'rgba(71, 85, 105, 0.25)',
       badge: 'Config',
-      badgeBg: 'rgba(249, 115, 22, 0.25)',
-      badgeColor: '#ffedd5',
+      badgeBg: '#f1f5f9',
+      badgeColor: '#475569',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -195,11 +195,11 @@ export default function AppLauncher({
       name: 'Audit & Security',
       category: 'Security',
       description: 'System Activity Logs, User Access & Data Integrity',
-      gradient: 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
-      shadowColor: 'rgba(51, 65, 85, 0.4)',
+      gradient: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+      shadowColor: 'rgba(30, 41, 59, 0.25)',
       badge: 'Protected',
-      badgeBg: 'rgba(51, 65, 85, 0.4)',
-      badgeColor: '#cbd5e1',
+      badgeBg: '#e2e8f0',
+      badgeColor: '#334155',
       icon: (
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -219,8 +219,8 @@ export default function AppLauncher({
     <div style={{
       minHeight: '100vh',
       width: '100%',
-      background: 'radial-gradient(ellipse at 50% 15%, #18223c 0%, #0d1222 55%, #070913 100%)',
-      color: '#ffffff',
+      background: '#f8fafc',
+      color: '#0f172a',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: 'var(--font-body)',
@@ -236,7 +236,7 @@ export default function AppLauncher({
         transform: 'translateX(-50%)',
         width: '800px',
         height: '400px',
-        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(16, 185, 129, 0.05) 50%, transparent 80%)',
+        background: 'radial-gradient(circle, rgba(16, 185, 129, 0.09) 0%, rgba(5, 150, 105, 0.03) 50%, transparent 80%)',
         filter: 'blur(80px)',
         pointerEvents: 'none',
         zIndex: 0
@@ -250,11 +250,12 @@ export default function AppLauncher({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '16px 28px',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+        borderBottom: '1px solid #e2e8f0',
         backdropFilter: 'blur(16px)',
-        background: 'rgba(10, 14, 26, 0.6)',
+        background: 'rgba(255, 255, 255, 0.95)',
         flexWrap: 'wrap',
-        gap: '14px'
+        gap: '14px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)'
       }}>
         
         {/* Brand & Firm Profile */}
@@ -267,13 +268,13 @@ export default function AppLauncher({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)'
+            boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)'
           }}>
             <Boxes size={24} color="#ffffff" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '1.15rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#f8fafc' }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#0f172a' }}>
                 DistroPulse ERP
               </span>
               <span style={{
@@ -281,14 +282,14 @@ export default function AppLauncher({
                 fontWeight: '700',
                 padding: '2px 8px',
                 borderRadius: '12px',
-                background: 'rgba(99, 102, 241, 0.25)',
-                color: '#a5b4fc',
-                border: '1px solid rgba(99, 102, 241, 0.4)'
+                background: '#ecfdf5',
+                color: '#059669',
+                border: '1px solid #a7f3d0'
               }}>
-                v2.0 Odoo Edition
+                v2.0 Distributor Edition
               </span>
             </div>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
               {business?.name || 'Distributor Agency'} • {business?.city || 'Distributor HQ'}
             </p>
           </div>
@@ -298,39 +299,40 @@ export default function AppLauncher({
         <div style={{
           position: 'relative',
           minWidth: '280px',
-          maxWidth: '420px',
+          maxWidth: '440px',
           flex: 1
         }}>
           <Search 
             size={16} 
-            color="#94a3b8" 
+            color="#64748b" 
             style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} 
           />
           <input 
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search apps (Dashboard, Invoicing, Sales, Reports...)"
+            placeholder="Search apps (Dashboard, Invoicing, Inventory, Reports...)"
             style={{
               width: '100%',
               padding: '9px 14px 9px 38px',
               borderRadius: '24px',
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.14)',
-              color: '#ffffff',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              color: '#0f172a',
               fontSize: '0.86rem',
               outline: 'none',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
             }}
             onFocus={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.12)';
-              e.target.style.borderColor = '#6366f1';
-              e.target.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.25)';
+              e.target.style.background = '#ffffff';
+              e.target.style.borderColor = '#059669';
+              e.target.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.2)';
             }}
             onBlur={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.08)';
-              e.target.style.borderColor = 'rgba(255, 255, 255, 0.14)';
-              e.target.style.boxShadow = 'none';
+              e.target.style.background = '#ffffff';
+              e.target.style.borderColor = '#cbd5e1';
+              e.target.style.boxShadow = '0 1px 2px rgba(0,0,0,0.04)';
             }}
           />
         </div>
@@ -345,11 +347,11 @@ export default function AppLauncher({
                 cursor: 'pointer',
                 padding: '6px 12px',
                 borderRadius: '20px',
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
+                background: '#ecfdf5',
+                border: '1px solid #a7f3d0',
                 fontSize: '0.78rem',
                 fontWeight: '700',
-                color: '#34d399',
+                color: '#059669',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -360,7 +362,7 @@ export default function AppLauncher({
                 height: '8px',
                 borderRadius: '50%',
                 background: '#10b981',
-                boxShadow: '0 0 8px #10b981'
+                boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
               }} />
               <span>Cloud DB Active</span>
             </div>
@@ -371,11 +373,11 @@ export default function AppLauncher({
                 cursor: 'pointer',
                 padding: '6px 12px',
                 borderRadius: '20px',
-                background: 'rgba(245, 158, 11, 0.15)',
-                border: '1px solid rgba(245, 158, 11, 0.35)',
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
                 fontSize: '0.78rem',
                 fontWeight: '700',
-                color: '#fbbf24',
+                color: '#d97706',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px'
@@ -393,13 +395,14 @@ export default function AppLauncher({
             style={{
               padding: '8px 12px',
               borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#ffffff',
+              background: '#ffffff',
+              border: '1px solid #cbd5e1',
+              color: '#475569',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
             }}
           >
             <RefreshCw size={15} />
@@ -449,7 +452,7 @@ export default function AppLauncher({
                 const iconBox = e.currentTarget.querySelector('.odoo-app-icon');
                 if (iconBox) {
                   iconBox.style.transform = 'scale(1.06)';
-                  iconBox.style.boxShadow = `0 14px 28px ${app.shadowColor}, 0 0 0 2px rgba(255,255,255,0.25)`;
+                  iconBox.style.boxShadow = `0 14px 28px ${app.shadowColor}, 0 0 0 2px rgba(16, 185, 129, 0.25)`;
                 }
               }}
               onMouseLeave={(e) => {
@@ -473,7 +476,7 @@ export default function AppLauncher({
                   alignItems: 'center',
                   justifyContent: 'center',
                   boxShadow: `0 8px 20px ${app.shadowColor}`,
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
                   position: 'relative',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
@@ -492,8 +495,8 @@ export default function AppLauncher({
                     borderRadius: '10px',
                     background: app.badgeBg,
                     color: app.badgeColor,
-                    border: `1px solid ${app.badgeColor}40`,
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                    border: `1px solid ${app.badgeColor}30`,
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.08)',
                     whiteSpace: 'nowrap'
                   }}>
                     {app.badge}
@@ -505,22 +508,22 @@ export default function AppLauncher({
               <span style={{
                 marginTop: '10px',
                 fontSize: '0.88rem',
-                fontWeight: '600',
-                color: '#e2e8f0',
+                fontWeight: '700',
+                color: '#1e293b',
                 textAlign: 'center',
                 letterSpacing: '-0.01em',
-                textShadow: '0 2px 4px rgba(0,0,0,0.6)'
+                textShadow: 'none'
               }}>
                 {app.name}
               </span>
 
               {/* Sub-label Category */}
               <span style={{
-                fontSize: '0.72rem',
-                color: '#94a3b8',
+                fontSize: '0.74rem',
+                color: '#64748b',
                 textAlign: 'center',
                 marginTop: '2px',
-                opacity: 0.8
+                fontWeight: '500'
               }}>
                 {app.category}
               </span>
@@ -535,9 +538,9 @@ export default function AppLauncher({
           marginTop: 'auto',
           padding: '20px 24px',
           borderRadius: '18px',
-          background: 'rgba(255, 255, 255, 0.04)',
-          border: '1px solid rgba(255, 255, 255, 0.09)',
-          backdropFilter: 'blur(20px)',
+          background: '#ffffff',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '18px'
@@ -545,57 +548,57 @@ export default function AppLauncher({
           {/* Today's Sales */}
           <div 
             onClick={() => setActiveTab('billing')}
-            style={{ cursor: 'pointer', padding: '10px', borderRadius: '10px', transition: 'background 0.2s' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            style={{ cursor: 'pointer', padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #f1f5f9', transition: 'all 0.2s ease' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Today's Sales
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#34d399', marginTop: '2px' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#059669', marginTop: '3px' }}>
               ₹{todaySales.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.74rem', color: '#475569', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
               <span>{todayInvoices.length} orders issued</span>
-              <ArrowRight size={12} />
+              <ArrowRight size={12} color="#059669" />
             </div>
           </div>
 
           {/* Active Inventory */}
           <div 
             onClick={() => setActiveTab('inventory')}
-            style={{ cursor: 'pointer', padding: '10px', borderRadius: '10px', transition: 'background 0.2s' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            style={{ cursor: 'pointer', padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #f1f5f9', transition: 'all 0.2s ease' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Inventory Stock
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#60a5fa', marginTop: '2px' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#2563eb', marginTop: '3px' }}>
               {totalStockItems} <span style={{ fontSize: '0.88rem', fontWeight: '600' }}>Units</span>
             </div>
-            <div style={{ fontSize: '0.72rem', color: lowStockCount > 0 ? '#f87171' : '#a7f3d0', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.74rem', color: lowStockCount > 0 ? '#dc2626' : '#059669', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
               <span>{lowStockCount > 0 ? `${lowStockCount} items low stock` : 'Healthy stock levels'}</span>
-              <ArrowRight size={12} />
+              <ArrowRight size={12} color={lowStockCount > 0 ? '#dc2626' : '#059669'} />
             </div>
           </div>
 
           {/* Outstanding Khata */}
           <div 
             onClick={() => setActiveTab('parties')}
-            style={{ cursor: 'pointer', padding: '10px', borderRadius: '10px', transition: 'background 0.2s' }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            style={{ cursor: 'pointer', padding: '12px 14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #f1f5f9', transition: 'all 0.2s ease' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.transform = 'translateY(0)'; }}
           >
-            <div style={{ fontSize: '0.76rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Retailer Dues (Khata)
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#fbbf24', marginTop: '2px' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#d97706', marginTop: '3px' }}>
               ₹{parties.reduce((s, p) => s + (p.balance || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#fde68a', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '0.74rem', color: '#b45309', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500' }}>
               <span>{duePartiesCount} retailers with balance</span>
-              <ArrowRight size={12} />
+              <ArrowRight size={12} color="#d97706" />
             </div>
           </div>
 
@@ -604,23 +607,24 @@ export default function AppLauncher({
             onClick={() => setActiveTab('dashboard')}
             style={{
               cursor: 'pointer',
-              padding: '12px 16px',
+              padding: '14px 16px',
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(124, 58, 237, 0.2))',
-              border: '1px solid rgba(124, 58, 237, 0.4)',
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+              border: '1px solid #a7f3d0',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 6px rgba(5, 150, 105, 0.08)'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(5, 150, 105, 0.16)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(5, 150, 105, 0.08)'; }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#c4b5fd' }}>View Analytics</span>
-              <ArrowRight size={16} color="#c4b5fd" />
+              <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#065f46' }}>View Analytics</span>
+              <ArrowRight size={16} color="#059669" />
             </div>
-            <span style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '4px' }}>
+            <span style={{ fontSize: '0.74rem', color: '#047857', marginTop: '4px', fontWeight: '500' }}>
               Open Bar Graphs, Pie Charts & Histograms
             </span>
           </div>
@@ -634,11 +638,13 @@ export default function AppLauncher({
         zIndex: 10,
         textAlign: 'center',
         padding: '16px 20px',
-        borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+        borderTop: '1px solid #e2e8f0',
+        background: '#ffffff',
         color: '#64748b',
-        fontSize: '0.76rem'
+        fontSize: '0.76rem',
+        fontWeight: '500'
       }}>
-        DistroPulse ERP • Powered by Odoo-Style Enterprise Architecture • 100% English Edition
+        DistroPulse ERP • Enterprise Distribution System • 100% English Edition
       </footer>
 
     </div>
