@@ -63,6 +63,14 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   const partyObj = invoice.partyId ? allParties.find(p => p.id === invoice.partyId) : null;
   const displayAddress = invoice.partyAddress || (partyObj ? (partyObj.address || partyObj.city) : '') || 'Local Market / Counter Sale';
 
+  // Add has-printable-modal class to body during modal lifecycle for print styling
+  useEffect(() => {
+    document.body.classList.add('has-printable-modal');
+    return () => {
+      document.body.classList.remove('has-printable-modal');
+    };
+  }, []);
+
   // Generate dynamic QR codes locally & offline
   useEffect(() => {
     generateUpiQrDataUrl(business?.upiId, business?.name, invoice.grandTotal, invoice.invoiceNo)

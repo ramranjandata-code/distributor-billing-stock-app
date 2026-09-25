@@ -345,10 +345,10 @@ input[type=number] {
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Printable Bill Styling for A4 / A5 Printer (Optimized for High Density Invoice Printing) */
+/* Printable Bill & Report Styling for A4 / A5 / POS and PDF Exports */
 @media print {
   @page {
-    margin: 3mm 5mm !important;
+    margin: 4mm 6mm !important;
     size: auto;
   }
   
@@ -359,17 +359,63 @@ input[type=number] {
     padding: 0 !important;
     width: 100% !important;
     height: auto !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide app navigation, sidebar, header, and non-printable elements */
-  .no-print, .sidebar, header, nav, .app-container > *:not(.modal-overlay) {
+  /* Hide app navigation, sidebar, headers, and UI buttons during printing */
+  .no-print,
+  .sidebar,
+  header,
+  nav,
+  button:not(.allow-print),
+  .btn:not(.allow-print) {
     display: none !important;
   }
 
-  /* Allow modal container to display content in normal flow during print */
-  .modal-overlay {
+  /* When an invoice or modal is active, hide the main app content */
+  body.has-printable-modal .main-content,
+  body:has(.printable-modal-content) .main-content {
+    display: none !important;
+  }
+
+  /* Ensure app container and main content stretch to 100% width on paper/PDF */
+  .app-container {
+    display: block !important;
+    width: 100% !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Report cards (Balance Sheet, P&L, Sales, GST, etc.) */
+  .glass-card {
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #cbd5e1 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Hide regular dialog modals during print unless they are the printable invoice modal */
+  body:not(.has-printable-modal) .modal-overlay:not(:has(.printable-modal-content)) {
+    display: none !important;
+  }
+
+  /* Allow printable invoice modal to display in normal document flow */
+  body.has-printable-modal .modal-overlay,
+  .modal-overlay:has(.printable-modal-content) {
     position: static !important;
     display: block !important;
     width: 100% !important;
@@ -408,22 +454,22 @@ input[type=number] {
     color: #000000 !important;
     box-shadow: none !important;
     font-size: 11.5px !important;
-    line-height: 1.2 !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
+    line-height: 1.25 !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .print-area table {
     width: 100% !important;
+    border-collapse: collapse !important;
   }
 
   .print-area table th,
   .print-area table td {
-    padding: 2px 5px !important;
+    padding: 3px 6px !important;
     font-size: 11.5px !important;
-    line-height: 1.18 !important;
+    line-height: 1.2 !important;
     color: #000000 !important;
   }
 
