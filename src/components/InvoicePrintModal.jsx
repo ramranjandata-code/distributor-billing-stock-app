@@ -89,11 +89,15 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     year: 'numeric'
   });
 
-  const isNonGst = invoice.taxMode === 'NONE' || invoice.taxTotal === 0;
+  const isNonGst = invoice.taxMode === 'NONE' || (invoice.taxTotal === 0 && !invoice.cgst && !invoice.sgst && !invoice.igst);
+  const isInterState = invoice.taxMode === 'INTER' || (Number(invoice.igst || 0) > 0 && Number(invoice.cgst || 0) === 0 && Number(invoice.sgst || 0) === 0);
 
   // Process items & calculate exact taxable, tax, and totals matching Billing logic
   let totalTaxableAmountCalculated = 0;
   let totalTaxAmountCalculated = 0;
+  let totalCgstCalculated = 0;
+  let totalSgstCalculated = 0;
+  let totalIgstCalculated = 0;
 
   const processedItems = (invoice.items || []).map((item) => {
     const itemQty = Number(item.qty) || 0;
@@ -121,8 +125,37 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       taxableVal = itemTotal - gstAmt;
     }
 
+    // Split GST into CGST, SGST, IGST
+    let cgstRate = 0;
+    let sgstRate = 0;
+    let igstRate = 0;
+    let cgstAmt = 0;
+    let sgstAmt = 0;
+    let igstAmt = 0;
+
+    if (!isNonGst && gstRateNum > 0) {
+      if (isInterState) {
+        igstRate = gstRateNum;
+        igstAmt = item.igstAmount !== undefined && item.igstAmount !== null && !isNaN(Number(item.igstAmount))
+          ? Number(item.igstAmount)
+          : gstAmt;
+      } else {
+        cgstRate = gstRateNum / 2;
+        sgstRate = gstRateNum / 2;
+        cgstAmt = item.cgstAmount !== undefined && item.cgstAmount !== null && !isNaN(Number(item.cgstAmount))
+          ? Number(item.cgstAmount)
+          : (gstAmt / 2);
+        sgstAmt = item.sgstAmount !== undefined && item.sgstAmount !== null && !isNaN(Number(item.sgstAmount))
+          ? Number(item.sgstAmount)
+          : (gstAmt / 2);
+      }
+    }
+
     totalTaxableAmountCalculated += taxableVal;
     totalTaxAmountCalculated += gstAmt;
+    totalCgstCalculated += cgstAmt;
+    totalSgstCalculated += sgstAmt;
+    totalIgstCalculated += igstAmt;
 
     return {
       ...item,
@@ -131,12 +164,43 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       itemTotal,
       gstRateNum,
       gstAmt,
-      taxableVal
+      taxableVal,
+      cgstRate,
+      sgstRate,
+      igstRate,
+      cgstAmt,
+      sgstAmt,
+      igstAmt
     };
   });
 
   const totalTaxAmount = isNonGst ? 0 : (invoice.taxTotal !== undefined && invoice.taxTotal !== null && Number(invoice.taxTotal) > 0 ? Number(invoice.taxTotal) : totalTaxAmountCalculated);
   const totalTaxableAmount = totalTaxableAmountCalculated;
+
+  let totalCgst = 0;
+  let totalSgst = 0;
+  let totalIgst = 0;
+
+  if (!isNonGst) {
+    if (isInterState) {
+      totalIgst = invoice.igst !== undefined && invoice.igst !== null && !isNaN(Number(invoice.igst)) && Number(invoice.igst) > 0
+        ? Number(invoice.igst)
+        : (totalTaxAmount || totalIgstCalculated);
+    } else {
+      if (invoice.cgst !== undefined && invoice.cgst !== null && !isNaN(Number(invoice.cgst)) && Number(invoice.cgst) > 0) {
+        totalCgst = Number(invoice.cgst);
+      } else {
+        totalCgst = totalTaxAmount > 0 ? (totalTaxAmount / 2) : totalCgstCalculated;
+      }
+
+      if (invoice.sgst !== undefined && invoice.sgst !== null && !isNaN(Number(invoice.sgst)) && Number(invoice.sgst) > 0) {
+        totalSgst = Number(invoice.sgst);
+      } else {
+        totalSgst = totalTaxAmount > 0 ? (totalTaxAmount / 2) : totalSgstCalculated;
+      }
+    }
+  }
+
   const totalQtyPcs = processedItems.reduce((sum, item) => sum + item.itemQty, 0);
 
   return (
@@ -351,10 +415,29 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 <span>₹{totalTaxableAmount.toFixed(2)}</span>
               </div>
               {!isNonGst && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Total GST:</span>
-                  <span>₹{totalTaxAmount.toFixed(2)}</span>
-                </div>
+                <>
+                  {!isInterState ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>CGST:</span>
+                        <span>₹{totalCgst.toFixed(2)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span>SGST:</span>
+                        <span>₹{totalSgst.toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>IGST:</span>
+                      <span>₹{totalIgst.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Total Tax (GST):</span>
+                    <span>₹{totalTaxAmount.toFixed(2)}</span>
+                  </div>
+                </>
               )}
               {Number(invoice.discount || 0) > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
@@ -563,13 +646,20 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             <thead>
               <tr style={{ borderBottom: '1.5px solid #000000', background: '#f1f5f9', fontWeight: '800', textAlign: 'left', height: paperFormat === 'A5' ? '20px' : '26px' }}>
                 <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '4%', color: '#000', whiteSpace: 'nowrap' }}>Sr. No.</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', width: '33%', color: '#000', whiteSpace: 'nowrap' }}>Name of Product / Service</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', width: isInterState ? '33%' : '27%', color: '#000', whiteSpace: 'nowrap' }}>Name of Product / Service</th>
                 <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '8%', color: '#000', whiteSpace: 'nowrap' }}>HSN / SAC</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '9%', color: '#000', whiteSpace: 'nowrap' }}>Qty</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '10%', color: '#000', whiteSpace: 'nowrap' }}>Rate</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '8%', color: '#000', whiteSpace: 'nowrap' }}>Qty</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '9%', color: '#000', whiteSpace: 'nowrap' }}>Rate</th>
                 <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>Taxable Value</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '13%', color: '#000', whiteSpace: 'nowrap' }}>GST (% | Amt)</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', textAlign: 'right', width: '12%', color: '#000', whiteSpace: 'nowrap' }}>Total</th>
+                {!isInterState ? (
+                  <>
+                    <th style={{ padding: paperFormat === 'A5' ? '1.5px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>CGST (% | Amt)</th>
+                    <th style={{ padding: paperFormat === 'A5' ? '1.5px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>SGST (% | Amt)</th>
+                  </>
+                ) : (
+                  <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '13%', color: '#000', whiteSpace: 'nowrap' }}>IGST (% | Amt)</th>
+                )}
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', textAlign: 'right', width: isInterState ? '12%' : '11%', color: '#000', whiteSpace: 'nowrap' }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -577,16 +667,27 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 return (
                   <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', height: paperFormat === 'A5' ? '18px' : '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '600', color: '#000' }}>{index + 1}</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '220px' }}>{item.name}</td>
+                    <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isInterState ? '220px' : '180px' }}>{item.name}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600' }}>{item.hsn}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '800', color: '#000' }}>
                       {formatCartonStock(item.itemQty, item.pcsPerCarton)}
                     </td>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{item.itemRate.toFixed(2)}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{item.taxableVal.toFixed(2)}</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.8px' : '9.5px' }}>
-                      {item.gstRateNum}% {item.gstAmt > 0 ? `(₹${item.gstAmt.toFixed(2)})` : ''}
-                    </td>
+                    {!isInterState ? (
+                      <>
+                        <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '2.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
+                          {item.cgstRate}% {item.cgstAmt > 0 ? `(₹${item.cgstAmt.toFixed(2)})` : ''}
+                        </td>
+                        <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '2.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
+                          {item.sgstRate}% {item.sgstAmt > 0 ? `(₹${item.sgstAmt.toFixed(2)})` : ''}
+                        </td>
+                      </>
+                    ) : (
+                      <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.8px' : '9.5px' }}>
+                        {item.igstRate}% {item.igstAmt > 0 ? `(₹${item.igstAmt.toFixed(2)})` : ''}
+                      </td>
+                    )}
                     <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{item.itemTotal.toFixed(2)}</td>
                   </tr>
                 );
@@ -602,6 +703,9 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  {!isInterState && (
+                    <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                  )}
                   <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px' }}>&nbsp;</td>
                 </tr>
               ))}
@@ -616,9 +720,20 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right' }}>
                   ₹{totalTaxableAmount.toFixed(2)}
                 </td>
-                <td style={{ padding: paperFormat === 'A5' ? '2px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center' }}>
-                  ₹{totalTaxAmount.toFixed(2)}
-                </td>
+                {!isInterState ? (
+                  <>
+                    <td style={{ padding: paperFormat === 'A5' ? '2px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
+                      ₹{totalCgst.toFixed(2)}
+                    </td>
+                    <td style={{ padding: paperFormat === 'A5' ? '2px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
+                      ₹{totalSgst.toFixed(2)}
+                    </td>
+                  </>
+                ) : (
+                  <td style={{ padding: paperFormat === 'A5' ? '2px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center' }}>
+                    ₹{totalIgst.toFixed(2)}
+                  </td>
+                )}
                 <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', textAlign: 'right', fontSize: '1.05em' }}>
                   ₹{(Number(invoice.grandTotal) || 0).toFixed(2)}
                 </td>
@@ -682,10 +797,42 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                       <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>Taxable Amount</td>
                       <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalTaxableAmount.toFixed(2)}</td>
                     </tr>
+                    {!isNonGst && !isInterState && (
+                      <>
+                        <tr>
+                          <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>CGST</td>
+                          <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalCgst.toFixed(2)}</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>SGST</td>
+                          <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalSgst.toFixed(2)}</td>
+                        </tr>
+                      </>
+                    )}
+                    {!isNonGst && isInterState && (
+                      <tr>
+                        <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>IGST</td>
+                        <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalIgst.toFixed(2)}</td>
+                      </tr>
+                    )}
                     <tr>
                       <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>Total Tax</td>
                       <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalTaxAmount.toFixed(2)}</td>
                     </tr>
+                    {Number(invoice.discount || 0) > 0 && (
+                      <tr>
+                        <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#059669' }}>Discount</td>
+                        <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#059669' }}>-₹{Number(invoice.discount).toFixed(2)}</td>
+                      </tr>
+                    )}
+                    {Number(invoice.roundOff || 0) !== 0 && (
+                      <tr>
+                        <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>Round Off</td>
+                        <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>
+                          {Number(invoice.roundOff) > 0 ? `+₹${Number(invoice.roundOff).toFixed(2)}` : `-₹${Math.abs(Number(invoice.roundOff)).toFixed(2)}`}
+                        </td>
+                      </tr>
+                    )}
                     <tr style={{ background: '#f8fafc' }}>
                       <td style={{ padding: paperFormat === 'A5' ? '2.5px 4px' : '4px 6px', borderBottom: '1px solid #000000', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.72rem' : '0.85rem', color: '#000' }}>Total Amount After Tax</td>
                       <td style={{ padding: paperFormat === 'A5' ? '2.5px 4px' : '4px 6px', borderBottom: '1px solid #000000', textAlign: 'right', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.82rem' : '0.96rem', color: '#000' }}>₹{(Number(invoice.grandTotal) || 0).toFixed(2)}</td>
