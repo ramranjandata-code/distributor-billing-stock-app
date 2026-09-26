@@ -111,6 +111,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
     name: '',
     sku: '',
     barcode: '',
+    hsn: '',
     brand: '',
     category: 'General',
     unit: 'Pcs',
@@ -291,6 +292,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       (p.name && p.name.toLowerCase().includes(term)) ||
       (p.sku && p.sku.toLowerCase().includes(term)) ||
       (p.barcode && p.barcode.toLowerCase().includes(term)) ||
+      (p.hsn && p.hsn.toLowerCase().includes(term)) ||
       (p.brand && p.brand.toLowerCase().includes(term)) ||
       (p.category && p.category.toLowerCase().includes(term))
     );
@@ -408,6 +410,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
     const payload = {
       ...newProductData,
+      hsn: (newProductData.hsn || '').trim() || '1905',
       salePrice: saleRate,
       mrp: mrpRate,
       purchasePrice: purchaseRate,
@@ -1064,7 +1067,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                             }}>
                               <Tag size={13} style={{ flexShrink: 0 }} />
                               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {p.sku ? `SKU: ${p.sku}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
+                                {p.sku ? `SKU: ${p.sku}` : ''}{p.hsn ? ` • HSN: ${p.hsn}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
                               </span>
                             </div>
                           </div>
@@ -2314,13 +2317,24 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   </select>
                 </div>
 
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <div className="form-group">
                   <label className="form-label">Opening / Current Stock Qty</label>
                   <input 
                     type="number" 
                     className="input-field" 
                     value={newProductData.currentStock}
                     onChange={e => setNewProductData({...newProductData, currentStock: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">HSN Code</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="e.g. 19053100"
+                    value={newProductData.hsn}
+                    onChange={e => setNewProductData({...newProductData, hsn: e.target.value})}
                   />
                 </div>
 
