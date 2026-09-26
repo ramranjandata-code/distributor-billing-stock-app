@@ -720,24 +720,23 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             marginBottom: paperFormat === 'A5' ? '3px' : '6px' 
           }}>
             <thead>
-              <tr style={{ borderBottom: '1.5px solid #000000', background: '#f1f5f9', fontWeight: '800', textAlign: 'left', height: paperFormat === 'A5' ? '20px' : '26px' }}>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '5%' : '4%', color: '#000', whiteSpace: 'nowrap' }}>Sr. No.</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', width: isNonGst ? '48%' : (isInterState ? '33%' : '27%'), color: '#000', whiteSpace: 'nowrap' }}>Name of Product / Service</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '12%' : '8%', color: '#000', whiteSpace: 'nowrap' }}>HSN / SAC</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '11%' : (isInterState ? '9%' : '8%'), color: '#000', whiteSpace: 'nowrap' }}>Qty</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: isNonGst ? '11%' : (isInterState ? '10%' : '9%'), color: '#000', whiteSpace: 'nowrap' }}>Rate</th>
+              <tr style={{ borderBottom: '1.5px solid #000000', background: '#f1f5f9', fontWeight: '800', textAlign: 'left', minHeight: paperFormat === 'A5' ? '22px' : '28px' }}>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '5%' : '4%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Sr. No.</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', width: isNonGst ? '50%' : '44%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Name of Product / Service</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '11%' : '9%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>HSN / SAC</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '11%' : '9%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Qty</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: isNonGst ? '11%' : '14%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                  Rate
+                  {!isNonGst && (
+                    <span style={{ display: 'block', fontSize: paperFormat === 'A5' ? '6.5px' : '8px', fontWeight: '400', color: '#64748b', textTransform: 'lowercase', lineHeight: 1 }}>
+                      (incl. of tax)
+                    </span>
+                  )}
+                </th>
                 {!isNonGst && (
-                  <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>Taxable Value</th>
+                  <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '10%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Taxable Value</th>
                 )}
-                {!isNonGst && (!isInterState ? (
-                  <>
-                    <th style={{ padding: paperFormat === 'A5' ? '1.5px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>CGST (% | Amt)</th>
-                    <th style={{ padding: paperFormat === 'A5' ? '1.5px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '11%', color: '#000', whiteSpace: 'nowrap' }}>SGST (% | Amt)</th>
-                  </>
-                ) : (
-                  <th style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: '13%', color: '#000', whiteSpace: 'nowrap' }}>IGST (% | Amt)</th>
-                ))}
-                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', textAlign: 'right', width: isNonGst ? '13%' : (isInterState ? '12%' : '11%'), color: '#000', whiteSpace: 'nowrap' }}>Total</th>
+                <th style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', textAlign: 'right', width: isNonGst ? '12%' : '10%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -745,7 +744,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 return (
                   <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', height: paperFormat === 'A5' ? '18px' : '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '600', color: '#000' }}>{index + 1}</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isNonGst ? '320px' : (isInterState ? '220px' : '180px') }}>{item.name}</td>
+                    <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isNonGst ? '340px' : '280px' }}>{item.name}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600' }}>{item.hsn || '1905'}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '800', color: '#000' }}>
                       {formatCartonStock(item.itemQty, item.pcsPerCarton)}
@@ -754,20 +753,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                     {!isNonGst && (
                       <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{item.taxableVal.toFixed(2)}</td>
                     )}
-                    {!isNonGst && (!isInterState ? (
-                      <>
-                        <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '2.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
-                          {item.cgstRate}% {item.cgstAmt > 0 ? `(₹${item.cgstAmt.toFixed(2)})` : ''}
-                        </td>
-                        <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '2.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
-                          {item.sgstRate}% {item.sgstAmt > 0 ? `(₹${item.sgstAmt.toFixed(2)})` : ''}
-                        </td>
-                      </>
-                    ) : (
-                      <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600', fontSize: paperFormat === 'A5' ? '7.8px' : '9.5px' }}>
-                        {item.igstRate}% {item.igstAmt > 0 ? `(₹${item.igstAmt.toFixed(2)})` : ''}
-                      </td>
-                    ))}
                     <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{item.itemTotal.toFixed(2)}</td>
                   </tr>
                 );
@@ -784,14 +769,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   {!isNonGst && (
                     <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   )}
-                  {!isNonGst && (!isInterState ? (
-                    <>
-                      <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '2.5px 3px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                      <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '2.5px 3px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                    </>
-                  ) : (
-                    <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                  ))}
                   <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px' }}>&nbsp;</td>
                 </tr>
               ))}
@@ -808,20 +785,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                     ₹{totalTaxableAmount.toFixed(2)}
                   </td>
                 )}
-                {!isNonGst && (!isInterState ? (
-                  <>
-                    <td style={{ padding: paperFormat === 'A5' ? '2px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
-                      ₹{totalCgst.toFixed(2)}
-                    </td>
-                    <td style={{ padding: paperFormat === 'A5' ? '2px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontSize: paperFormat === 'A5' ? '7.5px' : '9px' }}>
-                      ₹{totalSgst.toFixed(2)}
-                    </td>
-                  </>
-                ) : (
-                  <td style={{ padding: paperFormat === 'A5' ? '2px 3px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center' }}>
-                    ₹{totalIgst.toFixed(2)}
-                  </td>
-                ))}
                 <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', textAlign: 'right', fontSize: '1.05em' }}>
                   ₹{(Number(invoice.grandTotal) || 0).toFixed(2)}
                 </td>
