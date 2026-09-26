@@ -793,7 +793,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               })}
 
               {/* Grid Filler Rows */}
-              {Array.from({ length: Math.max(0, (paperFormat === 'A5' ? 2 : 5) - processedItems.length) }).map((_, emptyIndex) => (
+              {Array.from({ length: Math.max(0, (paperFormat === 'A5' ? 4 : 7) - processedItems.length) }).map((_, emptyIndex) => (
                 <tr key={`empty-${emptyIndex}`} style={{ borderBottom: '1px solid #cbd5e1', height: paperFormat === 'A5' ? '18px' : '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 4px' : '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
