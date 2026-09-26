@@ -708,25 +708,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               </div>
             )}
 
-            {/* e-Invoice IRN Compliance Banner */}
-            {!isNonGst && invoice.irn && (
-              <div style={{ 
-                borderTop: '1px solid #000000', 
-                padding: paperFormat === 'A5' ? '2px 6px' : '3px 8px', 
-                background: '#ffffff', 
-                fontSize: paperFormat === 'A5' ? '0.58rem' : '0.68rem', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                fontFamily: 'monospace',
-                flexWrap: 'wrap',
-                gap: '8px'
-              }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
-                  <strong>IRN:</strong> {invoice.irn}
-                </span>
-                <span><strong>Ack No:</strong> {invoice.ackNo || '1829031892'} | <strong>Date:</strong> {invoice.ackDate || formattedDate}</span>
-              </div>
-            )}
 
           </div>
 
