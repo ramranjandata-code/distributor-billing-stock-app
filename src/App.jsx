@@ -253,11 +253,12 @@ export default function App() {
           triggerManualSync={triggerManualSync}
         />
         {selectedInvoiceForPrint && (
-          <InvoicePrintModal 
+        <InvoicePrintModal 
             invoice={selectedInvoiceForPrint} 
             business={business}
             onClose={() => setSelectedInvoiceForPrint(null)}
             refreshAllData={refreshAllData}
+            onEditInvoice={() => { setSelectedInvoiceForPrint(null); setActiveTab('billing'); }}
           />
         )}
       </>
@@ -604,11 +605,12 @@ export default function App() {
 
       {/* Invoice Printable Modal */}
       {selectedInvoiceForPrint && (
-        <InvoicePrintModal 
+      <InvoicePrintModal 
           invoice={selectedInvoiceForPrint} 
           business={business}
           onClose={() => setSelectedInvoiceForPrint(null)}
           refreshAllData={refreshAllData}
+          onEditInvoice={() => { setSelectedInvoiceForPrint(null); navigateToTab('billing'); }}
         />
       )}
     </div>

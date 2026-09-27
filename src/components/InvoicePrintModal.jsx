@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText } from 'lucide-react';
+import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3 } from 'lucide-react';
 import { formatCartonStock, deleteInvoice, fetchParties } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
@@ -83,7 +83,7 @@ function numToWordsIndian(num, isTax = false) {
   return `INR ${words} Only`;
 }
 
-export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData }) {
+export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData, onEditInvoice }) {
   const [paperFormat, setPaperFormat] = useState(() => localStorage.getItem('distro_default_paper_format') || 'A5');
   const [themeColor, setThemeColor] = useState(() => localStorage.getItem('distro_invoice_theme') || '#059669');
   const [upiQrUrl, setUpiQrUrl] = useState(null);
@@ -136,6 +136,56 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       if (refreshAllData) refreshAllData();
       onClose();
     }
+  };
+
+  const handleEditInvoice = () => {
+    if (!window.confirm(`✏️ Edit Invoice #${invoice.invoiceNo}?\n\nThis will:\n• Delete the current invoice\n• Return all stock to warehouse\n• Restore party balance\n• Open the bill in Billing page for you to correct\n\nProceed?`)) return;
+    // Delete the invoice (stock & balance will be restored)
+    deleteInvoice(invoice.id);
+    if (refreshAllData) refreshAllData();
+    // Build a draft from the invoice data so Billing.jsx loads it
+    const draft = {
+      cart: (invoice.items || []).map(item => ({
+        id: item.productId || item.id,
+        name: item.name || item.productName,
+        price: item.price || item.salePrice || item.rate,
+        qty: item.qty,
+        unit: item.unit || 'Pcs',
+        gstRate: item.gstRate || 0,
+        hsn: item.hsn || '',
+        mrp: item.mrp || item.price,
+        total: item.total,
+        pcsPerCarton: item.pcsPerCarton || 24
+      })),
+      rawCart: (invoice.items || []).map(item => ({
+        id: item.productId || item.id,
+        name: item.name || item.productName,
+        price: item.price || item.salePrice || item.rate,
+        qty: item.qty,
+        unit: item.unit || 'Pcs',
+        gstRate: item.gstRate || 0,
+        hsn: item.hsn || '',
+        mrp: item.mrp || item.price,
+        total: item.total,
+        pcsPerCarton: item.pcsPerCarton || 24
+      })),
+      selectedPartyId: invoice.partyId || '',
+      customerName: invoice.partyName || invoice.customerName || '',
+      customerPhone: invoice.partyPhone || '',
+      taxMode: invoice.taxMode || 'INTRA',
+      pricingType: invoice.pricingType || 'INCLUSIVE',
+      paymentStatus: invoice.paymentStatus || 'PAID',
+      paymentMode: invoice.paymentMode || 'CASH',
+      paidAmount: invoice.paidAmount || '',
+      notes: invoice.notes || '',
+      discountType: invoice.discountType || 'AMOUNT',
+      discountValue: invoice.discount || 0,
+      invoiceDate: invoice.date ? invoice.date.split('T')[0] : new Date().toISOString().split('T')[0],
+      roundOffEnabled: true
+    };
+    localStorage.setItem('distro_active_billing_draft', JSON.stringify(draft));
+    onClose();
+    if (onEditInvoice) onEditInvoice();
   };
 
   const formattedDate = new Date(invoice.date).toLocaleDateString('en-IN', {
@@ -429,6 +479,18 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               <Mail size={14} />
               <span>Email</span>
             </button>
+
+            {onEditInvoice && (
+              <button
+                onClick={handleEditInvoice}
+                className="btn btn-sm"
+                style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d', padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '700' }}
+                title="Edit this bill — correct any mistake"
+              >
+                <Edit3 size={14} />
+                <span>Edit Bill</span>
+              </button>
+            )}
 
             <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '6px', padding: '6px 14px', fontSize: '0.85rem' }}>
               <Printer size={16} />
