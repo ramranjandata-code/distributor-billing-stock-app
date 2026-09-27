@@ -790,11 +790,10 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Phone Number (Mobile) *</label>
+                  <label className="form-label">Mobile Number (Optional)</label>
                   <input 
                     type="text" 
                     className="input-field"
-                    required
                     placeholder="e.g. 9811223344"
                     value={formData.phone}
                     onChange={e => setFormData({...formData, phone: e.target.value})}
