@@ -594,7 +594,7 @@ export const saveInvoice = (invoiceData) => {
     dueDate,
     irn: generatedIrn,
     ackNo: invoiceData.ackNo || ('1' + Math.floor(10000000000 + Math.random() * 90000000000)),
-    ackDate: invoiceData.ackDate || new Date().toISOString().split('T')[0],
+    ackDate: invoiceData.ackDate || (invoiceData.date ? invoiceData.date.split('T')[0] : new Date().toISOString().split('T')[0]),
     warehouseId: invoiceData.warehouseId || 'wh_main',
     operator: invoiceData.operator || currentOp?.name || 'Admin',
     paymentMode: invoiceData.paymentMode || 'CASH',

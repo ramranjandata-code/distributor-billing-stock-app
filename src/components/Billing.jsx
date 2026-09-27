@@ -32,7 +32,8 @@ import {
   ShieldCheck,
   FileText,
   PlusCircle,
-  ChevronDown
+  ChevronDown,
+  Calendar
 } from 'lucide-react';
 
 export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab, onRegisterNavigationGuard }) {
@@ -71,10 +72,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const warehouses = fetchWarehouses();
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(() => initialDraft?.selectedWarehouseId || warehouses[0]?.id || 'wh_main');
 
-  // Payment Terms & Due Date
+  // Payment Terms, Custom Invoice Date & Due Date (For live & past offline bills)
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || todayStr);
+  const [customInvoiceNo, setCustomInvoiceNo] = useState(() => initialDraft?.customInvoiceNo || '');
   const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
-  const invoiceDate = new Date().toISOString().split('T')[0];
   const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
+  const isPastDate = invoiceDate && invoiceDate < todayStr;
 
   // e-Way Bill & Transport State
   const [ewayBillOpen, setEwayBillOpen] = useState(() => !!initialDraft?.ewayBillOpen);
@@ -599,9 +603,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
     const totalDiscountCombined = itemDiscountsTotal + overallDiscountAmt;
 
+    const finalInvoiceDate = invoiceDate 
+      ? new Date(invoiceDate + 'T12:00:00').toISOString() 
+      : new Date().toISOString();
+
     const invoicePayload = {
       id: activeDraftId || undefined,
-      invoiceNo: activeDraftNo || undefined,
+      invoiceNo: (customInvoiceNo && customInvoiceNo.trim()) ? customInvoiceNo.trim() : (activeDraftNo || undefined),
+      date: finalInvoiceDate,
       partyId: selectedPartyId || null,
       partyName: partyNameFinal,
       partyPhone: partyPhoneFinal,
@@ -655,6 +664,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
         paidAmount,
         paymentMode,
         paymentTerms,
+        invoiceDate,
+        customInvoiceNo,
         notes,
         selectedWarehouseId,
         ewayBillOpen,
@@ -689,6 +700,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setCustomerName('');
     setCustomerPhone('');
     setUpperPartySearchTerm('');
+    setInvoiceDate(new Date().toISOString().split('T')[0]);
+    setCustomInvoiceNo('');
     setDiscountValue(0);
     setPaymentStatus('PAID');
     setPaidAmount('');
@@ -706,6 +719,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setCustomerName('');
     setCustomerPhone('');
     setUpperPartySearchTerm('');
+    setInvoiceDate(new Date().toISOString().split('T')[0]);
+    setCustomInvoiceNo('');
     setDiscountValue(0);
     setPaymentStatus('PAID');
     setPaidAmount('');
@@ -735,6 +750,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
         paidAmount,
         paymentMode,
         paymentTerms,
+        invoiceDate,
+        customInvoiceNo,
         notes,
         selectedWarehouseId,
         ewayBillOpen,
@@ -760,6 +777,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
     paidAmount, 
     paymentMode, 
     paymentTerms, 
+    invoiceDate,
+    customInvoiceNo,
     notes, 
     selectedWarehouseId, 
     ewayBillOpen, 
@@ -1207,12 +1226,156 @@ export default function Billing({ products, parties, business, refreshAllData, h
           {/* Header & Party Selector */}
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '16px' }}>
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isPastDate ? '10px' : '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Receipt size={22} color="var(--primary)" />
                 <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>Current Invoice</h3>
               </div>
+
+              {/* Custom Date & Past Offline Bill Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                {/* Invoice Date Selector */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  background: isPastDate ? '#fffbeb' : '#f8fafc', 
+                  padding: '4px 10px', 
+                  borderRadius: '8px', 
+                  border: isPastDate ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
+                  boxShadow: isPastDate ? '0 1px 4px rgba(245, 158, 11, 0.15)' : 'none',
+                  transition: 'all 0.2s ease'
+                }}>
+                  <Calendar size={15} color={isPastDate ? '#d97706' : '#64748b'} />
+                  <span style={{ fontSize: '0.76rem', fontWeight: '700', color: isPastDate ? '#92400e' : '#475569' }}>
+                    Bill Date:
+                  </span>
+                  <input 
+                    type="date"
+                    value={invoiceDate}
+                    max={todayStr}
+                    onChange={e => setInvoiceDate(e.target.value)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: '0.82rem',
+                      fontWeight: '700',
+                      color: isPastDate ? '#b45309' : '#0f172a',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit'
+                    }}
+                    title="Choose date for past offline bills"
+                  />
+                  {isPastDate && (
+                    <span style={{ 
+                      fontSize: '0.64rem', 
+                      fontWeight: '800', 
+                      background: '#fef3c7', 
+                      color: '#b45309', 
+                      border: '1px solid #fde68a',
+                      padding: '1px 6px', 
+                      borderRadius: '12px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.03em'
+                    }}>
+                      Past Bill
+                    </span>
+                  )}
+                  {isPastDate && (
+                    <button
+                      type="button"
+                      onClick={() => setInvoiceDate(todayStr)}
+                      style={{ 
+                        border: 'none', 
+                        background: 'none', 
+                        color: '#d97706', 
+                        cursor: 'pointer', 
+                        fontSize: '0.72rem', 
+                        fontWeight: '700', 
+                        textDecoration: 'underline', 
+                        padding: '0 2px' 
+                      }}
+                      title="Reset to today's date"
+                    >
+                      Today
+                    </button>
+                  )}
+                </div>
+
+                {/* Optional Custom Bill No for past offline records */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  background: customInvoiceNo ? '#fffbeb' : '#f8fafc', 
+                  padding: '4px 10px', 
+                  borderRadius: '8px', 
+                  border: customInvoiceNo ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
+                  transition: 'all 0.2s ease'
+                }}>
+                  <span style={{ fontSize: '0.76rem', fontWeight: '700', color: customInvoiceNo ? '#92400e' : '#475569' }}>
+                    Bill No:
+                  </span>
+                  <input 
+                    type="text"
+                    placeholder="Auto (#)"
+                    value={customInvoiceNo}
+                    onChange={e => setCustomInvoiceNo(e.target.value)}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: '0.82rem',
+                      fontWeight: '700',
+                      color: customInvoiceNo ? '#b45309' : '#0f172a',
+                      outline: 'none',
+                      width: '85px',
+                      fontFamily: 'inherit'
+                    }}
+                    title="Optional: Enter original invoice number from your physical offline bill"
+                  />
+                  {customInvoiceNo && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomInvoiceNo('')}
+                      style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                      title="Clear custom bill number"
+                    >
+                      <X size={13} />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Past Bill Informational Banner */}
+            {isPastDate && (
+              <div style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                fontSize: '0.78rem',
+                color: '#92400e'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📅</span>
+                  <span><strong>Past Offline Bill Mode:</strong> Bill date set to <strong>{new Date(invoiceDate + 'T12:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>. This bill will be recorded under this date in your sales reports and GSTR-1.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInvoiceDate(todayStr)}
+                  style={{ background: 'none', border: 'none', color: '#b45309', fontWeight: '800', cursor: 'pointer', fontSize: '0.74rem', textDecoration: 'underline', flexShrink: 0 }}
+                >
+                  Reset to Today
+                </button>
+              </div>
+            )}
 
             {/* Customer Search Bar (matching reference UI in user image) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1974,15 +2137,29 @@ export default function Billing({ products, parties, business, refreshAllData, h
               )}
             </div>
 
-            {/* Odoo Payment Terms & Due Date */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', padding: '8px 10px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            {/* Odoo Payment Terms, Invoice Date & Due Date */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px', padding: '8px 10px', background: isPastDate ? '#fffbeb' : '#f8fafc', borderRadius: '8px', border: isPastDate ? '1.5px solid #f59e0b' : '1px solid var(--border-color)' }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: '700', color: isPastDate ? '#92400e' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
+                  <Calendar size={12} />
+                  <span>Invoice Date:</span>
+                </label>
+                <input 
+                  type="date"
+                  className="input-field"
+                  style={{ fontSize: '0.76rem', padding: '4px 6px', height: '28px', fontWeight: '700' }}
+                  value={invoiceDate}
+                  max={todayStr}
+                  onChange={e => setInvoiceDate(e.target.value)}
+                />
+              </div>
               <div>
                 <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
                   Payment Terms:
                 </label>
                 <select 
                   className="input-field select-field" 
-                  style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                  style={{ fontSize: '0.76rem', padding: '4px 8px', height: '28px' }}
                   value={paymentTerms}
                   onChange={e => setPaymentTerms(e.target.value)}
                 >
@@ -1997,7 +2174,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
                   Due Date:
                 </label>
-                <div style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e293b', padding: '5px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#1e293b', padding: '4px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1', height: '28px', display: 'flex', alignItems: 'center' }}>
                   📅 {computedDueDate}
                 </div>
               </div>
