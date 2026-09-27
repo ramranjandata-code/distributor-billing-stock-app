@@ -22,7 +22,8 @@ const STORAGE_KEYS = {
   CURRENT_OPERATOR: 'distro_current_operator',
   SECURITY_SETTINGS: 'distro_security_settings',
   EXPENSES: 'distro_expenses',
-  PROPRIETOR_CAPITAL: 'distro_proprietor_capital'
+  PROPRIETOR_CAPITAL: 'distro_proprietor_capital',
+  DELETED_IDS: 'distro_deleted_ids'
 };
 
 const DEFAULT_BUSINESS = REAL_DEFAULT_BUSINESS;
@@ -102,6 +103,36 @@ export const setStorageData = (key, data) => {
   }
 };
 
+export const getDeletedIds = () => {
+  const raw = getStorageData(STORAGE_KEYS.DELETED_IDS, []);
+  return Array.isArray(raw) ? raw : [];
+};
+
+export const recordDeletedId = (id) => {
+  if (!id) return;
+  const current = getDeletedIds();
+  if (!current.includes(id)) {
+    setStorageData(STORAGE_KEYS.DELETED_IDS, [...current, id]);
+  }
+};
+
+export const recordDeletedIds = (ids) => {
+  if (!Array.isArray(ids) || ids.length === 0) return;
+  const currentSet = new Set(getDeletedIds());
+  ids.forEach(id => {
+    if (id) currentSet.add(id);
+  });
+  setStorageData(STORAGE_KEYS.DELETED_IDS, Array.from(currentSet));
+};
+
+export const unrecordDeletedId = (id) => {
+  if (!id) return;
+  const current = getDeletedIds();
+  if (current.includes(id)) {
+    setStorageData(STORAGE_KEYS.DELETED_IDS, current.filter(x => x !== id));
+  }
+};
+
 const SAMPLE_IDS = [
   'prod_1', 'prod_2', 'prod_3', 'prod_4', 'prod_5', 'prod_6', 'prod_7', 'prod_8',
   'party_1', 'party_2', 'party_3', 'party_4',
@@ -165,36 +196,58 @@ export const initDataStorage = () => {
     ]);
   }
 
-  // Force clean all sample products, parties, invoices, purchases and seed real catalog
-  const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => !SAMPLE_IDS.includes(p?.id));
-  if (existingProds.length === 0) {
-    setStorageData(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
-  } else if (existingProds.length < INITIAL_PRODUCTS.length) {
-    setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(INITIAL_PRODUCTS, existingProds));
+  // Handle catalog initialization and ensure deleted items stay permanently deleted
+  const isCatalogInitialized = localStorage.getItem('distro_catalog_initialized');
+  const deletedIds = new Set(getDeletedIds());
+  const existingProdsInStorage = getStorageData(STORAGE_KEYS.PRODUCTS, null);
+
+  if (!isCatalogInitialized) {
+    // If the storage already has items (from previous sessions), preserve them and mark initialized
+    if (Array.isArray(existingProdsInStorage) && existingProdsInStorage.length > 0) {
+      const cleaned = existingProdsInStorage.filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
+      setStorageData(STORAGE_KEYS.PRODUCTS, cleaned);
+    } else {
+      setStorageData(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS.filter(p => !deletedIds.has(p.id)));
+    }
+
+    const existingPartiesInStorage = getStorageData(STORAGE_KEYS.PARTIES, null);
+    if (Array.isArray(existingPartiesInStorage) && existingPartiesInStorage.length > 0) {
+      const cleaned = existingPartiesInStorage.filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
+      setStorageData(STORAGE_KEYS.PARTIES, cleaned);
+    } else {
+      setStorageData(STORAGE_KEYS.PARTIES, INITIAL_PARTIES.filter(p => !deletedIds.has(p.id)));
+    }
+
+    const existingInvoicesInStorage = getStorageData(STORAGE_KEYS.INVOICES, null);
+    if (Array.isArray(existingInvoicesInStorage) && existingInvoicesInStorage.length > 0) {
+      const cleaned = existingInvoicesInStorage.filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
+      setStorageData(STORAGE_KEYS.INVOICES, cleaned);
+    } else {
+      setStorageData(STORAGE_KEYS.INVOICES, INITIAL_INVOICES.filter(i => !deletedIds.has(i.id)));
+    }
+
+    localStorage.setItem('distro_catalog_initialized', 'true');
   } else {
+    // Already initialized! NEVER re-merge INITIAL_PRODUCTS, INITIAL_PARTIES, or INITIAL_INVOICES on reload!
+    // Strip any deleted or sample items
+    const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
     setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
+
+    const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
+    setStorageData(STORAGE_KEYS.PARTIES, existingParties);
+
+    const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
+    setStorageData(STORAGE_KEYS.INVOICES, existingInvoices);
   }
 
-  const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => !SAMPLE_IDS.includes(p?.id));
-  if (existingParties.length === 0) {
-    setStorageData(STORAGE_KEYS.PARTIES, INITIAL_PARTIES);
-  } else {
-    setStorageData(STORAGE_KEYS.PARTIES, mergeById(INITIAL_PARTIES, existingParties));
-  }
-
-  const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
-  if (existingInvoices.length === 0) {
-    setStorageData(STORAGE_KEYS.INVOICES, INITIAL_INVOICES);
-  } else {
-    setStorageData(STORAGE_KEYS.INVOICES, mergeById(INITIAL_INVOICES, existingInvoices));
-  }
-
-  const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
+  const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
   setStorageData(STORAGE_KEYS.PURCHASES, existingPurchases);
 
-  // Clean dummy expenses
+  // Clean dummy expenses and purge any deleted expense IDs
   const existingExpenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => 
+    e &&
     !e?.id?.startsWith('exp_sample_') &&
+    !deletedIds.has(e.id) &&
     e?.voucherNo !== 'VOUCH-2601' &&
     e?.voucherNo !== 'VOUCH-2602' &&
     e?.voucherNo !== 'VOUCH-2603' &&
@@ -241,6 +294,8 @@ export const clearAllSampleData = () => {
   setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   setStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
   setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
+  setStorageData(STORAGE_KEYS.DELETED_IDS, []);
+  localStorage.setItem('distro_catalog_initialized', 'true');
   try {
     localStorage.removeItem('distro_active_billing_draft');
   } catch (e) {}
@@ -263,16 +318,17 @@ const getActiveCloudCredentials = () => {
   };
 };
 
-const mergeById = (localArr = [], remoteArr = []) => {
+const mergeById = (localArr = [], remoteArr = [], customDeletedSet = null) => {
+  const delSet = customDeletedSet instanceof Set ? customDeletedSet : new Set(getDeletedIds());
   const map = new Map();
   (remoteArr || []).forEach(item => {
-    if (item && item.id && !SAMPLE_IDS.includes(item.id)) {
+    if (item && item.id && !SAMPLE_IDS.includes(item.id) && !delSet.has(item.id)) {
       map.set(item.id, item);
     }
   });
   // Local items override or append (preserves local creations & updates)
   (localArr || []).forEach(item => {
-    if (item && item.id && !SAMPLE_IDS.includes(item.id)) {
+    if (item && item.id && !SAMPLE_IDS.includes(item.id) && !delSet.has(item.id)) {
       map.set(item.id, item);
     }
   });
@@ -308,42 +364,47 @@ export const fetchCloudData = async (force = false) => {
           return true;
         }
 
-        const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
-        const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
-        const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+        if (Array.isArray(remote.deletedIds) && remote.deletedIds.length > 0) {
+          recordDeletedIds(remote.deletedIds);
+        }
+        const activeDelSet = new Set(getDeletedIds());
+
+        const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !activeDelSet.has(i.id));
+        const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !activeDelSet.has(p.id));
+        const localParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !activeDelSet.has(pt.id));
         const localBiz = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
 
         // Safely merge remote data into local state without losing new local creations
         if (Array.isArray(remote.invoices)) {
-          setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, remote.invoices));
+          setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, remote.invoices, activeDelSet));
         }
 
         if (Array.isArray(remote.products)) {
-          setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(localProducts, remote.products));
+          setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(localProducts, remote.products, activeDelSet));
         }
 
         if (Array.isArray(remote.parties)) {
-          setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, remote.parties));
+          setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, remote.parties, activeDelSet));
         }
 
         if (Array.isArray(remote.purchases)) {
-          setStorageData(STORAGE_KEYS.PURCHASES, mergeById(getStorageData(STORAGE_KEYS.PURCHASES, []), remote.purchases));
+          setStorageData(STORAGE_KEYS.PURCHASES, mergeById(getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !activeDelSet.has(p.id)), remote.purchases, activeDelSet));
         }
 
         if (Array.isArray(remote.expenses)) {
-          setStorageData(STORAGE_KEYS.EXPENSES, mergeById(getStorageData(STORAGE_KEYS.EXPENSES, []), remote.expenses));
+          setStorageData(STORAGE_KEYS.EXPENSES, mergeById(getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !activeDelSet.has(e.id)), remote.expenses, activeDelSet));
         }
 
         if (Array.isArray(remote.bankAccounts)) {
-          setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, mergeById(getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []), remote.bankAccounts));
+          setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, mergeById(getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []), remote.bankAccounts, activeDelSet));
         }
 
         if (Array.isArray(remote.bankTransactions)) {
-          setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, mergeById(getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []), remote.bankTransactions));
+          setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, mergeById(getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []), remote.bankTransactions, activeDelSet));
         }
 
         if (Array.isArray(remote.warehouses)) {
-          setStorageData(STORAGE_KEYS.WAREHOUSES, mergeById(getStorageData(STORAGE_KEYS.WAREHOUSES, []), remote.warehouses));
+          setStorageData(STORAGE_KEYS.WAREHOUSES, mergeById(getStorageData(STORAGE_KEYS.WAREHOUSES, []), remote.warehouses, activeDelSet));
         }
 
         if (remote.proprietorCapital && typeof remote.proprietorCapital === 'object') {
@@ -376,16 +437,18 @@ export const pushLocalDataToCloud = async () => {
     return { success: false, message: 'Cloud database URL or Key is not configured.' };
   }
 
-  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
-  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
-  const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
-  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []);
-  const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []);
+  const delSet = new Set(getDeletedIds());
+  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
+  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id) && !delSet.has(pt.id));
+  const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !delSet.has(i.id));
+  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !delSet.has(i.id));
+  const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !delSet.has(e.id));
   const bankAccounts = getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []);
   const bankTransactions = getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []);
   const proprietorCapital = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
   const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const deletedIds = getDeletedIds();
   const now = Date.now();
 
   const payload = {
@@ -404,6 +467,7 @@ export const pushLocalDataToCloud = async () => {
       bankTransactions,
       proprietorCapital,
       warehouses,
+      deletedIds,
       lastUpdated: now
     }),
     day: 'System',
@@ -528,7 +592,8 @@ export const exportFullBackupJSON = () => {
     currentOperator: getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR),
     proprietorCapital: getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL),
     securitySettings: getStorageData(STORAGE_KEYS.SECURITY_SETTINGS, DEFAULT_SECURITY),
-    auditLogs: getStorageData(STORAGE_KEYS.AUDIT_LOGS, [])
+    auditLogs: getStorageData(STORAGE_KEYS.AUDIT_LOGS, []),
+    deletedIds: getDeletedIds()
   };
 
   const jsonStr = JSON.stringify(backupData, null, 2);
@@ -587,6 +652,11 @@ export const importFullBackupJSON = (backupObj) => {
     setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, backupObj.currentOperator || backupObj.current_operator);
   }
 
+  if (Array.isArray(backupObj.deletedIds)) {
+    setStorageData(STORAGE_KEYS.DELETED_IDS, backupObj.deletedIds);
+  }
+  localStorage.setItem('distro_catalog_initialized', 'true');
+
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('distro_data_changed'));
   }
@@ -600,8 +670,15 @@ export const importFullBackupJSON = (backupObj) => {
 };
 
 // Operations: Products
-export const fetchProducts = () => getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
+export const fetchProducts = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
+};
+
 export const saveProduct = (product) => {
+  if (product.id) {
+    unrecordDeletedId(product.id);
+  }
   const products = fetchProducts();
   let updated;
   let targetProd;
@@ -623,8 +700,10 @@ export const saveProduct = (product) => {
 };
 
 export const deleteProduct = (id) => {
-  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
-  const target = products.find(p => p.id === id);
+  recordDeletedId(id);
+  const currentProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+  const target = currentProducts.find(p => p && p.id === id);
+  const products = currentProducts.filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
   setStorageData(STORAGE_KEYS.PRODUCTS, products);
   
   logAuditAction('DELETE_PRODUCT', 'Inventory & Stock', `Deleted product ID: ${id} (${target?.name || 'Item'})`);
@@ -656,8 +735,15 @@ export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') =>
 };
 
 // Operations: Parties
-export const fetchParties = () => getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
+export const fetchParties = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
+};
+
 export const saveParty = (party) => {
+  if (party.id) {
+    unrecordDeletedId(party.id);
+  }
   const parties = fetchParties();
   let updated;
   let targetParty;
@@ -697,9 +783,14 @@ export const updatePartyBalance = (partyId, amountToAdd) => {
 };
 
 export const deleteParty = (id) => {
-  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
+  recordDeletedId(id);
+  const currentParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+  const target = currentParties.find(p => p && p.id === id);
+  const parties = currentParties.filter(p => p && p.id !== id && !SAMPLE_IDS.includes(p.id));
   setStorageData(STORAGE_KEYS.PARTIES, parties);
   
+  logAuditAction('DELETE_PARTY', 'Parties & CRM', `Deleted retailer: ${target?.name || 'Retailer'}`);
+
   const client = getSupabaseClient();
   if (client) {
     client.from('parties').delete().eq('id', id).then(() => {}).catch(console.error);
@@ -709,7 +800,10 @@ export const deleteParty = (id) => {
 };
 
 // Operations: Invoices
-export const fetchInvoices = () => getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
+export const fetchInvoices = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !delSet.has(i.id));
+};
 
 // Calculate Due Date from Invoice Date + Payment Terms
 export const calculateDueDate = (invoiceDateStr, terms = 'immediate') => {
@@ -729,6 +823,9 @@ export const calculateDueDate = (invoiceDateStr, terms = 'immediate') => {
 };
 
 export const saveInvoice = (invoiceData) => {
+  if (invoiceData.id) {
+    unrecordDeletedId(invoiceData.id);
+  }
   const invoices = fetchInvoices();
   const products = fetchProducts();
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
@@ -1160,6 +1257,7 @@ export const cancelInvoice = (invoiceId) => {
 };
 
 export const deleteInvoice = (invoiceId) => {
+  recordDeletedId(invoiceId);
   const invoices = fetchInvoices();
   const targetInv = invoices.find(i => i.id === invoiceId);
   if (!targetInv) return invoices;
@@ -1259,8 +1357,14 @@ export const saveSecuritySettings = (settings) => {
 };
 
 // --- ENTERPRISE MODULE: MULTI-WAREHOUSE MANAGEMENT ---
-export const fetchWarehouses = () => getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+export const fetchWarehouses = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES).filter(w => w && !delSet.has(w.id));
+};
 export const saveWarehouse = (wh) => {
+  if (wh.id) {
+    unrecordDeletedId(wh.id);
+  }
   const warehouses = fetchWarehouses();
   let updated;
   if (wh.id) {
@@ -1281,6 +1385,7 @@ export const deleteWarehouse = (id) => {
     alert('At least one warehouse is required.');
     return warehouses;
   }
+  recordDeletedId(id);
   const updated = warehouses.filter(w => w.id !== id);
   setStorageData(STORAGE_KEYS.WAREHOUSES, updated);
   logAuditAction('DELETE_WAREHOUSE', 'Inventory & Warehouses', `Warehouse deleted ID: ${id}`);
@@ -1372,9 +1477,15 @@ export const recordBankTransaction = (txn) => {
 };
 
 // --- ENTERPRISE MODULE: EXPENSES & SOLE PROPRIETOR CAPITAL ---
-export const fetchExpenses = () => getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => !e?.id?.startsWith('exp_sample_'));
+export const fetchExpenses = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !e?.id?.startsWith('exp_sample_') && !delSet.has(e.id));
+};
 
 export const saveExpense = (exp) => {
+  if (exp.id) {
+    unrecordDeletedId(exp.id);
+  }
   const expenses = fetchExpenses();
   const accounts = fetchBankAccounts();
   const txns = fetchBankTransactions();
@@ -1434,6 +1545,7 @@ export const saveExpense = (exp) => {
 };
 
 export const deleteExpense = (id) => {
+  recordDeletedId(id);
   const expenses = fetchExpenses();
   const target = expenses.find(e => e.id === id);
   if (!target) return false;
