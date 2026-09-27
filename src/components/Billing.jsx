@@ -1196,8 +1196,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>
                     {product.name}
                   </h4>
-                  <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    • Pack: {product.pcsPerCarton || 24} Pcs/Ctn • SKU: {product.sku}
+                  <span style={{ fontSize: '0.68rem', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ color: '#0284c7' }}>• Pack: {product.pcsPerCarton || 24} Pcs/Ctn</span>
+                    <span style={{ color: '#7c3aed' }}>• SKU: {product.sku}</span>
                   </span>
                 </div>
 
@@ -1710,7 +1711,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         <td style={{ padding: '3px 6px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                             <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>{item.name}</span>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '0.66rem', fontWeight: '600', color: '#0284c7', whiteSpace: 'nowrap' }}>
                               ({item.pcsPerCarton || 24}/ctn • {item.gstRate}%)
                             </span>
                           </div>
