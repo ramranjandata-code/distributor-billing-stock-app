@@ -1352,34 +1352,6 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
             </div>
 
-            {/* Past Bill Informational Banner */}
-            {isPastDate && (
-              <div style={{
-                background: '#fffbeb',
-                border: '1px solid #fde68a',
-                borderRadius: '6px',
-                padding: '4px 8px',
-                marginBottom: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '6px',
-                fontSize: '0.72rem',
-                color: '#92400e'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span>📅</span>
-                  <span><strong>Past Offline Bill:</strong> Recorded on <strong>{new Date(invoiceDate + 'T12:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong> in sales & GSTR-1.</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setInvoiceDate(todayStr)}
-                  style={{ background: 'none', border: 'none', color: '#b45309', fontWeight: '800', cursor: 'pointer', fontSize: '0.7rem', textDecoration: 'underline', flexShrink: 0 }}
-                >
-                  Reset to Today
-                </button>
-              </div>
-            )}
 
             {/* Customer Search Bar (matching reference UI in user image) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
