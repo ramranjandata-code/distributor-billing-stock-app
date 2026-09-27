@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { saveInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
@@ -150,8 +150,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Selected party object
-  const selectedParty = parties.find(p => p.id === selectedPartyId);
+  // Selected party object (memoized for instant lookups)
+  const selectedParty = useMemo(() => parties.find(p => p.id === selectedPartyId), [parties, selectedPartyId]);
 
   // Auto-detect supply type (Intra vs Inter) based on Seller and Buyer GSTIN state codes
   useEffect(() => {
@@ -219,24 +219,24 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setPaymentMode('CASH');
   };
 
-  // Filter parties for live search suggestions inside Customer Name input
-  const filteredParties = parties.filter(p => {
+  // Filter parties for live search suggestions inside Customer Name input (memoized)
+  const filteredParties = useMemo(() => {
     const term = (partySearchTerm || customerName).toLowerCase();
-    if (!term) return true;
-    return (
+    if (!term) return parties;
+    return parties.filter(p => 
       p.name.toLowerCase().includes(term) ||
       (p.phone && p.phone.includes(term)) ||
       (p.contactPerson && p.contactPerson.toLowerCase().includes(term)) ||
       (p.address && p.address.toLowerCase().includes(term)) ||
       (p.city && p.city.toLowerCase().includes(term))
     );
-  });
+  }, [parties, partySearchTerm, customerName]);
 
-  // Filter parties for upper customer search bar
-  const filteredPartiesForUpper = parties.filter(p => {
+  // Filter parties for upper customer search bar (memoized)
+  const filteredPartiesForUpper = useMemo(() => {
     const term = (upperPartySearchTerm || '').trim().toLowerCase();
-    if (!term) return true;
-    return (
+    if (!term) return parties;
+    return parties.filter(p => 
       (p.name && p.name.toLowerCase().includes(term)) ||
       (p.phone && p.phone.includes(term)) ||
       (p.contactPerson && p.contactPerson.toLowerCase().includes(term)) ||
@@ -244,7 +244,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       (p.address && p.address.toLowerCase().includes(term)) ||
       (p.gstin && p.gstin.toLowerCase().includes(term))
     );
-  });
+  }, [parties, upperPartySearchTerm]);
 
   const handleSelectPartyFromList = (p) => {
     if (p) {
@@ -288,11 +288,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setNewPartyData(initialNewPartyState);
   };
 
-  // Filter products for quick search & dropdown suggestions
-  const filteredProducts = products.filter(p => {
+  // Filter products for quick search & dropdown suggestions (memoized)
+  const filteredProducts = useMemo(() => {
     const term = (searchTerm || '').trim().toLowerCase();
-    if (!term) return true;
-    return (
+    if (!term) return products;
+    return products.filter(p => 
       (p.name && p.name.toLowerCase().includes(term)) ||
       (p.sku && p.sku.toLowerCase().includes(term)) ||
       (p.barcode && p.barcode.toLowerCase().includes(term)) ||
@@ -300,7 +300,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
       (p.brand && p.brand.toLowerCase().includes(term)) ||
       (p.category && p.category.toLowerCase().includes(term))
     );
-  });
+  }, [products, searchTerm]);
 
   const handleAddToCart = (product) => {
     if (product.currentStock <= 0) {
@@ -516,15 +516,15 @@ export default function Billing({ products, parties, business, refreshAllData, h
     setCart(cart.filter((_, i) => i !== index));
   };
 
-  // Centralized GST & Billing Calculations Engine
-  const billCalc = calculateBillTotals({
+  // Centralized GST & Billing Calculations Engine (memoized for instantaneous UI updates)
+  const billCalc = useMemo(() => calculateBillTotals({
     cartItems: cart,
     taxType: pricingType, // 'EXCLUSIVE' (Wholesale: Rate + GST on top) or 'INCLUSIVE' (MRP includes GST)
     supplyType: taxMode === 'NONE' ? 'EXEMPT' : taxMode,
     overallDiscountVal: discountValue,
     overallDiscountType: discountType,
     roundOffEnabled: roundOffEnabled
-  });
+  }), [cart, pricingType, taxMode, discountValue, discountType, roundOffEnabled]);
 
   const processedCartItems = billCalc.processedItems;
   const grossSubTotal = billCalc.grossSubtotal;

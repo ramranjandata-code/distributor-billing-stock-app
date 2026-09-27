@@ -283,6 +283,13 @@ export const fetchCloudData = async () => {
       const rows = await res.json();
       if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
         const remote = JSON.parse(rows[0].beat);
+        const remoteTs = Number(remote.lastUpdated) || 0;
+        const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
+
+        // Fast path: if cloud data has not changed since last sync, skip heavy merge and re-renders
+        if (remoteTs && remoteTs <= lastLocalTs) {
+          return false;
+        }
 
         const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
         const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
@@ -305,6 +312,7 @@ export const fetchCloudData = async () => {
           setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
         }
 
+        localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
         hasUpdated = true;
       }
     }
@@ -320,6 +328,7 @@ export const pushLocalDataToCloud = async () => {
   const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
   const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const now = Date.now();
 
   const payload = {
     id: STORE_DATA_ID,
@@ -331,7 +340,7 @@ export const pushLocalDataToCloud = async () => {
       products,
       parties,
       invoices,
-      lastUpdated: Date.now()
+      lastUpdated: now
     }),
     day: 'System',
     balance: 0,
@@ -365,6 +374,7 @@ export const pushLocalDataToCloud = async () => {
       });
     }
 
+    localStorage.setItem('distro_last_synced_ts', now.toString());
     return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
   } catch (err) {
     console.error('Live Cloud Sync push error:', err);

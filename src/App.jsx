@@ -148,7 +148,7 @@ export default function App() {
     window.addEventListener('distro_data_changed', handleDataChange);
     window.addEventListener('storage', handleDataChange);
 
-    // Set up auto sync polling every 2 seconds across all devices
+    // Set up auto sync polling every 15 seconds across all devices (gentle & fast)
     const interval = setInterval(() => {
       fetchCloudData().then((updated) => {
         if (updated) {
@@ -157,13 +157,26 @@ export default function App() {
         }
         setCloudConnected(true);
       }).catch(err => console.warn('Auto polling warning:', err));
-    }, 2000);
+    }, 15000);
+
+    // Sync instantly when user switches back to this window/tab
+    const handleWindowFocus = () => {
+      fetchCloudData().then((updated) => {
+        if (updated) {
+          refreshAllData();
+          setLastSyncedTime(new Date().toLocaleTimeString());
+        }
+        setCloudConnected(true);
+      }).catch(() => {});
+    };
+    window.addEventListener('focus', handleWindowFocus);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('distro_data_changed', handleDataChange);
       window.removeEventListener('storage', handleDataChange);
+      window.removeEventListener('focus', handleWindowFocus);
     };
   }, []);
 
