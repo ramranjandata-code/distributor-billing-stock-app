@@ -1674,7 +1674,15 @@ export default function Billing({ products, parties, business, refreshAllData, h
           </div>
 
           {/* Cart Items Table */}
-          <div style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '8px' }}>
+          <div style={{ 
+            minHeight: '220px',
+            maxHeight: 'calc(100vh - 350px)', 
+            overflowY: 'auto', 
+            marginBottom: '6px',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px',
+            background: '#ffffff'
+          }}>
             {cart.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '16px 8px', color: 'var(--text-muted)' }}>
                 <ShoppingBag size={28} style={{ margin: '0 auto 6px auto', opacity: 0.4 }} />
@@ -1683,13 +1691,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
-                <thead>
+                <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 2 }}>
                   <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                    <th style={{ padding: '4px 3px' }}>Item</th>
-                    <th style={{ padding: '4px 3px', textAlign: 'center' }}>Quantity</th>
-                    <th style={{ padding: '4px 3px', textAlign: 'right' }}>Rate (₹)</th>
-                    <th style={{ padding: '4px 3px', textAlign: 'center' }}>Disc</th>
-                    <th style={{ padding: '4px 3px', textAlign: 'right' }}>Total (₹)</th>
+                    <th style={{ padding: '4px 6px' }}>Item</th>
+                    <th style={{ padding: '4px 4px', textAlign: 'center' }}>Quantity</th>
+                    <th style={{ padding: '4px 4px', textAlign: 'right' }}>Rate (₹)</th>
+                    <th style={{ padding: '4px 4px', textAlign: 'center' }}>Disc</th>
+                    <th style={{ padding: '4px 6px', textAlign: 'right' }}>Total (₹)</th>
                     <th style={{ padding: '4px 2px' }}></th>
                   </tr>
                 </thead>
@@ -1698,62 +1706,53 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     const calc = getItemDetails(item);
 
                     return (
-                      <tr key={item.productId} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td style={{ padding: '4px 3px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                      <tr key={item.productId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '3px 6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                             <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>{item.name}</span>
                             <span style={{ fontSize: '0.64rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
-                              • Pack: {item.pcsPerCarton || 24} • {item.gstRate}% GST
+                              ({item.pcsPerCarton || 24}/ctn • {item.gstRate}%)
                             </span>
                           </div>
                         </td>
                         
-                        <td style={{ padding: '4px 3px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', alignItems: 'center' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              
-                              {/* Carton input */}
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                <input 
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  title="Cartons"
-                                  style={{ width: '44px', padding: '2px 4px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
-                                  className="input-field"
-                                  value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / (item.pcsPerCarton || 24))}
-                                  onChange={e => handleCartonQtyChange(index, e.target.value)}
-                                />
-                                <span style={{ fontSize: '0.66rem', color: 'var(--primary)', fontWeight: '800' }}>Ctn</span>
-                              </div>
+                        <td style={{ padding: '3px 4px', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', justifyContent: 'center' }}>
+                            {/* Carton input */}
+                            <input 
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              title="Cartons"
+                              style={{ width: '38px', padding: '2px 2px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
+                              className="input-field"
+                              value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / (item.pcsPerCarton || 24))}
+                              onChange={e => handleCartonQtyChange(index, e.target.value)}
+                            />
+                            <span style={{ fontSize: '0.66rem', color: 'var(--primary)', fontWeight: '800' }}>C</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+</span>
 
-                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+</span>
+                            {/* Loose Pcs input */}
+                            <input 
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              title="Loose Pcs"
+                              style={{ width: '38px', padding: '2px 2px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
+                              className="input-field"
+                              value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
+                              onChange={e => handleLooseQtyChange(index, e.target.value)}
+                            />
+                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>P</span>
 
-                              {/* Loose Pcs input */}
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                                <input 
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  title="Loose Pcs"
-                                  style={{ width: '44px', padding: '2px 4px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
-                                  className="input-field"
-                                  value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
-                                  onChange={e => handleLooseQtyChange(index, e.target.value)}
-                                />
-                                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>Pcs</span>
-                              </div>
-
-                            </div>
-
-                            {/* Total base pcs text */}
-                            <div style={{ fontSize: '0.64rem', color: '#059669', fontWeight: '800' }}>
-                              = {item.qty} Pcs Total
-                            </div>
+                            {/* Total base pcs inline badge */}
+                            <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: '800', background: '#ecfdf5', padding: '1px 4px', borderRadius: '3px', border: '1px solid #a7f3d0', marginLeft: '2px', whiteSpace: 'nowrap' }} title="Total Pieces">
+                              ={item.qty}
+                            </span>
                           </div>
                         </td>
 
-                        <td style={{ padding: '4px 3px', textAlign: 'right' }}>
+                        <td style={{ padding: '3px 4px', textAlign: 'right' }}>
                           <input 
                             type="number"
                             step="0.01"
@@ -1765,12 +1764,12 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         </td>
 
                         {/* Item-wise Discount (% / ₹ Toggle) */}
-                        <td style={{ padding: '4px 3px', textAlign: 'center' }}>
+                        <td style={{ padding: '3px 4px', textAlign: 'center' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                             <input 
                               type="number"
                               step="0.01"
-                              style={{ width: '46px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
+                              style={{ width: '44px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
                               className="input-field"
                               placeholder="0"
                               value={item.itemDiscountVal || ''}
@@ -1797,11 +1796,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
                           </div>
                         </td>
 
-                        <td style={{ padding: '4px 3px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.8rem' }}>
+                        <td style={{ padding: '3px 6px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                           ₹{calc.netInclusiveTotal.toFixed(2)}
                         </td>
 
-                        <td style={{ padding: '4px 2px', textAlign: 'right' }}>
+                        <td style={{ padding: '3px 2px', textAlign: 'right' }}>
                           <button 
                             onClick={() => handleRemoveItem(index)}
                             style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer', padding: '2px' }}
