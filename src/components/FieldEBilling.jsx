@@ -163,8 +163,8 @@ export default function FieldEBilling({ products = [], parties = [], business, r
 
   const handleSaveNewParty = (e) => {
     e.preventDefault();
-    if (!newPartyData.name || !newPartyData.phone) {
-      alert('⚠️ Please enter retailer/store name and mobile number!');
+    if (!newPartyData.name) {
+      alert('⚠️ Please enter retailer/store name!');
       return;
     }
 
@@ -1573,11 +1573,10 @@ export default function FieldEBilling({ products = [], parties = [], business, r
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Mobile Number *</label>
+                  <label className="form-label" style={{ fontSize: '0.78rem' }}>Mobile Number (Optional)</label>
                   <input 
                     type="tel" 
                     className="form-control" 
-                    required 
                     placeholder="e.g. 9876543210"
                     value={newPartyData.phone}
                     onChange={e => setNewPartyData({ ...newPartyData, phone: e.target.value })}

@@ -266,8 +266,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
   const handleSaveNewParty = (e) => {
     e.preventDefault();
-    if (!newPartyData.name || !newPartyData.phone) {
-      alert('⚠️ Please enter retailer/store name and mobile number!');
+    if (!newPartyData.name) {
+      alert('⚠️ Please enter retailer/store name!');
       return;
     }
 
@@ -2242,11 +2242,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Mobile Number *</label>
+                  <label className="form-label">Mobile Number (Optional)</label>
                   <input 
                     type="text" 
                     className="input-field" 
-                    required
                     placeholder="e.g. 9811223344"
                     value={newPartyData.phone}
                     onChange={e => setNewPartyData({...newPartyData, phone: e.target.value})}
