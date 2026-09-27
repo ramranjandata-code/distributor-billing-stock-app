@@ -1,5 +1,6 @@
 // Storage Utility for Distributor Stock & Billing Manager (DistroPulse)
 import { getSupabaseClient, getSupabaseConfig } from './supabaseClient';
+import { broadcastRealtimePulse } from './realtimeSync';
 import { 
   DEFAULT_BUSINESS as REAL_DEFAULT_BUSINESS, 
   INITIAL_PRODUCTS, 
@@ -325,6 +326,31 @@ export const fetchCloudData = async (force = false) => {
           setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, remote.parties));
         }
 
+        if (Array.isArray(remote.purchases)) {
+          setStorageData(STORAGE_KEYS.PURCHASES, mergeById(getStorageData(STORAGE_KEYS.PURCHASES, []), remote.purchases));
+        }
+
+        if (Array.isArray(remote.expenses)) {
+          setStorageData(STORAGE_KEYS.EXPENSES, mergeById(getStorageData(STORAGE_KEYS.EXPENSES, []), remote.expenses));
+        }
+
+        if (Array.isArray(remote.bankAccounts)) {
+          setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, mergeById(getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []), remote.bankAccounts));
+        }
+
+        if (Array.isArray(remote.bankTransactions)) {
+          setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, mergeById(getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []), remote.bankTransactions));
+        }
+
+        if (Array.isArray(remote.warehouses)) {
+          setStorageData(STORAGE_KEYS.WAREHOUSES, mergeById(getStorageData(STORAGE_KEYS.WAREHOUSES, []), remote.warehouses));
+        }
+
+        if (remote.proprietorCapital && typeof remote.proprietorCapital === 'object') {
+          const localCap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+          setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, { ...localCap, ...remote.proprietorCapital });
+        }
+
         if (remote.business && remote.business.name && remote.business.name !== "Distributor Agency") {
           setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
         } else if (localBiz && localBiz.name && localBiz.name !== "Distributor Agency") {
@@ -353,6 +379,12 @@ export const pushLocalDataToCloud = async () => {
   const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
   const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
   const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
+  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []);
+  const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []);
+  const bankAccounts = getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []);
+  const bankTransactions = getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []);
+  const proprietorCapital = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
+  const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   const now = Date.now();
 
@@ -366,6 +398,12 @@ export const pushLocalDataToCloud = async () => {
       products,
       parties,
       invoices,
+      purchases,
+      expenses,
+      bankAccounts,
+      bankTransactions,
+      proprietorCapital,
+      warehouses,
       lastUpdated: now
     }),
     day: 'System',
@@ -400,6 +438,7 @@ export const pushLocalDataToCloud = async () => {
         });
       }
       localStorage.setItem('distro_last_synced_ts', now.toString());
+      broadcastRealtimePulse();
       return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
     } else {
       const postRes = await fetch(`${url}/rest/v1/fmcg_shops`, {
@@ -409,6 +448,7 @@ export const pushLocalDataToCloud = async () => {
       });
       if (postRes.ok) {
         localStorage.setItem('distro_last_synced_ts', now.toString());
+        broadcastRealtimePulse();
         return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
       }
       return { success: false, message: `Cloud database responded with status ${patchRes.status}` };
@@ -419,15 +459,41 @@ export const pushLocalDataToCloud = async () => {
   }
 };
 
+let syncTimeout = null;
+let isPushing = false;
+let pendingPush = false;
+
 export const autoCloudSync = async () => {
   try {
+    // 1. Immediately refresh local screen (0ms)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('distro_data_changed'));
     }
+
+    // 2. Immediately send millisecond broadcast pulse to local bus & peer devices
+    broadcastRealtimePulse();
+
     const { url, key } = getActiveCloudCredentials();
-    if (url && key) {
-      await pushLocalDataToCloud();
+    if (!url || !key) return;
+
+    if (isPushing) {
+      pendingPush = true;
+      return;
     }
+
+    if (syncTimeout) clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(async () => {
+      try {
+        isPushing = true;
+        await pushLocalDataToCloud();
+      } finally {
+        isPushing = false;
+        if (pendingPush) {
+          pendingPush = false;
+          autoCloudSync();
+        }
+      }
+    }, 60); // 60ms micro-debounce for ultra-fast response
   } catch (e) {
     console.warn('Auto cloud sync warning:', e);
   }

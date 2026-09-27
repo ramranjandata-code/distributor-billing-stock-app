@@ -7,11 +7,29 @@ export const getSupabaseConfig = () => {
   return { url: url.trim(), key: key.trim() };
 };
 
+let cachedClient = null;
+let cachedConfigKey = '';
+
 export const getSupabaseClient = () => {
   const { url, key } = getSupabaseConfig();
   if (url && url.startsWith('http') && key) {
+    const configKey = `${url}___${key}`;
+    if (cachedClient && cachedConfigKey === configKey) {
+      return cachedClient;
+    }
     try {
-      return createClient(url, key);
+      cachedClient = createClient(url, key, {
+        realtime: {
+          params: {
+            eventsPerSecond: 20
+          }
+        },
+        auth: {
+          persistSession: false
+        }
+      });
+      cachedConfigKey = configKey;
+      return cachedClient;
     } catch (err) {
       console.error('Supabase initialization error:', err);
       return null;
@@ -23,6 +41,8 @@ export const getSupabaseClient = () => {
 export const updateSupabaseCredentials = (url, key) => {
   if (url) localStorage.setItem('distro_supabase_url', url.trim());
   if (key) localStorage.setItem('distro_supabase_key', key.trim());
+  cachedClient = null;
+  cachedConfigKey = '';
   return getSupabaseClient();
 };
 
