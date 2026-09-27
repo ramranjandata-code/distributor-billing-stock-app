@@ -440,14 +440,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const handleUpdateQty = (index, delta) => {
     const updated = [...cart];
     const item = updated[index];
+    if (!item) return;
     const pcsPerCtn = Number(item.pcsPerCarton) || 24;
     const newQty = item.qty + delta;
 
-    if (newQty <= 0) {
-      handleRemoveItem(index);
-      return;
+    if (newQty < 1) {
+      return; // Do not delete on minus, minimum is 1
     }
-    if (newQty > item.maxStock) {
+    if (item.maxStock !== undefined && item.maxStock > 0 && newQty > item.maxStock) {
       alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
       return;
     }
@@ -1729,7 +1729,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                               min="0"
                               placeholder="0"
                               title="Cartons"
-                              style={{ width: '38px', padding: '2px 2px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
+                              style={{ width: '34px', padding: '2px 2px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
                               className="input-field"
                               value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / (item.pcsPerCarton || 24))}
                               onChange={e => handleCartonQtyChange(index, e.target.value)}
@@ -1737,17 +1737,72 @@ export default function Billing({ products, parties, business, refreshAllData, h
                             <span style={{ fontSize: '0.66rem', color: 'var(--primary)', fontWeight: '800' }}>C</span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+</span>
 
-                            {/* Loose Pcs input */}
-                            <input 
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              title="Loose Pcs"
-                              style={{ width: '38px', padding: '2px 2px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
-                              className="input-field"
-                              value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
-                              onChange={e => handleLooseQtyChange(index, e.target.value)}
-                            />
+                            {/* Stepper with Minus, Loose Pcs Input, and Plus Icon */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleUpdateQty(index, -1)}
+                                title="Decrease Quantity (-1)"
+                                style={{
+                                  width: '18px',
+                                  height: '24px',
+                                  padding: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: 'none',
+                                  background: '#f1f5f9',
+                                  color: '#475569',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Minus size={10} strokeWidth={2.5} />
+                              </button>
+                              
+                              <input 
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                title="Loose Pcs"
+                                style={{ 
+                                  width: '32px', 
+                                  padding: '2px 2px', 
+                                  textAlign: 'center', 
+                                  fontSize: '0.8rem', 
+                                  fontWeight: '800', 
+                                  borderRadius: 0, 
+                                  height: '24px',
+                                  border: 'none',
+                                  borderLeft: '1px solid #e2e8f0',
+                                  borderRight: '1px solid #e2e8f0',
+                                  background: '#ffffff'
+                                }}
+                                className="input-field"
+                                value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
+                                onChange={e => handleLooseQtyChange(index, e.target.value)}
+                              />
+
+                              <button 
+                                type="button"
+                                onClick={() => handleUpdateQty(index, 1)}
+                                title="Add More Quantity (+1)"
+                                style={{
+                                  width: '20px',
+                                  height: '24px',
+                                  padding: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: 'none',
+                                  background: '#10b981',
+                                  color: '#ffffff',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                <Plus size={12} strokeWidth={3} />
+                              </button>
+                            </div>
+
                             <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>P</span>
 
                             {/* Total base pcs inline badge */}
