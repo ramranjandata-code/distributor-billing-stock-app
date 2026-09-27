@@ -91,6 +91,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
+  const [editInvoiceNo, setEditInvoiceNo] = useState('');
   const [editItems, setEditItems] = useState([]);
   const [editPartyId, setEditPartyId] = useState('');
   const [editCustomerName, setEditCustomerName] = useState('');
@@ -152,6 +153,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
   const handleEditInvoice = () => {
     // Open inline edit panel — no delete, no navigation
+    setEditInvoiceNo(invoice.invoiceNo || '');
     setEditItems((invoice.items || []).map(item => ({ ...item })));
     setEditPartyId(invoice.partyId || '');
     setEditCustomerName(invoice.partyName || invoice.customerName || '');
@@ -182,9 +184,11 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     const chosenParty = allParties.find(p => p.id === editPartyId);
 
     const paidAmt = editPaymentStatus === 'PAID' ? grandTotal : (Number(editPaidAmount) || 0);
+    const finalInvNo = (editInvoiceNo && editInvoiceNo.trim()) ? editInvoiceNo.trim() : invoice.invoiceNo;
 
     const updatedInvoiceData = {
       ...invoice,
+      invoiceNo: finalInvNo,
       items: updatedItems,
       partyId: editPartyId || invoice.partyId,
       partyName: chosenParty?.name || editCustomerName || invoice.partyName,
@@ -204,7 +208,10 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       sgst: totalTax / 2,
     };
 
-    updateInvoice(invoice, updatedInvoiceData);
+    updateInvoice(invoice, {
+      ...updatedInvoiceData,
+      invoiceNo: finalInvNo
+    });
     if (refreshAllData) refreshAllData();
     setEditMode(false);
     setSaveSuccess(true);
@@ -1174,39 +1181,57 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             <div>
               <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Edit3 size={18} color="#d97706" />
-                Edit Bill — {invoice.invoiceNo}
+                Edit Bill — {editInvoiceNo || invoice.invoiceNo}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Same invoice number will be kept. Changes save instantly.</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>You can update items, party, payment, or invoice number. Changes save instantly.</div>
             </div>
             <button onClick={() => setEditMode(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
               <X size={20} />
             </button>
           </div>
 
-          {/* Party / Customer */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Customer / Party</label>
-            <select
-              className="input-field"
-              value={editPartyId}
-              onChange={e => {
-                const p = fetchParties().find(x => x.id === e.target.value);
-                setEditPartyId(e.target.value);
-                if (p) setEditCustomerName(p.name);
-              }}
-              style={{ marginBottom: '6px' }}
-            >
-              <option value="">-- Cash Customer --</option>
-              {fetchParties().map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            {!editPartyId && (
+          {/* Top Row: Invoice Number & Customer / Party */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Invoice Number (Customizable)
+              </label>
               <input
+                type="text"
                 className="input-field"
-                placeholder="Customer name (optional)"
-                value={editCustomerName}
-                onChange={e => setEditCustomerName(e.target.value)}
+                value={editInvoiceNo}
+                onChange={e => setEditInvoiceNo(e.target.value)}
+                placeholder="e.g. INV/26-27/1003"
+                style={{ fontWeight: '700' }}
               />
-            )}
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                Customer / Party
+              </label>
+              <select
+                className="input-field"
+                value={editPartyId}
+                onChange={e => {
+                  const p = fetchParties().find(x => x.id === e.target.value);
+                  setEditPartyId(e.target.value);
+                  if (p) setEditCustomerName(p.name);
+                }}
+                style={{ marginBottom: '6px' }}
+              >
+                <option value="">-- Cash Customer --</option>
+                {fetchParties().map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              {!editPartyId && (
+                <input
+                  className="input-field"
+                  placeholder="Customer name (optional)"
+                  value={editCustomerName}
+                  onChange={e => setEditCustomerName(e.target.value)}
+                />
+              )}
+            </div>
           </div>
 
           {/* Items Table */}

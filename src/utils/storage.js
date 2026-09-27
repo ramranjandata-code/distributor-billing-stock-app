@@ -822,6 +822,14 @@ export const calculateDueDate = (invoiceDateStr, terms = 'immediate') => {
   return base.toISOString().split('T')[0];
 };
 
+export const getNextInvoiceNumber = () => {
+  const invoices = fetchInvoices();
+  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const startingNumber = Number(business.nextInvoiceNumber) || 1001;
+  const nextNumber = startingNumber + invoices.length;
+  return `${business.invoicePrefix || 'INV/26-27/'}${nextNumber}`;
+};
+
 export const saveInvoice = (invoiceData) => {
   if (invoiceData.id) {
     unrecordDeletedId(invoiceData.id);
@@ -832,10 +840,11 @@ export const saveInvoice = (invoiceData) => {
   const currentOp = getCurrentOperator();
 
   const isDraft = invoiceData.state === 'draft';
-  const nextNumber = invoices.length + 1001;
+  const startingNumber = Number(business.nextInvoiceNumber) || 1001;
+  const nextNumber = startingNumber + invoices.length;
   const officialInvoiceNo = invoiceData.invoiceNo && !invoiceData.invoiceNo.startsWith('DRAFT') 
-    ? invoiceData.invoiceNo 
-    : `${business.invoicePrefix || 'INV/'}${nextNumber}`;
+    ? invoiceData.invoiceNo.trim() 
+    : `${business.invoicePrefix || 'INV/26-27/'}${nextNumber}`;
 
   const invoiceNo = isDraft 
     ? (invoiceData.invoiceNo || `DRAFT/${new Date().getFullYear()}/${String(nextNumber).slice(-4)}`) 
@@ -987,11 +996,11 @@ export const updateInvoice = (originalInvoice, updatedData) => {
   const withoutOld = invoices.filter(i => i.id !== originalInvoice.id);
   setStorageData(STORAGE_KEYS.INVOICES, withoutOld);
 
-  // 4. Save with same id + invoiceNo (saveInvoice will re-deduct stock & re-apply balance)
+  // 4. Save with same id + invoiceNo (or updated custom invoiceNo)
   return saveInvoice({
     ...updatedData,
     id: originalInvoice.id,
-    invoiceNo: originalInvoice.invoiceNo,
+    invoiceNo: (updatedData.invoiceNo && updatedData.invoiceNo.trim()) ? updatedData.invoiceNo.trim() : originalInvoice.invoiceNo,
     irn: originalInvoice.irn,
     ackNo: originalInvoice.ackNo,
     ackDate: originalInvoice.ackDate,

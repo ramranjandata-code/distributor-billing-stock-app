@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { saveInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate } from '../utils/storage';
+import { saveInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate, getNextInvoiceNumber } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
 import { 
@@ -76,6 +76,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const todayStr = new Date().toISOString().split('T')[0];
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || todayStr);
   const [customInvoiceNo, setCustomInvoiceNo] = useState(() => initialDraft?.customInvoiceNo || '');
+  const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business]);
   const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
   const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
   const isPastDate = invoiceDate && invoiceDate < todayStr;
@@ -1310,48 +1311,59 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   )}
                 </div>
 
-                {/* Optional Custom Bill No for past offline records */}
+                {/* Custom / Auto Invoice Number Input */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '4px', 
+                  gap: '5px', 
                   background: customInvoiceNo ? '#fffbeb' : '#f8fafc', 
                   padding: '3px 8px', 
                   borderRadius: '6px', 
                   border: customInvoiceNo ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
+                  boxShadow: customInvoiceNo ? '0 1px 3px rgba(245, 158, 11, 0.15)' : 'none',
                   transition: 'all 0.2s ease',
                   height: '28px'
                 }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: customInvoiceNo ? '#92400e' : '#475569' }}>
-                    Bill No:
+                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: customInvoiceNo ? '#b45309' : '#475569', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <Receipt size={12} color={customInvoiceNo ? '#b45309' : '#64748b'} />
+                    Inv No:
                   </span>
                   <input 
                     type="text"
-                    placeholder="Auto (#)"
+                    placeholder={autoInvoiceNo || "Auto (#)"}
                     value={customInvoiceNo}
                     onChange={e => setCustomInvoiceNo(e.target.value)}
                     style={{
                       border: 'none',
                       background: 'transparent',
                       fontSize: '0.76rem',
-                      fontWeight: '700',
+                      fontWeight: '800',
                       color: customInvoiceNo ? '#b45309' : '#0f172a',
                       outline: 'none',
-                      width: '75px',
+                      width: '120px',
                       fontFamily: 'inherit',
                       padding: 0
                     }}
-                    title="Optional: Enter original invoice number from your physical offline bill"
+                    title="Enter custom invoice number or leave blank to auto-generate"
                   />
-                  {customInvoiceNo && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomInvoiceNo('')}
-                      style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
-                      title="Clear custom bill number"
-                    >
-                      <X size={12} />
-                    </button>
+                  {customInvoiceNo ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                      <span style={{ fontSize: '0.6rem', fontWeight: '800', background: '#fef3c7', color: '#b45309', padding: '1px 4px', borderRadius: '3px', border: '1px solid #fde68a' }}>
+                        Custom
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomInvoiceNo('')}
+                        style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                        title="Reset to Auto Invoice Number"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.6rem', fontWeight: '700', color: '#059669', background: '#ecfdf5', padding: '1px 4px', borderRadius: '3px', border: '1px solid #a7f3d0' }}>
+                      Auto
+                    </span>
                   )}
                 </div>
               </div>

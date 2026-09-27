@@ -390,9 +390,24 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 <input 
                   type="text" 
                   className="input-field"
+                  placeholder="e.g. INV/26-27/ or BILL/"
                   value={formData.invoicePrefix || ''} 
                   onChange={e => setFormData({...formData, invoicePrefix: e.target.value})}
                 />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Next / Starting Invoice Number</label>
+                <input 
+                  type="number" 
+                  className="input-field"
+                  placeholder="e.g. 1001 or 1"
+                  value={formData.nextInvoiceNumber || ''} 
+                  onChange={e => setFormData({...formData, nextInvoiceNumber: e.target.value})}
+                />
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Series Preview: <strong style={{ color: 'var(--primary)' }}>{(formData.invoicePrefix || 'INV/26-27/')}{(formData.nextInvoiceNumber || '1001')}</strong>
+                </div>
               </div>
 
               <div className="form-group">
