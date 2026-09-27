@@ -898,15 +898,15 @@ export default function Billing({ products, parties, business, refreshAllData, h
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(440px, 1.4fr)', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(420px, 1.4fr)', gap: '10px' }}>
       
       {/* LEFT COLUMN: Product Catalog & Search */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         
-        <div className="glass-card" style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShoppingBag size={18} color="var(--primary)" />
+        <div className="glass-card" style={{ padding: '8px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+            <h3 style={{ fontSize: '0.86rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShoppingBag size={16} color="var(--primary)" />
               <span>Search & Add Products</span>
             </h3>
           </div>
@@ -915,11 +915,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
           <div ref={productSearchContainerRef} style={{ position: 'relative' }}>
             <div style={{ position: 'relative', width: '100%' }}>
               <Search 
-                size={16} 
+                size={14} 
                 color={showProductSuggestions ? '#2563eb' : '#94a3b8'} 
                 style={{ 
                   position: 'absolute', 
-                  left: '12px', 
+                  left: '10px', 
                   top: '50%', 
                   transform: 'translateY(-50%)', 
                   pointerEvents: 'none',
@@ -932,13 +932,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 placeholder="Search products..."
                 style={{ 
                   width: '100%',
-                  height: '42px',
-                  paddingLeft: '38px', 
-                  paddingRight: searchTerm ? '34px' : '14px', 
-                  fontSize: '0.92rem',
-                  borderRadius: '8px',
+                  height: '32px',
+                  paddingLeft: '32px', 
+                  paddingRight: searchTerm ? '30px' : '10px', 
+                  fontSize: '0.82rem',
+                  borderRadius: '6px',
                   border: showProductSuggestions ? '1.5px solid #2563eb' : '1px solid var(--border-color)',
-                  boxShadow: showProductSuggestions ? '0 0 0 3px rgba(37, 99, 235, 0.15)' : 'none',
+                  boxShadow: showProductSuggestions ? '0 0 0 2px rgba(37, 99, 235, 0.12)' : 'none',
                   background: 'var(--bg-input, #ffffff)',
                   color: 'var(--text-main, #0f172a)',
                   outline: 'none',
@@ -1166,12 +1166,12 @@ export default function Billing({ products, parties, business, refreshAllData, h
         {/* Product Quick Add List (Horizontal Row or Fast Touch Tiles) */}
         <div style={{ 
           display: posMode === 'FAST_TOUCH' ? 'grid' : 'flex',
-          gridTemplateColumns: posMode === 'FAST_TOUCH' ? 'repeat(auto-fill, minmax(130px, 1fr))' : undefined,
+          gridTemplateColumns: posMode === 'FAST_TOUCH' ? 'repeat(auto-fill, minmax(120px, 1fr))' : undefined,
           flexDirection: posMode === 'FAST_TOUCH' ? undefined : 'column',
-          gap: '8px', 
-          maxHeight: '600px', 
+          gap: '4px', 
+          maxHeight: 'calc(100vh - 190px)', 
           overflowY: 'auto',
-          paddingRight: '4px' 
+          paddingRight: '3px' 
         }}>
           {filteredProducts.map(product => {
             const isOutOfStock = product.currentStock <= 0;
@@ -1181,33 +1181,33 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 onClick={() => !isOutOfStock && handleAddToCart(product)}
                 className="glass-card glass-card-interactive"
                 style={{ 
-                  padding: '10px 14px', 
+                  padding: '5px 8px', 
                   cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                   opacity: isOutOfStock ? 0.5 : 1,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '12px',
-                  borderRadius: '10px'
+                  gap: '8px',
+                  borderRadius: '6px'
                 }}
               >
                 {/* Left Info: Product Name & SKU / Pack Size */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h4 style={{ fontSize: '0.86rem', fontWeight: '700', color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {product.name}
                   </h4>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '1px' }}>
                     Pack: {product.pcsPerCarton || 24} Pcs/Ctn • SKU: {product.sku}
                   </div>
                 </div>
 
                 {/* Right Info: Price */}
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.92rem', fontWeight: '800', color: 'var(--primary)' }}>
+                  <span style={{ fontSize: '0.84rem', fontWeight: '800', color: 'var(--primary)' }}>
                     ₹{product.salePrice}
                   </span>
                   {product.mrp > product.salePrice && (
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', textDecoration: 'line-through', marginLeft: '6px' }}>
+                    <span style={{ fontSize: '0.66rem', color: 'var(--text-dim)', textDecoration: 'line-through', marginLeft: '4px' }}>
                       ₹{product.mrp}
                     </span>
                   )}
@@ -1220,34 +1220,35 @@ export default function Billing({ products, parties, business, refreshAllData, h
       </div>
 
       {/* RIGHT COLUMN: Active Cart & GST Billing Summary */}
-      <div className="glass-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div className="glass-card" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
         
         <div>
           {/* Header & Party Selector */}
-          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '16px' }}>
+          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '8px' }}>
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isPastDate ? '10px' : '14px', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Receipt size={22} color="var(--primary)" />
-                <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>Current Invoice</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isPastDate ? '6px' : '8px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Receipt size={18} color="var(--primary)" />
+                <h3 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>Current Invoice</h3>
               </div>
 
               {/* Custom Date & Past Offline Bill Controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {/* Invoice Date Selector */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '6px', 
+                  gap: '4px', 
                   background: isPastDate ? '#fffbeb' : '#f8fafc', 
-                  padding: '4px 10px', 
-                  borderRadius: '8px', 
+                  padding: '3px 8px', 
+                  borderRadius: '6px', 
                   border: isPastDate ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
-                  boxShadow: isPastDate ? '0 1px 4px rgba(245, 158, 11, 0.15)' : 'none',
-                  transition: 'all 0.2s ease'
+                  boxShadow: isPastDate ? '0 1px 3px rgba(245, 158, 11, 0.12)' : 'none',
+                  transition: 'all 0.2s ease',
+                  height: '28px'
                 }}>
-                  <Calendar size={15} color={isPastDate ? '#d97706' : '#64748b'} />
-                  <span style={{ fontSize: '0.76rem', fontWeight: '700', color: isPastDate ? '#92400e' : '#475569' }}>
+                  <Calendar size={13} color={isPastDate ? '#d97706' : '#64748b'} />
+                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: isPastDate ? '#92400e' : '#475569' }}>
                     Bill Date:
                   </span>
                   <input 
@@ -1258,24 +1259,25 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     style={{
                       border: 'none',
                       background: 'transparent',
-                      fontSize: '0.82rem',
+                      fontSize: '0.76rem',
                       fontWeight: '700',
                       color: isPastDate ? '#b45309' : '#0f172a',
                       outline: 'none',
                       cursor: 'pointer',
-                      fontFamily: 'inherit'
+                      fontFamily: 'inherit',
+                      padding: 0
                     }}
                     title="Choose date for past offline bills"
                   />
                   {isPastDate && (
                     <span style={{ 
-                      fontSize: '0.64rem', 
+                      fontSize: '0.6rem', 
                       fontWeight: '800', 
                       background: '#fef3c7', 
                       color: '#b45309', 
                       border: '1px solid #fde68a',
-                      padding: '1px 6px', 
-                      borderRadius: '12px',
+                      padding: '1px 5px', 
+                      borderRadius: '10px',
                       textTransform: 'uppercase',
                       letterSpacing: '0.03em'
                     }}>
@@ -1291,7 +1293,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         background: 'none', 
                         color: '#d97706', 
                         cursor: 'pointer', 
-                        fontSize: '0.72rem', 
+                        fontSize: '0.7rem', 
                         fontWeight: '700', 
                         textDecoration: 'underline', 
                         padding: '0 2px' 
@@ -1307,14 +1309,15 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: '6px', 
+                  gap: '4px', 
                   background: customInvoiceNo ? '#fffbeb' : '#f8fafc', 
-                  padding: '4px 10px', 
-                  borderRadius: '8px', 
+                  padding: '3px 8px', 
+                  borderRadius: '6px', 
                   border: customInvoiceNo ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  height: '28px'
                 }}>
-                  <span style={{ fontSize: '0.76rem', fontWeight: '700', color: customInvoiceNo ? '#92400e' : '#475569' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: customInvoiceNo ? '#92400e' : '#475569' }}>
                     Bill No:
                   </span>
                   <input 
@@ -1325,12 +1328,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     style={{
                       border: 'none',
                       background: 'transparent',
-                      fontSize: '0.82rem',
+                      fontSize: '0.76rem',
                       fontWeight: '700',
                       color: customInvoiceNo ? '#b45309' : '#0f172a',
                       outline: 'none',
-                      width: '85px',
-                      fontFamily: 'inherit'
+                      width: '75px',
+                      fontFamily: 'inherit',
+                      padding: 0
                     }}
                     title="Optional: Enter original invoice number from your physical offline bill"
                   />
@@ -1341,7 +1345,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
                       title="Clear custom bill number"
                     >
-                      <X size={13} />
+                      <X size={12} />
                     </button>
                   )}
                 </div>
@@ -1353,24 +1357,24 @@ export default function Billing({ products, parties, business, refreshAllData, h
               <div style={{
                 background: '#fffbeb',
                 border: '1px solid #fde68a',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                marginBottom: '12px',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                marginBottom: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '8px',
-                fontSize: '0.78rem',
+                gap: '6px',
+                fontSize: '0.72rem',
                 color: '#92400e'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span>📅</span>
-                  <span><strong>Past Offline Bill Mode:</strong> Bill date set to <strong>{new Date(invoiceDate + 'T12:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>. This bill will be recorded under this date in your sales reports and GSTR-1.</span>
+                  <span><strong>Past Offline Bill:</strong> Recorded on <strong>{new Date(invoiceDate + 'T12:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong> in sales & GSTR-1.</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setInvoiceDate(todayStr)}
-                  style={{ background: 'none', border: 'none', color: '#b45309', fontWeight: '800', cursor: 'pointer', fontSize: '0.74rem', textDecoration: 'underline', flexShrink: 0 }}
+                  style={{ background: 'none', border: 'none', color: '#b45309', fontWeight: '800', cursor: 'pointer', fontSize: '0.7rem', textDecoration: 'underline', flexShrink: 0 }}
                 >
                   Reset to Today
                 </button>
@@ -1378,19 +1382,19 @@ export default function Billing({ products, parties, business, refreshAllData, h
             )}
 
             {/* Customer Search Bar (matching reference UI in user image) */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div ref={customerSearchContainerRef} style={{ position: 'relative' }}>
                 <div 
                   style={{ 
                     position: 'relative', 
                     width: '100%',
-                    height: '42px',
+                    height: '32px',
                     display: 'flex',
                     alignItems: 'center',
                     background: '#ffffff',
                     borderRadius: '6px',
                     border: showUpperPartySuggestions ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                    boxShadow: showUpperPartySuggestions ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
+                    boxShadow: showUpperPartySuggestions ? '0 0 0 2px rgba(37, 99, 235, 0.12)' : 'none',
                     overflow: 'hidden',
                     transition: 'all 0.15s ease'
                   }}
@@ -1401,9 +1405,9 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     style={{ 
                       flex: 1,
                       height: '100%',
-                      paddingLeft: '14px', 
-                      paddingRight: '8px',
-                      fontSize: '0.92rem', 
+                      paddingLeft: '10px', 
+                      paddingRight: '6px',
+                      fontSize: '0.82rem', 
                       border: 'none',
                       outline: 'none',
                       background: 'transparent',
@@ -1489,13 +1493,13 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '0 8px 0 4px',
+                      padding: '0 6px 0 2px',
                       cursor: 'pointer',
                       color: '#64748b'
                     }}
                     title="Open Customer List"
                   >
-                    <ChevronDown size={18} color="#64748b" />
+                    <ChevronDown size={15} color="#64748b" />
                   </div>
 
                   {/* Attached Blue Search Button */}
@@ -1503,7 +1507,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     type="button"
                     onClick={() => setShowUpperPartySuggestions(!showUpperPartySuggestions)}
                     style={{
-                      width: '44px',
+                      width: '34px',
                       height: '100%',
                       background: '#3b82f6',
                       border: 'none',
@@ -1518,7 +1522,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     onMouseLeave={e => e.currentTarget.style.background = '#3b82f6'}
                     title="Search Customer"
                   >
-                    <Search size={18} color="#ffffff" />
+                    <Search size={15} color="#ffffff" />
                   </button>
                 </div>
 
@@ -1668,16 +1672,16 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
               {/* Selected Party Summary Card with Reset Button */}
               {selectedParty && (
-                <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                <div style={{ background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.74rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
                   <div>
-                    <div style={{ fontWeight: '800', color: 'var(--primary)', marginBottom: '2px' }}>
+                    <div style={{ fontWeight: '800', color: 'var(--primary)', marginBottom: '1px', fontSize: '0.78rem' }}>
                       {selectedParty.name}
                     </div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-                      📍 Address: {selectedParty.address || selectedParty.city || 'N/A'} {selectedParty.phone ? `| 📞 ${selectedParty.phone}` : ''}
+                    <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', margin: 0 }}>
+                      📍 {selectedParty.address || selectedParty.city || 'N/A'} {selectedParty.phone ? `| 📞 ${selectedParty.phone}` : ''}
                     </p>
-                    <p style={{ fontSize: '0.8rem', fontWeight: '800', color: selectedParty.balance > 0 ? '#c2410c' : '#10b981', marginTop: '2px', margin: 0 }}>
-                      Current Outstanding Due: ₹{selectedParty.balance || 0}
+                    <p style={{ fontSize: '0.74rem', fontWeight: '800', color: selectedParty.balance > 0 ? '#c2410c' : '#10b981', margin: 0 }}>
+                      Outstanding: ₹{selectedParty.balance || 0}
                     </p>
                   </div>
 
@@ -1685,7 +1689,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     type="button"
                     onClick={() => handleSelectPartyFromList(null)}
                     className="btn btn-sm btn-secondary"
-                    style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#c2410c' }}
+                    style={{ padding: '2px 6px', fontSize: '0.7rem', color: '#c2410c' }}
                     title="Reset party selection"
                   >
                     ✕ Change
@@ -1698,23 +1702,23 @@ export default function Billing({ products, parties, business, refreshAllData, h
           </div>
 
           {/* Cart Items Table */}
-          <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
+          <div style={{ maxHeight: '180px', overflowY: 'auto', marginBottom: '8px' }}>
             {cart.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
-                <ShoppingBag size={40} style={{ margin: '0 auto 10px auto', opacity: 0.4 }} />
-                <p style={{ fontWeight: '600' }}>Bill cart is empty!</p>
-                <p style={{ fontSize: '0.8rem' }}>Click on products from the left panel to add them to the bill.</p>
+              <div style={{ textAlign: 'center', padding: '16px 8px', color: 'var(--text-muted)' }}>
+                <ShoppingBag size={28} style={{ margin: '0 auto 6px auto', opacity: 0.4 }} />
+                <p style={{ fontWeight: '600', fontSize: '0.8rem', margin: '0 0 2px 0' }}>Bill cart is empty!</p>
+                <p style={{ fontSize: '0.72rem', margin: 0 }}>Click on products from the left panel to add them to the bill.</p>
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.76rem' }}>
                 <thead>
-                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '8px 4px' }}>Item</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>Quantity</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'right' }}>Rate (₹)</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'center' }}>Disc</th>
-                    <th style={{ padding: '8px 4px', textAlign: 'right' }}>Total (₹)</th>
-                    <th style={{ padding: '8px 2px' }}></th>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                    <th style={{ padding: '4px 3px' }}>Item</th>
+                    <th style={{ padding: '4px 3px', textAlign: 'center' }}>Quantity</th>
+                    <th style={{ padding: '4px 3px', textAlign: 'right' }}>Rate (₹)</th>
+                    <th style={{ padding: '4px 3px', textAlign: 'center' }}>Disc</th>
+                    <th style={{ padding: '4px 3px', textAlign: 'right' }}>Total (₹)</th>
+                    <th style={{ padding: '4px 2px' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1723,63 +1727,63 @@ export default function Billing({ products, parties, business, refreshAllData, h
 
                     return (
                       <tr key={item.productId} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td style={{ padding: '8px 4px' }}>
-                          <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.84rem' }}>{item.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                        <td style={{ padding: '4px 3px' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>{item.name}</div>
+                          <div style={{ fontSize: '0.64rem', color: 'var(--text-dim)' }}>
                             Pack: {item.pcsPerCarton || 24} Pcs/Ctn • GST: {item.gstRate}%
                           </div>
                         </td>
                         
-                        <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <td style={{ padding: '4px 3px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', alignItems: 'center' }}>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                               
                               {/* Carton input */}
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                                 <input 
                                   type="number"
                                   min="0"
                                   placeholder="0"
                                   title="Cartons"
-                                  style={{ width: '56px', padding: '5px 6px', textAlign: 'center', fontSize: '0.88rem', fontWeight: '800', borderRadius: '6px' }}
+                                  style={{ width: '44px', padding: '2px 4px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
                                   className="input-field"
                                   value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / (item.pcsPerCarton || 24))}
                                   onChange={e => handleCartonQtyChange(index, e.target.value)}
                                 />
-                                <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: '800' }}>Ctn</span>
+                                <span style={{ fontSize: '0.66rem', color: 'var(--primary)', fontWeight: '800' }}>Ctn</span>
                               </div>
 
-                              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>+</span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+</span>
 
                               {/* Loose Pcs input */}
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                                 <input 
                                   type="number"
                                   min="0"
                                   placeholder="0"
                                   title="Loose Pcs"
-                                  style={{ width: '56px', padding: '5px 6px', textAlign: 'center', fontSize: '0.88rem', fontWeight: '800', borderRadius: '6px' }}
+                                  style={{ width: '44px', padding: '2px 4px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
                                   className="input-field"
                                   value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
                                   onChange={e => handleLooseQtyChange(index, e.target.value)}
                                 />
-                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700' }}>Pcs</span>
+                                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>Pcs</span>
                               </div>
 
                             </div>
 
                             {/* Total base pcs text */}
-                            <div style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: '800' }}>
+                            <div style={{ fontSize: '0.64rem', color: '#059669', fontWeight: '800' }}>
                               = {item.qty} Pcs Total
                             </div>
                           </div>
                         </td>
 
-                        <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                        <td style={{ padding: '4px 3px', textAlign: 'right' }}>
                           <input 
                             type="number"
                             step="0.01"
-                            style={{ width: '72px', padding: '5px 6px', textAlign: 'right', fontSize: '0.86rem', fontWeight: '700' }}
+                            style={{ width: '58px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
                             className="input-field"
                             value={item.price}
                             onChange={e => handleItemPriceChange(index, e.target.value)}
@@ -1787,12 +1791,12 @@ export default function Billing({ products, parties, business, refreshAllData, h
                         </td>
 
                         {/* Item-wise Discount (% / ₹ Toggle) */}
-                        <td style={{ padding: '8px 4px', textAlign: 'center' }}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        <td style={{ padding: '4px 3px', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                             <input 
                               type="number"
                               step="0.01"
-                              style={{ width: '60px', padding: '5px 6px', textAlign: 'right', fontSize: '0.86rem', fontWeight: '700' }}
+                              style={{ width: '46px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
                               className="input-field"
                               placeholder="0"
                               value={item.itemDiscountVal || ''}
@@ -1803,14 +1807,15 @@ export default function Billing({ products, parties, business, refreshAllData, h
                               onClick={() => handleToggleItemDiscountType(index)}
                               title={item.itemDiscountType === 'PERCENT' ? 'Percentage (%) Discount' : 'Rupees (₹) Discount per unit'}
                               style={{ 
-                                padding: '2px 5px', 
-                                fontSize: '0.72rem', 
+                                padding: '1px 4px', 
+                                fontSize: '0.68rem', 
                                 fontWeight: '700',
                                 borderRadius: '4px',
                                 border: '1px solid var(--border-color)',
                                 background: item.itemDiscountType === 'PERCENT' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(16, 185, 129, 0.25)',
                                 color: item.itemDiscountType === 'PERCENT' ? '#818cf8' : '#34d399',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                height: '24px'
                               }}
                             >
                               {item.itemDiscountType === 'PERCENT' ? '%' : '₹'}
@@ -1818,16 +1823,16 @@ export default function Billing({ products, parties, business, refreshAllData, h
                           </div>
                         </td>
 
-                        <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)' }}>
+                        <td style={{ padding: '4px 3px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.8rem' }}>
                           ₹{calc.netInclusiveTotal.toFixed(2)}
                         </td>
 
-                        <td style={{ padding: '8px 2px', textAlign: 'right' }}>
+                        <td style={{ padding: '4px 2px', textAlign: 'right' }}>
                           <button 
                             onClick={() => handleRemoveItem(index)}
-                            style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer' }}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-rose)', cursor: 'pointer', padding: '2px' }}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </td>
                       </tr>
@@ -1840,23 +1845,23 @@ export default function Billing({ products, parties, business, refreshAllData, h
         </div>
 
         {/* Calculation Summary Footer */}
-        <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+        <div style={{ background: '#f8fafc', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
           
           {/* Taxation & Pricing Controls */}
-          <div style={{ background: '#f1f5f9', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)' }}>
+          <div style={{ background: '#f1f5f9', padding: '4px 6px', borderRadius: '6px', marginBottom: '5px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-main)' }}>
                 Pricing Mode:
               </span>
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '3px' }}>
                 <button
                   type="button"
                   onClick={() => setPricingType('EXCLUSIVE')}
                   style={{
-                    padding: '4px 8px',
-                    fontSize: '0.74rem',
+                    padding: '2px 5px',
+                    fontSize: '0.68rem',
                     fontWeight: '700',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     border: '1px solid var(--border-color)',
                     background: pricingType === 'EXCLUSIVE' ? 'var(--primary)' : '#fff',
                     color: pricingType === 'EXCLUSIVE' ? '#fff' : 'var(--text-main)',
@@ -1869,10 +1874,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   type="button"
                   onClick={() => setPricingType('INCLUSIVE')}
                   style={{
-                    padding: '4px 8px',
-                    fontSize: '0.74rem',
+                    padding: '2px 5px',
+                    fontSize: '0.68rem',
                     fontWeight: '700',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     border: '1px solid var(--border-color)',
                     background: pricingType === 'INCLUSIVE' ? 'var(--primary)' : '#fff',
                     color: pricingType === 'INCLUSIVE' ? '#fff' : 'var(--text-main)',
@@ -1884,24 +1889,24 @@ export default function Billing({ products, parties, business, refreshAllData, h
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 Supply Region:
                 {selectedParty?.gstin && (
-                  <span style={{ fontSize: '0.68rem', color: '#059669', background: '#d1fae5', padding: '1px 5px', borderRadius: '4px' }}>
+                  <span style={{ fontSize: '0.62rem', color: '#059669', background: '#d1fae5', padding: '0 4px', borderRadius: '3px' }}>
                     Auto GSTIN
                   </span>
                 )}
               </span>
-              <div style={{ display: 'flex', gap: '4px' }}>
+              <div style={{ display: 'flex', gap: '3px' }}>
                 <button
                   type="button"
                   onClick={() => setTaxMode('INTRA')}
                   style={{
-                    padding: '4px 8px',
-                    fontSize: '0.74rem',
+                    padding: '2px 5px',
+                    fontSize: '0.68rem',
                     fontWeight: '700',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     border: '1px solid var(--border-color)',
                     background: taxMode === 'INTRA' ? '#2563eb' : '#fff',
                     color: taxMode === 'INTRA' ? '#fff' : 'var(--text-main)',
@@ -1914,10 +1919,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   type="button"
                   onClick={() => setTaxMode('INTER')}
                   style={{
-                    padding: '4px 8px',
-                    fontSize: '0.74rem',
+                    padding: '2px 5px',
+                    fontSize: '0.68rem',
                     fontWeight: '700',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     border: '1px solid var(--border-color)',
                     background: taxMode === 'INTER' ? '#7c3aed' : '#fff',
                     color: taxMode === 'INTER' ? '#fff' : 'var(--text-main)',
@@ -1930,10 +1935,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   type="button"
                   onClick={() => setTaxMode('NONE')}
                   style={{
-                    padding: '4px 8px',
-                    fontSize: '0.74rem',
+                    padding: '2px 5px',
+                    fontSize: '0.68rem',
                     fontWeight: '700',
-                    borderRadius: '4px',
+                    borderRadius: '3px',
                     border: '1px solid var(--border-color)',
                     background: taxMode === 'NONE' ? '#475569' : '#fff',
                     color: taxMode === 'NONE' ? '#fff' : 'var(--text-main)',
@@ -1946,14 +1951,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', marginBottom: '12px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.74rem', marginBottom: '5px', borderBottom: '1px dashed var(--border-color)', paddingBottom: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
               <span>Gross Subtotal:</span>
               <span>₹{grossSubTotal.toFixed(2)}</span>
             </div>
 
             {itemDiscountsTotal > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontSize: '0.72rem' }}>
                 <span>Item Discounts:</span>
                 <span>- ₹{itemDiscountsTotal.toFixed(2)}</span>
               </div>
@@ -1962,11 +1967,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
             {/* Overall Bill Discount (% vs ₹) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-muted)' }}>Overall Bill Discount:</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <input 
                   type="number" 
-                  step="0.01"
-                  style={{ width: '75px', padding: '3px 6px', textAlign: 'right' }}
+                  step="0.01" 
+                  style={{ width: '56px', padding: '1px 4px', textAlign: 'right', height: '22px', fontSize: '0.74rem', borderRadius: '4px' }}
                   className="input-field"
                   placeholder="0"
                   value={discountValue}
@@ -1976,14 +1981,15 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   type="button"
                   onClick={() => setDiscountType(discountType === 'PERCENT' ? 'AMOUNT' : 'PERCENT')}
                   style={{ 
-                    padding: '4px 8px', 
-                    fontSize: '0.8rem', 
+                    padding: '1px 5px', 
+                    fontSize: '0.7rem', 
                     fontWeight: '800',
                     borderRadius: '4px',
                     border: '1px solid var(--border-color)',
                     background: discountType === 'PERCENT' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(16, 185, 129, 0.15)',
                     color: discountType === 'PERCENT' ? '#4f46e5' : '#059669',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    height: '22px'
                   }}
                   title="Toggle overall discount between % and ₹"
                 >
@@ -1999,31 +2005,31 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
 
             {taxMode === 'NONE' ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: '700' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: '700', fontSize: '0.72rem' }}>
                 <span>GST Tax:</span>
                 <span>Non-GST / Exempt (0%)</span>
               </div>
             ) : taxMode === 'INTRA' ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.71rem' }}>
                   <span>CGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                   <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{cgst.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.71rem' }}>
                   <span>SGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                   <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{sgst.toFixed(2)}</span>
                 </div>
               </>
             ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', fontSize: '0.71rem' }}>
                 <span>IGST {pricingType === 'EXCLUSIVE' ? '(Extra on rate)' : '(Included in rate)'}:</span>
                 <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>₹{igst.toFixed(2)}</span>
               </div>
             )}
 
             {/* Round Off Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.71rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                 <input 
                   type="checkbox" 
                   checked={roundOffEnabled} 
@@ -2035,19 +2041,20 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>Grand Total:</span>
-            <span style={{ fontSize: '1.6rem', fontWeight: '800', color: 'var(--primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', padding: '4px 8px', background: '#eff6ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+            <span style={{ fontSize: '0.88rem', fontWeight: '800', color: '#1e3a8a' }}>Grand Total:</span>
+            <span style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--primary)' }}>
               ₹{grandTotal.toFixed(2)}
             </span>
           </div>
 
           {/* Payment Status Switcher */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '5px', marginBottom: '6px' }}>
             <button 
               type="button"
               onClick={() => setPaymentStatus('PAID')}
               className={`btn btn-sm ${paymentStatus === 'PAID' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ padding: '3px 6px', fontSize: '0.72rem', height: '26px' }}
             >
               Cash / Paid
             </button>
@@ -2055,6 +2062,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
               type="button"
               onClick={() => setPaymentStatus('UNPAID')}
               className={`btn btn-sm ${paymentStatus === 'UNPAID' ? 'btn-danger' : 'btn-secondary'}`}
+              style={{ padding: '3px 6px', fontSize: '0.72rem', height: '26px' }}
             >
               Credit (Unpaid)
             </button>
@@ -2062,19 +2070,19 @@ export default function Billing({ products, parties, business, refreshAllData, h
               type="button"
               onClick={() => setPaymentStatus('PARTIAL')}
               className={`btn btn-sm ${paymentStatus === 'PARTIAL' ? 'badge-warning' : 'btn-secondary'}`}
+              style={{ padding: '3px 6px', fontSize: '0.72rem', height: '26px' }}
             >
-              Partial Payment
+              Partial
             </button>
           </div>
 
-
           {/* Warehouse Source & e-Way Bill Accordion */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)' }}>Warehouse / Depot:</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)' }}>Warehouse / Depot:</span>
               <select 
                 className="input-field select-field" 
-                style={{ fontSize: '0.76rem', padding: '4px 20px 4px 8px', width: 'auto' }}
+                style={{ fontSize: '0.72rem', padding: '2px 14px 2px 6px', width: 'auto', height: '24px' }}
                 value={selectedWarehouseId}
                 onChange={e => setSelectedWarehouseId(e.target.value)}
               >
@@ -2085,27 +2093,27 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
 
             {/* e-Way Bill Toggle */}
-            <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px 10px', background: '#ffffff' }}>
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', padding: '4px 6px', background: '#ffffff' }}>
               <div 
                 onClick={() => setEwayBillOpen(!ewayBillOpen)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: '0.78rem', fontWeight: '700', color: '#2563eb' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', color: '#2563eb' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Truck size={14} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Truck size={13} />
                   <span>e-Way Bill & Transport Details {ewayBillOpen ? '▲' : '▼'}</span>
                 </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                  {ewayBillOpen ? 'Hide' : '(Optional for Interstate / >₹50k)'}
+                <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+                  {ewayBillOpen ? 'Hide' : '(Optional for >₹50k)'}
                 </span>
               </div>
 
               {ewayBillOpen && (
-                <div style={{ marginTop: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.76rem' }}>
+                <div style={{ marginTop: '5px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '0.72rem' }}>
                   <input 
                     type="text"
                     className="input-field"
                     placeholder="Transporter Name"
-                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    style={{ fontSize: '0.72rem', padding: '2px 6px', height: '24px' }}
                     value={ewayBillData.transporterName}
                     onChange={e => setEwayBillData({ ...ewayBillData, transporterName: e.target.value })}
                   />
@@ -2113,7 +2121,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     type="text"
                     className="input-field"
                     placeholder="Vehicle No (e.g. DL01AA1234)"
-                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    style={{ fontSize: '0.72rem', padding: '2px 6px', height: '24px' }}
                     value={ewayBillData.vehicleNo}
                     onChange={e => setEwayBillData({ ...ewayBillData, vehicleNo: e.target.value })}
                   />
@@ -2121,7 +2129,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     type="text"
                     className="input-field"
                     placeholder="Distance (KM)"
-                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    style={{ fontSize: '0.72rem', padding: '2px 6px', height: '24px' }}
                     value={ewayBillData.distanceKm}
                     onChange={e => setEwayBillData({ ...ewayBillData, distanceKm: e.target.value })}
                   />
@@ -2129,7 +2137,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     type="text"
                     className="input-field"
                     placeholder="e-Way Bill No. (if generated)"
-                    style={{ fontSize: '0.76rem', padding: '4px 8px' }}
+                    style={{ fontSize: '0.72rem', padding: '2px 6px', height: '24px' }}
                     value={ewayBillData.ewayBillNo}
                     onChange={e => setEwayBillData({ ...ewayBillData, ewayBillNo: e.target.value })}
                   />
@@ -2138,28 +2146,28 @@ export default function Billing({ products, parties, business, refreshAllData, h
             </div>
 
             {/* Odoo Payment Terms, Invoice Date & Due Date */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px', padding: '8px 10px', background: isPastDate ? '#fffbeb' : '#f8fafc', borderRadius: '8px', border: isPastDate ? '1.5px solid #f59e0b' : '1px solid var(--border-color)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', padding: '4px 6px', background: isPastDate ? '#fffbeb' : '#f8fafc', borderRadius: '6px', border: isPastDate ? '1.5px solid #f59e0b' : '1px solid var(--border-color)' }}>
               <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: '700', color: isPastDate ? '#92400e' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
-                  <Calendar size={12} />
+                <label style={{ fontSize: '0.68rem', fontWeight: '700', color: isPastDate ? '#92400e' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1px' }}>
+                  <Calendar size={11} />
                   <span>Invoice Date:</span>
                 </label>
                 <input 
                   type="date"
                   className="input-field"
-                  style={{ fontSize: '0.76rem', padding: '4px 6px', height: '28px', fontWeight: '700' }}
+                  style={{ fontSize: '0.72rem', padding: '1px 4px', height: '24px', fontWeight: '700' }}
                   value={invoiceDate}
                   max={todayStr}
                   onChange={e => setInvoiceDate(e.target.value)}
                 />
               </div>
               <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
+                <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '1px' }}>
                   Payment Terms:
                 </label>
                 <select 
                   className="input-field select-field" 
-                  style={{ fontSize: '0.76rem', padding: '4px 8px', height: '28px' }}
+                  style={{ fontSize: '0.72rem', padding: '1px 4px', height: '24px' }}
                   value={paymentTerms}
                   onChange={e => setPaymentTerms(e.target.value)}
                 >
@@ -2171,10 +2179,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
+                <label style={{ fontSize: '0.68rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '1px' }}>
                   Due Date:
                 </label>
-                <div style={{ fontSize: '0.78rem', fontWeight: '700', color: '#1e293b', padding: '4px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #cbd5e1', height: '28px', display: 'flex', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#1e293b', padding: '1px 4px', background: '#ffffff', borderRadius: '4px', border: '1px solid #cbd5e1', height: '24px', display: 'flex', alignItems: 'center' }}>
                   📅 {computedDueDate}
                 </div>
               </div>
@@ -2183,25 +2191,25 @@ export default function Billing({ products, parties, business, refreshAllData, h
           </div>
 
           {/* Action Buttons: Confirm & Post vs Save as Draft */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '6px' }}>
               <button 
                 onClick={() => handleSaveAndPrintBill(false)}
                 disabled={cart.length === 0}
                 className="btn btn-primary"
-                style={{ padding: '12px', gap: '8px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800', fontSize: '0.9rem' }}
+                style={{ padding: '8px 10px', gap: '6px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800', fontSize: '0.84rem' }}
               >
-                <Zap size={18} />
+                <Zap size={16} />
                 <span>Confirm & Post Invoice</span>
               </button>
               <button 
                 onClick={() => handleSaveAndPrintBill(true)}
                 disabled={cart.length === 0}
                 className="btn btn-secondary"
-                style={{ padding: '12px', gap: '6px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '700', fontSize: '0.82rem', background: '#f1f5f9' }}
+                style={{ padding: '8px 8px', gap: '4px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '700', fontSize: '0.78rem', background: '#f1f5f9' }}
                 title="Save as Draft without deducting stock or updating ledger yet"
               >
-                <FileText size={16} />
+                <FileText size={14} />
                 <span>Save Draft</span>
               </button>
             </div>
