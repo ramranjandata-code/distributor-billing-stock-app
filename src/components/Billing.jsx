@@ -1034,31 +1034,31 @@ export default function Billing({ products, parties, business, refreshAllData, h
                           }}
                           onMouseEnter={() => setHighlightedProductIndex(idx)}
                           style={{
-                            padding: '10px 12px',
-                            borderRadius: '8px',
+                            padding: '4px 8px',
+                            borderRadius: '5px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
+                            gap: '8px',
                             cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                             background: isHighlighted ? '#2563eb' : 'transparent',
                             color: isHighlighted ? '#ffffff' : '#0f172a',
                             opacity: isOutOfStock ? 0.6 : 1,
                             transition: 'background 0.1s ease, color 0.1s ease',
-                            marginBottom: '4px'
+                            marginBottom: '2px'
                           }}
                         >
                           {/* Round Avatar Circle with Initial */}
                           <div style={{
-                            width: '38px',
-                            height: '38px',
+                            width: '24px',
+                            height: '24px',
                             borderRadius: '50%',
-                            background: '#e2e8f0',
-                            color: '#475569',
+                            background: isHighlighted ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
+                            color: isHighlighted ? '#ffffff' : '#475569',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: '700',
-                            fontSize: '1rem',
+                            fontSize: '0.72rem',
                             flexShrink: 0
                           }}>
                             {initial}
@@ -1067,8 +1067,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
                           {/* Product Details */}
                           <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                             <div style={{
-                              fontWeight: '600',
-                              fontSize: '0.92rem',
+                              fontWeight: '700',
+                              fontSize: '0.8rem',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -1077,14 +1077,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
                               {p.name}
                             </div>
                             <div style={{
-                              fontSize: '0.78rem',
+                              fontSize: '0.68rem',
                               display: 'flex',
                               alignItems: 'center',
-                              gap: '6px',
-                              marginTop: '2px',
+                              gap: '4px',
+                              marginTop: '1px',
                               color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
                             }}>
-                              <Tag size={13} style={{ flexShrink: 0 }} />
+                              <Tag size={11} style={{ flexShrink: 0 }} />
                               <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {p.sku ? `SKU: ${p.sku}` : ''}{p.hsn ? ` • HSN: ${p.hsn}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
                               </span>
@@ -1092,19 +1092,19 @@ export default function Billing({ products, parties, business, refreshAllData, h
                           </div>
 
                           {/* Price & Stock status */}
-                          <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                          <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
                             <div style={{
                               fontWeight: '700',
-                              fontSize: '0.92rem',
+                              fontSize: '0.82rem',
                               color: isHighlighted ? '#ffffff' : '#059669'
                             }}>
                               ₹{p.salePrice}
                             </div>
                             <div style={{
-                              fontSize: '0.72rem',
+                              fontSize: '0.64rem',
                               fontWeight: '600',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
                               background: isHighlighted 
                                 ? 'rgba(255, 255, 255, 0.2)' 
                                 : (isOutOfStock ? '#fee2e2' : '#f1f5f9'),
@@ -1135,12 +1135,12 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    padding: '10px 12px',
+                    gap: '6px',
+                    padding: '5px 8px',
                     cursor: 'pointer',
                     color: '#2563eb',
                     fontWeight: '600',
-                    fontSize: '0.88rem',
+                    fontSize: '0.76rem',
                     borderTop: '1px solid #f1f5f9',
                     borderRadius: '0 0 6px 6px',
                     transition: 'background 0.15s ease',
@@ -1149,7 +1149,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <PlusCircle size={18} color="#2563eb" />
+                  <PlusCircle size={14} color="#2563eb" />
                   <span>New Product</span>
                 </div>
               </div>
@@ -1535,30 +1535,30 @@ export default function Billing({ products, parties, business, refreshAllData, h
                               }}
                               onMouseEnter={() => setHighlightedIndex(idx)}
                               style={{
-                                padding: '10px 12px',
-                                borderRadius: '8px',
+                                padding: '4px 8px',
+                                borderRadius: '5px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px',
+                                gap: '8px',
                                 cursor: 'pointer',
                                 background: isHighlighted ? '#2563eb' : 'transparent',
                                 color: isHighlighted ? '#ffffff' : '#0f172a',
                                 transition: 'background 0.1s ease, color 0.1s ease',
-                                marginBottom: '4px'
+                                marginBottom: '2px'
                               }}
                             >
                               {/* Round Avatar Circle with Initial */}
                               <div style={{
-                                width: '38px',
-                                height: '38px',
+                                width: '24px',
+                                height: '24px',
                                 borderRadius: '50%',
-                                background: '#e2e8f0',
-                                color: '#475569',
+                                background: isHighlighted ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
+                                color: isHighlighted ? '#ffffff' : '#475569',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 fontWeight: '700',
-                                fontSize: '1rem',
+                                fontSize: '0.72rem',
                                 flexShrink: 0
                               }}>
                                 {initial}
@@ -1567,8 +1567,8 @@ export default function Billing({ products, parties, business, refreshAllData, h
                               {/* Customer Details */}
                               <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                                 <div style={{
-                                  fontWeight: '600',
-                                  fontSize: '0.92rem',
+                                  fontWeight: '700',
+                                  fontSize: '0.8rem',
                                   whiteSpace: 'nowrap',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
@@ -1577,14 +1577,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
                                   {p.name}
                                 </div>
                                 <div style={{
-                                  fontSize: '0.78rem',
+                                  fontSize: '0.68rem',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '6px',
-                                  marginTop: '2px',
+                                  gap: '4px',
+                                  marginTop: '1px',
                                   color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
                                 }}>
-                                  <FileText size={13} style={{ flexShrink: 0 }} />
+                                  <FileText size={11} style={{ flexShrink: 0 }} />
                                   <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {p.name} {p.phone ? `• ${p.phone}` : ''} {p.city ? `• ${p.city}` : ''}
                                   </span>
@@ -1595,10 +1595,10 @@ export default function Billing({ products, parties, business, refreshAllData, h
                               {p.balance > 0 && (
                                 <div style={{
                                   flexShrink: 0,
-                                  fontSize: '0.74rem',
+                                  fontSize: '0.66rem',
                                   fontWeight: '700',
-                                  padding: '2px 8px',
-                                  borderRadius: '4px',
+                                  padding: '1px 6px',
+                                  borderRadius: '3px',
                                   background: isHighlighted ? 'rgba(255, 255, 255, 0.2)' : '#fff7ed',
                                   color: isHighlighted ? '#ffffff' : '#c2410c'
                                 }}>
@@ -1621,12 +1621,12 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 12px',
+                        gap: '6px',
+                        padding: '5px 8px',
                         cursor: 'pointer',
                         color: '#2563eb',
                         fontWeight: '600',
-                        fontSize: '0.88rem',
+                        fontSize: '0.76rem',
                         borderTop: '1px solid #f1f5f9',
                         borderRadius: '0 0 6px 6px',
                         transition: 'background 0.15s ease',
@@ -1635,7 +1635,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                       onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      <PlusCircle size={18} color="#2563eb" />
+                      <PlusCircle size={14} color="#2563eb" />
                       <span>New Customer</span>
                     </div>
                   </div>
