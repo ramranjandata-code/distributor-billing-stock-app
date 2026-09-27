@@ -1,5 +1,11 @@
 // Storage Utility for Distributor Stock & Billing Manager (DistroPulse)
-import { getSupabaseClient } from './supabaseClient';
+import { getSupabaseClient, getSupabaseConfig } from './supabaseClient';
+import { 
+  DEFAULT_BUSINESS as REAL_DEFAULT_BUSINESS, 
+  INITIAL_PRODUCTS, 
+  INITIAL_PARTIES, 
+  INITIAL_INVOICES 
+} from './defaultCatalog';
 
 const STORAGE_KEYS = {
   BUSINESS: 'distro_business_info',
@@ -18,21 +24,7 @@ const STORAGE_KEYS = {
   PROPRIETOR_CAPITAL: 'distro_proprietor_capital'
 };
 
-const DEFAULT_BUSINESS = {
-  name: "Distributor Agency",
-  tagline: "Wholesale & Distribution",
-  proprietor: "",
-  gstin: "",
-  phone: "",
-  email: "",
-  address: "",
-  bankName: "",
-  accountNo: "",
-  ifsc: "",
-  upiId: "",
-  invoicePrefix: "INV/26-27/",
-  terms: "1. Goods once sold will not be taken back.\n2. Subject to local jurisdiction."
-};
+const DEFAULT_BUSINESS = REAL_DEFAULT_BUSINESS;
 
 const DEFAULT_WAREHOUSES = [
   { id: 'wh_main', name: 'Main Godown', code: 'WH-01', location: '', isDefault: true }
@@ -54,9 +46,9 @@ const DEFAULT_SECURITY = {
   lastBackupDate: null
 };
 
-const DEFAULT_PRODUCTS = [];
-const DEFAULT_PARTIES = [];
-const DEFAULT_INVOICES = [];
+const DEFAULT_PRODUCTS = INITIAL_PRODUCTS;
+const DEFAULT_PARTIES = INITIAL_PARTIES;
+const DEFAULT_INVOICES = INITIAL_INVOICES;
 const DEFAULT_PURCHASES = [];
 
 const DEFAULT_PROPRIETOR_CAPITAL = {
@@ -119,7 +111,7 @@ const SAMPLE_IDS = [
 export const initDataStorage = () => {
   // If no business or old dummy business exists, set clean default
   const existingBiz = getStorageData(STORAGE_KEYS.BUSINESS, null);
-  if (!existingBiz || existingBiz.name === "Shree Ganesh Sales Agency" || existingBiz.gstin === "07AAACG1234F1Z8" || existingBiz.proprietor === "Rajesh Kumar Verma") {
+  if (!existingBiz || existingBiz.name === "Distributor Agency" || existingBiz.name === "Shree Ganesh Sales Agency" || existingBiz.gstin === "07AAACG1234F1Z8" || existingBiz.proprietor === "Rajesh Kumar Verma") {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   }
 
@@ -170,15 +162,29 @@ export const initDataStorage = () => {
     ]);
   }
 
-  // Force clean all sample products, parties, invoices, purchases
+  // Force clean all sample products, parties, invoices, purchases and seed real catalog
   const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => !SAMPLE_IDS.includes(p?.id));
-  setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
+  if (existingProds.length === 0) {
+    setStorageData(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+  } else if (existingProds.length < INITIAL_PRODUCTS.length) {
+    setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(INITIAL_PRODUCTS, existingProds));
+  } else {
+    setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
+  }
 
   const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => !SAMPLE_IDS.includes(p?.id));
-  setStorageData(STORAGE_KEYS.PARTIES, existingParties);
+  if (existingParties.length === 0) {
+    setStorageData(STORAGE_KEYS.PARTIES, INITIAL_PARTIES);
+  } else {
+    setStorageData(STORAGE_KEYS.PARTIES, mergeById(INITIAL_PARTIES, existingParties));
+  }
 
   const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
-  setStorageData(STORAGE_KEYS.INVOICES, existingInvoices);
+  if (existingInvoices.length === 0) {
+    setStorageData(STORAGE_KEYS.INVOICES, INITIAL_INVOICES);
+  } else {
+    setStorageData(STORAGE_KEYS.INVOICES, mergeById(INITIAL_INVOICES, existingInvoices));
+  }
 
   const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => !SAMPLE_IDS.includes(i?.id));
   setStorageData(STORAGE_KEYS.PURCHASES, existingPurchases);
@@ -243,17 +249,16 @@ export const clearAllSampleData = () => {
   }
 };
 
-// --- LIVE DEFAULT CLOUD SYNC CHANNEL (ZERO CONFIG) ---
-const DEFAULT_SUPABASE_URL = 'https://steiiaxiouvbulxcvvsw.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZWlpYXhpb3V2YnVseGN2dnN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjMyMDYsImV4cCI6MjEwMjczOTIwNn0.-BQl9aLHG5Sb-MEdJSx1WDVa7ukhqDAZKFgbZf6xafU';
+// --- LIVE CLOUD SYNC CHANNEL ---
 const STORE_DATA_ID = 'distropulse_store_data';
 
-const getCloudHeaders = () => ({
-  'apikey': DEFAULT_SUPABASE_KEY,
-  'Authorization': `Bearer ${DEFAULT_SUPABASE_KEY}`,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
-});
+const getActiveCloudCredentials = () => {
+  const { url, key } = getSupabaseConfig();
+  return {
+    url: (url || '').trim(),
+    key: (key || '').trim()
+  };
+};
 
 const mergeById = (localArr = [], remoteArr = []) => {
   const map = new Map();
@@ -271,12 +276,21 @@ const mergeById = (localArr = [], remoteArr = []) => {
   return Array.from(map.values());
 };
 
-export const fetchCloudData = async () => {
+export const fetchCloudData = async (force = false) => {
   let hasUpdated = false;
+  const { url, key } = getActiveCloudCredentials();
+
+  if (!url || !key) {
+    return false;
+  }
 
   try {
-    const res = await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
-      headers: getCloudHeaders()
+    const res = await fetch(`${url}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      }
     });
 
     if (res.ok) {
@@ -286,14 +300,15 @@ export const fetchCloudData = async () => {
         const remoteTs = Number(remote.lastUpdated) || 0;
         const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
 
-        // Fast path: if cloud data has not changed since last sync, skip heavy merge and re-renders
-        if (remoteTs && remoteTs <= lastLocalTs) {
-          return false;
+        // Skip merge if not forced and timestamp hasn't changed
+        if (!force && remoteTs && remoteTs <= lastLocalTs) {
+          return true;
         }
 
         const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
         const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
         const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+        const localBiz = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
 
         // Safely merge remote data into local state without losing new local creations
         if (Array.isArray(remote.invoices)) {
@@ -308,8 +323,10 @@ export const fetchCloudData = async () => {
           setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, remote.parties));
         }
 
-        if (remote.business && remote.business.name) {
+        if (remote.business && remote.business.name && remote.business.name !== "Distributor Agency") {
           setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
+        } else if (localBiz && localBiz.name && localBiz.name !== "Distributor Agency") {
+          // Keep current real business profile
         }
 
         localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
@@ -317,13 +334,20 @@ export const fetchCloudData = async () => {
       }
     }
   } catch (err) {
-    console.warn('Live Cloud Sync fetch error:', err);
+    console.warn('Live Cloud Sync fetch error:', err?.message || err);
+    return false;
   }
 
   return hasUpdated;
 };
 
 export const pushLocalDataToCloud = async () => {
+  const { url, key } = getActiveCloudCredentials();
+
+  if (!url || !key) {
+    return { success: false, message: 'Cloud database URL or Key is not configured.' };
+  }
+
   const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id));
   const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id));
   const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id));
@@ -350,35 +374,46 @@ export const pushLocalDataToCloud = async () => {
     lng: 0
   };
 
+  const headers = {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+  };
+
   try {
-    const patchRes = await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
+    const patchRes = await fetch(`${url}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
       method: 'PATCH',
-      headers: getCloudHeaders(),
+      headers,
       body: JSON.stringify(payload)
     });
 
     if (patchRes.ok) {
       const resData = await patchRes.json().catch(() => []);
       if (Array.isArray(resData) && resData.length === 0) {
-        await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops`, {
+        await fetch(`${url}/rest/v1/fmcg_shops`, {
           method: 'POST',
-          headers: getCloudHeaders(),
+          headers,
           body: JSON.stringify(payload)
         });
       }
+      localStorage.setItem('distro_last_synced_ts', now.toString());
+      return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
     } else {
-      await fetch(`${DEFAULT_SUPABASE_URL}/rest/v1/fmcg_shops`, {
+      const postRes = await fetch(`${url}/rest/v1/fmcg_shops`, {
         method: 'POST',
-        headers: getCloudHeaders(),
+        headers,
         body: JSON.stringify(payload)
       });
+      if (postRes.ok) {
+        localStorage.setItem('distro_last_synced_ts', now.toString());
+        return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
+      }
+      return { success: false, message: `Cloud database responded with status ${patchRes.status}` };
     }
-
-    localStorage.setItem('distro_last_synced_ts', now.toString());
-    return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
   } catch (err) {
-    console.error('Live Cloud Sync push error:', err);
-    return { success: false, message: 'Cloud sync error' };
+    console.warn('Live Cloud Sync push error:', err?.message || err);
+    return { success: false, message: 'Cloud database connection error. Check your URL & Key.' };
   }
 };
 
@@ -387,16 +422,113 @@ export const autoCloudSync = async () => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('distro_data_changed'));
     }
-    await pushLocalDataToCloud();
+    const { url, key } = getActiveCloudCredentials();
+    if (url && key) {
+      await pushLocalDataToCloud();
+    }
   } catch (e) {
     console.warn('Auto cloud sync warning:', e);
   }
 };
 
 export const performFullSync = async () => {
-  await pushLocalDataToCloud();
-  await fetchCloudData();
-  return { success: true, message: 'Zero-Config Cloud Sync Completed!' };
+  // PULL FIRST, THEN PUSH (prevents clobbering)
+  const pullSuccess = await fetchCloudData(true);
+  const pushRes = await pushLocalDataToCloud();
+  if (pullSuccess || pushRes.success) {
+    return { success: true, message: 'Cloud Database synchronized successfully!' };
+  }
+  return { 
+    success: false, 
+    message: pushRes.message || 'Cloud database is currently unreachable. Operating in local mode.' 
+  };
+};
+
+// --- 1-CLICK JSON BACKUP & RESTORE UTILITIES ---
+export const exportFullBackupJSON = () => {
+  const backupData = {
+    version: '1.0',
+    exportDate: new Date().toISOString(),
+    business: getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS),
+    products: getStorageData(STORAGE_KEYS.PRODUCTS, []),
+    parties: getStorageData(STORAGE_KEYS.PARTIES, []),
+    invoices: getStorageData(STORAGE_KEYS.INVOICES, []),
+    purchases: getStorageData(STORAGE_KEYS.PURCHASES, []),
+    warehouses: getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES),
+    bankAccounts: getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []),
+    expenses: getStorageData(STORAGE_KEYS.EXPENSES, []),
+    currentOperator: getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR),
+    proprietorCapital: getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL),
+    securitySettings: getStorageData(STORAGE_KEYS.SECURITY_SETTINGS, DEFAULT_SECURITY),
+    auditLogs: getStorageData(STORAGE_KEYS.AUDIT_LOGS, [])
+  };
+
+  const jsonStr = JSON.stringify(backupData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const downloadUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const bizName = (backupData.business?.name || 'DistroPulse').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.href = downloadUrl;
+  a.download = `${bizName}_Backup_${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(downloadUrl);
+
+  return { success: true, productCount: backupData.products.length };
+};
+
+export const importFullBackupJSON = (backupObj) => {
+  if (!backupObj || typeof backupObj !== 'object') {
+    throw new Error('Invalid backup file format');
+  }
+
+  const biz = backupObj.business || backupObj.business_info;
+  if (biz && biz.name && biz.name !== "Distributor Agency") {
+    setStorageData(STORAGE_KEYS.BUSINESS, biz);
+  }
+
+  const prods = backupObj.products;
+  if (Array.isArray(prods) && prods.length > 0) {
+    const localProds = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+    setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(localProds, prods));
+  }
+
+  const parties = backupObj.parties;
+  if (Array.isArray(parties) && parties.length > 0) {
+    const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+    setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, parties));
+  }
+
+  const invoices = backupObj.invoices;
+  if (Array.isArray(invoices) && invoices.length > 0) {
+    const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
+    setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, invoices));
+  }
+
+  if (Array.isArray(backupObj.bankAccounts || backupObj.bank_accounts)) {
+    setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, backupObj.bankAccounts || backupObj.bank_accounts);
+  }
+
+  if (Array.isArray(backupObj.expenses)) {
+    setStorageData(STORAGE_KEYS.EXPENSES, backupObj.expenses);
+  }
+
+  if (backupObj.currentOperator || backupObj.current_operator) {
+    setStorageData(STORAGE_KEYS.CURRENT_OPERATOR, backupObj.currentOperator || backupObj.current_operator);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('distro_data_changed'));
+  }
+
+  return {
+    success: true,
+    productCount: getStorageData(STORAGE_KEYS.PRODUCTS, []).length,
+    partyCount: getStorageData(STORAGE_KEYS.PARTIES, []).length,
+    invoiceCount: getStorageData(STORAGE_KEYS.INVOICES, []).length
+  };
 };
 
 // Operations: Products

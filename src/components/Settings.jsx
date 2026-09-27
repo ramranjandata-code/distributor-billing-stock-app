@@ -1,5 +1,17 @@
-import React, { useState } from 'react';
-import { saveBusinessInfo, saveProduct, deleteProduct, setStorageData, formatCartonStock, pushLocalDataToCloud, fetchCloudData, clearAllSampleData, performFullSync } from '../utils/storage';
+import React, { useState, useRef } from 'react';
+import { 
+  saveBusinessInfo, 
+  saveProduct, 
+  deleteProduct, 
+  setStorageData, 
+  formatCartonStock, 
+  pushLocalDataToCloud, 
+  fetchCloudData, 
+  clearAllSampleData, 
+  performFullSync,
+  exportFullBackupJSON,
+  importFullBackupJSON
+} from '../utils/storage';
 import { getSupabaseConfig, updateSupabaseCredentials, isSupabaseConnected, testSupabaseConnection } from '../utils/supabaseClient';
 import { 
   Store, 
@@ -17,7 +29,10 @@ import {
   UploadCloud,
   Database,
   Key,
-  Globe
+  Globe,
+  Download,
+  Upload,
+  HardDrive
 } from 'lucide-react';
 
 export default function Settings({ business, products, refreshAllData, lang, changeLanguage, t }) {
@@ -136,13 +151,19 @@ export default function Settings({ business, products, refreshAllData, lang, cha
   };
 
   const handleTestConnection = async () => {
+    if (!supabaseConfig.url || !supabaseConfig.key) {
+      setCloudSyncStatus({ loading: false, msg: '⚠️ Please enter Supabase Project URL and API Key.' });
+      alert('⚠️ Please enter both Supabase Project URL and Anon API Key.');
+      return;
+    }
     setCloudSyncStatus({ loading: true, msg: 'Testing Supabase Cloud DB Connection...' });
+    updateSupabaseCredentials(supabaseConfig.url, supabaseConfig.key);
     const res = await testSupabaseConnection();
     setCloudSyncStatus({ loading: false, msg: res.message });
     if (res.success) {
       alert('🎉 ' + res.message);
     } else {
-      alert('⚠️ ' + res.message);
+      alert('⚠️ Connection Failed: ' + res.message + '\n\nNote: If using free Supabase, check if your project was paused at https://supabase.com and click "Restore project".');
     }
   };
 
@@ -180,6 +201,39 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     }
   };
 
+  const fileInputRef = useRef(null);
+  const [backupMsg, setBackupMsg] = useState('');
+
+  const handleExportBackup = () => {
+    try {
+      const res = exportFullBackupJSON();
+      setBackupMsg(`✅ Backup downloaded successfully with ${res.productCount} products!`);
+      alert(`🎉 Full Backup downloaded successfully!\n\nAll ${res.productCount} products, parties, invoices and firm details are saved in your Downloads folder.`);
+    } catch (e) {
+      alert('⚠️ Export failed: ' + e.message);
+    }
+  };
+
+  const handleImportFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        const res = importFullBackupJSON(parsed);
+        refreshAllData();
+        setBackupMsg(`✅ Successfully imported ${res.productCount} products, ${res.partyCount} parties, and ${res.invoiceCount} invoices!`);
+        alert(`🎉 Data Restored Successfully!\n\nImported ${res.productCount} products, ${res.partyCount} parties, and ${res.invoiceCount} invoices.`);
+      } catch (err) {
+        alert('⚠️ Failed to import backup file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '900px' }}>
       
@@ -201,6 +255,24 @@ export default function Settings({ business, products, refreshAllData, lang, cha
         >
           <Boxes size={16} />
           <span>Manage Items</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveSubTab('cloud')}
+          className={`btn btn-sm ${activeSubTab === 'cloud' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ gap: '6px' }}
+        >
+          <Cloud size={16} />
+          <span>☁️ Cloud Database</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveSubTab('backup')}
+          className={`btn btn-sm ${activeSubTab === 'backup' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ gap: '6px' }}
+        >
+          <HardDrive size={16} />
+          <span>💾 Backup & Transfer</span>
         </button>
 
       </div>
@@ -575,6 +647,94 @@ export default function Settings({ business, products, refreshAllData, lang, cha
             </ol>
           </div>
 
+        </div>
+      )}
+
+      {/* SUB-TAB 4: 1-Click Backup & Data Transfer */}
+      {activeSubTab === 'backup' && (
+        <div className="glass-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <HardDrive size={24} color="var(--primary)" />
+              <div>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>💾 1-Click Backup & Data Transfer</h2>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                  Save your entire catalog, parties, invoices and firm profile into a single backup file or transfer between devices.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {backupMsg && (
+            <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', borderRadius: '10px', fontSize: '0.86rem', fontWeight: '600' }}>
+              {backupMsg}
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '10px' }}>
+            {/* Download Backup Card */}
+            <div style={{ padding: '20px', background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+              <div>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                  <Download size={22} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Download Complete Backup
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Exports all <strong>products ({products.length})</strong>, customer khata, invoices, godowns, and settings to a secure <code>.json</code> file.
+                </p>
+              </div>
+
+              <button 
+                type="button" 
+                onClick={handleExportBackup}
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: '700', gap: '8px', justifyContent: 'center' }}
+              >
+                <Download size={18} />
+                <span>Download Backup (.json)</span>
+              </button>
+            </div>
+
+            {/* Restore Backup Card */}
+            <div style={{ padding: '20px', background: '#f8fafc', border: '1px solid var(--border-color)', borderRadius: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '14px' }}>
+              <div>
+                <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                  <Upload size={22} />
+                </div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '6px' }}>
+                  Restore / Import Backup
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  Select a previously downloaded DistroPulse backup file to merge or restore all records immediately into this device.
+                </p>
+              </div>
+
+              <div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  accept=".json"
+                  style={{ display: 'none' }}
+                  onChange={handleImportFileChange}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: '700', gap: '8px', justifyContent: 'center' }}
+                >
+                  <Upload size={18} />
+                  <span>Choose Backup File to Restore</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '24px', padding: '14px 18px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '0.82rem', color: '#166534', lineHeight: 1.6 }}>
+            💡 <strong>Offline Transfer Tip:</strong> To sync data between your Web App and Desktop App without an internet server, click <strong>Download Backup</strong> on the Web App, then open Desktop App and click <strong>Choose Backup File to Restore</strong>.
+          </div>
         </div>
       )}
 

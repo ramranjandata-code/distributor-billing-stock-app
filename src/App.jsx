@@ -55,10 +55,10 @@ export default function App() {
 
   const triggerManualSync = async () => {
     setIsSyncing(true);
-    await performFullSync();
+    const res = await performFullSync();
     refreshAllData();
     setLastSyncedTime(new Date().toLocaleTimeString());
-    setCloudConnected(true);
+    setCloudConnected(res.success);
     setIsSyncing(false);
   };
 
@@ -134,10 +134,10 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
 
     // Trigger initial pull on mount
-    fetchCloudData().then(() => {
+    fetchCloudData().then((connected) => {
       refreshAllData();
       setLastSyncedTime(new Date().toLocaleTimeString());
-      setCloudConnected(true);
+      setCloudConnected(!!connected);
     });
 
     // Listen for local changes to refresh UI instantly
@@ -154,9 +154,12 @@ export default function App() {
         if (updated) {
           refreshAllData();
           setLastSyncedTime(new Date().toLocaleTimeString());
+          setCloudConnected(true);
         }
-        setCloudConnected(true);
-      }).catch(err => console.warn('Auto polling warning:', err));
+      }).catch(err => {
+        console.warn('Auto polling warning:', err);
+        setCloudConnected(false);
+      });
     }, 15000);
 
     // Sync instantly when user switches back to this window/tab
