@@ -1,6 +1,6 @@
 // Pre-seeded master catalog for JAI MAA SHARDEY ENTERPRISES
 export const DEFAULT_BUSINESS = {
-  "name": " JAI MAA SHARDEY ENTERPRISES",
+  "name": "JAI MAA SHARDEY ENTERPRISES",
   "tagline": "Wholesale & Distribution",
   "proprietor": "Preety kumari",
   "gstin": "07HNPPK7350N1Z4",

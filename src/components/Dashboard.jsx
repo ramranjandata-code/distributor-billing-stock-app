@@ -189,16 +189,11 @@ export default function Dashboard({ products = [], parties = [], invoices = [], 
     const totalVal = Object.values(catMap).reduce((s, c) => s + c.value, 0);
     const validSegments = Object.values(catMap).filter(c => c.value > 0);
 
-    // If all are zero, provide default mock visual slices
+    // If all are zero, return empty segments
     if (validSegments.length === 0) {
       return {
-        total: 100,
-        segments: [
-          { name: 'Snacks & Wafers', value: 40, percent: 40, color: '#f59e0b' },
-          { name: 'Chocolates & Confectionery', value: 25, percent: 25, color: '#8b5cf6' },
-          { name: 'Biscuits & Bakery', value: 20, percent: 20, color: '#ec4899' },
-          { name: 'Cold Drinks & Beverages', value: 15, percent: 15, color: '#06b6d4' }
-        ]
+        total: 0,
+        segments: []
       };
     }
 
@@ -742,84 +737,90 @@ export default function Dashboard({ products = [], parties = [], invoices = [], 
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
-            
-            {/* SVG Pie Arc Diagram */}
-            <div style={{ position: 'relative', width: '200px', height: '200px', flexShrink: 0 }}>
-              <svg width="200" height="200" viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
-                {piePaths.map((slice, idx) => (
-                  <path
-                    key={idx}
-                    d={slice.path}
-                    fill={slice.color}
-                    opacity={hoveredSlice === null || hoveredSlice === idx ? 1 : 0.45}
-                    style={{
-                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={() => setHoveredSlice(idx)}
-                    onMouseLeave={() => setHoveredSlice(null)}
-                  />
-                ))}
-              </svg>
+          {pieChartData.segments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.86rem' }}>
+              No {pieMode === 'revenue' ? 'sales' : 'stock'} data available for this selection
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
+              
+              {/* SVG Pie Arc Diagram */}
+              <div style={{ position: 'relative', width: '200px', height: '200px', flexShrink: 0 }}>
+                <svg width="200" height="200" viewBox="0 0 200 200" style={{ transform: 'rotate(-90deg)' }}>
+                  {piePaths.map((slice, idx) => (
+                    <path
+                      key={idx}
+                      d={slice.path}
+                      fill={slice.color}
+                      opacity={hoveredSlice === null || hoveredSlice === idx ? 1 : 0.45}
+                      style={{
+                        transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        cursor: 'pointer'
+                      }}
+                      onMouseEnter={() => setHoveredSlice(idx)}
+                      onMouseLeave={() => setHoveredSlice(null)}
+                    />
+                  ))}
+                </svg>
 
-              {/* Center Donut Hole Text */}
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                textAlign: 'center',
-                pointerEvents: 'none'
-              }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)' }}>
-                  {pieMode === 'revenue' ? 'TOTAL SALES' : 'TOTAL STOCK'}
-                </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '900', color: 'var(--text-main)' }}>
-                  {pieMode === 'revenue' 
-                    ? `₹${Math.round(pieChartData.total).toLocaleString('en-IN')}` 
-                    : `${pieChartData.total} Pcs`}
+                {/* Center Donut Hole Text */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  textAlign: 'center',
+                  pointerEvents: 'none'
+                }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)' }}>
+                    {pieMode === 'revenue' ? 'TOTAL SALES' : 'TOTAL STOCK'}
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: '900', color: 'var(--text-main)' }}>
+                    {pieMode === 'revenue' 
+                      ? `₹${Math.round(pieChartData.total).toLocaleString('en-IN')}` 
+                      : `${pieChartData.total} Pcs`}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Slices Legend Table */}
-            <div style={{ flex: 1, minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {pieChartData.segments.map((slice, idx) => (
-                <div 
-                  key={idx}
-                  onMouseEnter={() => setHoveredSlice(idx)}
-                  onMouseLeave={() => setHoveredSlice(null)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    background: hoveredSlice === idx ? 'rgba(0,0,0,0.04)' : 'transparent',
-                    cursor: 'pointer',
-                    transition: 'background 0.2s'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: slice.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-main)' }}>
-                      {slice.name}
-                    </span>
+              {/* Slices Legend Table */}
+              <div style={{ flex: 1, minWidth: '180px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {pieChartData.segments.map((slice, idx) => (
+                  <div 
+                    key={idx}
+                    onMouseEnter={() => setHoveredSlice(idx)}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      background: hoveredSlice === idx ? 'rgba(0,0,0,0.04)' : 'transparent',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: slice.color, flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-main)' }}>
+                        {slice.name}
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: '800', color: slice.color }}>
+                        {slice.percent}%
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
+                        ({pieMode === 'revenue' ? `₹${Math.round(slice.value).toLocaleString('en-IN')}` : `${slice.value} pcs`})
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: '800', color: slice.color }}>
-                      {slice.percent}%
-                    </span>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
-                      ({pieMode === 'revenue' ? `₹${Math.round(slice.value).toLocaleString('en-IN')}` : `${slice.value} pcs`})
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-          </div>
+            </div>
+          )}
         </div>
 
         {/* PAYMENT DOUGHNUT & DIGITAL VS CASH FLOW */}

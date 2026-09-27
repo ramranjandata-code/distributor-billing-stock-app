@@ -84,10 +84,24 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const initialCapitalState = {
     openingCapital: capital.openingCapital || 0,
     additionalCapital: capital.additionalCapital || 0,
+    fixedAssets: capital.fixedAssets || 0,
+    openingCash: capital.openingCash || 0,
     asOfDate: capital.asOfDate || new Date().toISOString().split('T')[0],
     notes: capital.notes || ''
   };
   const [capitalFormData, setCapitalFormData] = useState(initialCapitalState);
+
+  const handleOpenCapitalModal = () => {
+    setCapitalFormData({
+      openingCapital: capital.openingCapital || 0,
+      additionalCapital: capital.additionalCapital || 0,
+      fixedAssets: capital.fixedAssets || 0,
+      openingCash: capital.openingCash || 0,
+      asOfDate: capital.asOfDate || new Date().toISOString().split('T')[0],
+      notes: capital.notes || ''
+    });
+    setCapitalModalOpen(true);
+  };
 
   // Reload local state whenever parent data refreshes
   const reloadAccountingData = () => {
@@ -309,16 +323,17 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     // 5. Cash in Hand (Galla): Opening Cash + Cash Sales - Cash Expenses
     const cashCollected = invoices.filter(i => i.paymentMode === 'CASH' || !i.paymentMode).reduce((s, i) => s + (Number(i.paidAmount) || 0), 0);
     const cashExpensesPaid = expenses.filter(e => e.paymentMode === 'CASH').reduce((s, e) => s + (Number(e.amount) || 0), 0);
-    const cashInHand = Math.max(0, (business?.openingCash || 25000) + cashCollected - cashExpensesPaid);
+    const openingCash = Number(capital.openingCash ?? business?.openingCash) || 0;
+    const cashInHand = Math.max(0, openingCash + cashCollected - cashExpensesPaid);
 
     // 6. Fixed Assets (Godown Racks, Vehicles, Computer & POS equipment)
-    const fixedAssets = Number(business?.fixedAssets) || 125000;
+    const fixedAssets = Number(capital.fixedAssets ?? business?.fixedAssets) || 0;
 
     // 7. Net GST Liability (Output tax payable to govt)
     const netGstPayable = Math.max(0, totalTax);
 
     // 8. Proprietor's Capital Account (Equity)
-    const openingCap = Number(capital.openingCapital) || 500000;
+    const openingCap = Number(capital.openingCapital) || 0;
     const addCap = Number(capital.additionalCapital) || 0;
     const currentProfit = pnlData.netProfit;
     const drawings = totalPersonalDrawings;
@@ -416,7 +431,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
         }
         const qty = Number(item.qty) || 0;
         const taxVal = Number(item.total) || 0;
-        const rate = Number(item.gstRate) || 18;
+        const rate = item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 0;
         const itemTax = (taxVal * rate) / 100;
 
         map[hsn].totalQty += qty;
@@ -439,7 +454,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     b2bInvoices.forEach(inv => {
       const pos = inv.partyGstin ? inv.partyGstin.substring(0, 2) : '07';
       const taxable = getInvTaxable(inv);
-      const rate = inv.items?.[0]?.gstRate || 18;
+      const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
       csvContent += `4A,"${inv.partyGstin}","${inv.partyName || inv.customerName}","${inv.invoiceNo}","${inv.date?.split('T')[0]}",${Number(inv.grandTotal || 0).toFixed(2)},"${pos}-State",N,Regular,${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
     });
 
@@ -449,7 +464,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     // Table 7: B2C Small Invoices
     b2cInvoices.forEach(inv => {
       const taxable = getInvTaxable(inv);
-      const rate = inv.items?.[0]?.gstRate || 18;
+      const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
       csvContent += `7,OE,"07-Delhi",${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
     });
 
@@ -598,7 +613,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               if (val === 'ACTION_EXPENSE') {
                 setExpenseModalOpen(true);
               } else if (val === 'ACTION_CAPITAL') {
-                setCapitalModalOpen(true);
+                handleOpenCapitalModal();
               } else {
                 setReportTab(val);
               }
@@ -691,7 +706,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setActionsMenuOpen(false); setCapitalModalOpen(true); }}
+                  onClick={() => { setActionsMenuOpen(false); handleOpenCapitalModal(); }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -786,7 +801,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
-                {business?.name || 'DISTRIBUTOR AGENCY'}
+                {business?.name || 'JAI MAA SHARDEY ENTERPRISES'}
               </h2>
               {business?.address && (
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
@@ -1142,7 +1157,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 24px' }}>1. Opening Proprietor Capital</td>
                       <td style={{ padding: '10px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>As on {capital.asOfDate || '01/04/2026'}</td>
-                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{Number(capital.openingCapital || 500000).toLocaleString('en-IN')}</td>
+                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{Number(capital.openingCapital || 0).toLocaleString('en-IN')}</td>
                     </tr>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px 24px' }}>2. Add: Current Net Profit from P&L</td>
@@ -1231,7 +1246,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                         1. Proprietor Capital Account
                       </span>
                       <button 
-                        onClick={() => setCapitalModalOpen(true)}
+                        onClick={handleOpenCapitalModal}
                         style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '3px' }}
                       >
                         <Edit3 size={12} /> Edit
@@ -2216,6 +2231,32 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     value={capitalFormData.additionalCapital}
                     onChange={e => setCapitalFormData({ ...capitalFormData, additionalCapital: e.target.value })}
                   />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Fixed Assets & Infrastructure (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="input-field"
+                    placeholder="0"
+                    value={capitalFormData.fixedAssets}
+                    onChange={e => setCapitalFormData({ ...capitalFormData, fixedAssets: e.target.value })}
+                  />
+                  <small style={{ color: 'var(--text-dim)', fontSize: '0.74rem' }}>Godown racks, furniture, vehicles, computers (default 0)</small>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Opening Cash in Hand (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="input-field"
+                    placeholder="0"
+                    value={capitalFormData.openingCash}
+                    onChange={e => setCapitalFormData({ ...capitalFormData, openingCash: e.target.value })}
+                  />
+                  <small style={{ color: 'var(--text-dim)', fontSize: '0.74rem' }}>Opening cash register / galla balance (default 0)</small>
                 </div>
 
                 <div className="form-group">

@@ -593,7 +593,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   color: '#000000',
                   lineHeight: '1.1'
                 }}>
-                  {business?.name || 'DISTRIBUTOR AGENCY'}
+                  {business?.name || 'JAI MAA SHARDEY ENTERPRISES'}
                 </h1>
                 {business?.address && (
                   <p style={{ margin: '1px 0 0 0', fontSize: paperFormat === 'A5' ? '0.66rem' : '0.78rem', color: '#1e293b', fontWeight: '500' }}>
@@ -1013,7 +1013,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                     </tr>
                     <tr>
                       <td colSpan={2} style={{ padding: paperFormat === 'A5' ? '2px 4px' : '3px 6px', fontWeight: '800', fontSize: paperFormat === 'A5' ? '0.62rem' : '0.72rem', color: '#000' }}>
-                        For {business?.name || 'Distributor Agency'} <span style={{ float: 'right', color: '#475569', fontWeight: '600' }}>(E & O.E.)</span>
+                        For {business?.name || 'JAI MAA SHARDEY ENTERPRISES'} <span style={{ float: 'right', color: '#475569', fontWeight: '600' }}>(E & O.E.)</span>
                       </td>
                     </tr>
                   </tbody>

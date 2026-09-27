@@ -54,6 +54,8 @@ const DEFAULT_PURCHASES = [];
 const DEFAULT_PROPRIETOR_CAPITAL = {
   openingCapital: 0,
   additionalCapital: 0,
+  fixedAssets: 0,
+  openingCash: 0,
   asOfDate: new Date().toISOString().split('T')[0],
   notes: ''
 };
@@ -1392,10 +1394,10 @@ export const deleteExpense = (id) => {
 
 export const fetchProprietorCapital = () => {
   const cap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
-  if (cap?.notes === 'Opening capital as per FY 2026-27 balance sheet') {
+  if (!cap || cap?.notes === 'Opening capital as per FY 2026-27 balance sheet') {
     return DEFAULT_PROPRIETOR_CAPITAL;
   }
-  return cap;
+  return { ...DEFAULT_PROPRIETOR_CAPITAL, ...cap };
 };
 
 export const saveProprietorCapital = (capitalData) => {

@@ -290,7 +290,7 @@ export default function AppLauncher({
               </span>
             </div>
             <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
-              {business?.name || 'Distributor Agency'} • {business?.city || 'Distributor HQ'}
+              {business?.name || 'JAI MAA SHARDEY ENTERPRISES'} • {business?.city || 'Delhi'}
             </p>
           </div>
         </div>
