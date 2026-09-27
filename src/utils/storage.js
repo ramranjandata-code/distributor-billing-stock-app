@@ -960,6 +960,44 @@ export const saveInvoice = (invoiceData) => {
   return newInvoice;
 };
 
+// Update an existing invoice in-place: reverses old stock/balance, then saves with same id+invoiceNo
+export const updateInvoice = (originalInvoice, updatedData) => {
+  const products = fetchProducts();
+
+  // 1. Reverse old stock deduction
+  if (originalInvoice.items && Array.isArray(originalInvoice.items)) {
+    const restoredProducts = products.map(p => {
+      const old = originalInvoice.items.find(item => item.productId === p.id);
+      if (old && !old.isSection && !old.isNote) {
+        return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(old.qty) || 0) };
+      }
+      return p;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, restoredProducts);
+  }
+
+  // 2. Reverse old party balance (only the unpaid portion)
+  if (originalInvoice.partyId) {
+    const oldDue = originalInvoice.balanceAmount || Math.max(0, (Number(originalInvoice.grandTotal) || 0) - (Number(originalInvoice.paidAmount) || 0));
+    if (oldDue > 0) updatePartyBalance(originalInvoice.partyId, -oldDue);
+  }
+
+  // 3. Remove the old invoice record from the list (without tombstoning the id)
+  const invoices = fetchInvoices();
+  const withoutOld = invoices.filter(i => i.id !== originalInvoice.id);
+  setStorageData(STORAGE_KEYS.INVOICES, withoutOld);
+
+  // 4. Save with same id + invoiceNo (saveInvoice will re-deduct stock & re-apply balance)
+  return saveInvoice({
+    ...updatedData,
+    id: originalInvoice.id,
+    invoiceNo: originalInvoice.invoiceNo,
+    irn: originalInvoice.irn,
+    ackNo: originalInvoice.ackNo,
+    ackDate: originalInvoice.ackDate,
+  });
+};
+
 // Odoo Action: Confirm & Post a Draft Invoice
 export const postInvoice = (invoiceId) => {
   const invoices = fetchInvoices();

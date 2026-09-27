@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3 } from 'lucide-react';
-import { formatCartonStock, deleteInvoice, fetchParties } from '../utils/storage';
+import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle } from 'lucide-react';
+import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, updateInvoice } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
 
@@ -89,6 +89,18 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   const [upiQrUrl, setUpiQrUrl] = useState(null);
   const [eInvoiceQrUrl, setEInvoiceQrUrl] = useState(null);
 
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false);
+  const [editItems, setEditItems] = useState([]);
+  const [editPartyId, setEditPartyId] = useState('');
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editPaymentStatus, setEditPaymentStatus] = useState('PAID');
+  const [editPaymentMode, setEditPaymentMode] = useState('CASH');
+  const [editPaidAmount, setEditPaidAmount] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editProductSearch, setEditProductSearch] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const changePaperFormat = (fmt) => {
     setPaperFormat(fmt);
     localStorage.setItem('distro_default_paper_format', fmt);
@@ -139,54 +151,67 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   };
 
   const handleEditInvoice = () => {
-    if (!window.confirm(`✏️ Edit Invoice #${invoice.invoiceNo}?\n\nThis will:\n• Delete the current invoice\n• Return all stock to warehouse\n• Restore party balance\n• Open the bill in Billing page for you to correct\n\nProceed?`)) return;
-    // Delete the invoice (stock & balance will be restored)
-    deleteInvoice(invoice.id);
-    if (refreshAllData) refreshAllData();
-    // Build a draft from the invoice data so Billing.jsx loads it
-    const draft = {
-      cart: (invoice.items || []).map(item => ({
-        id: item.productId || item.id,
-        name: item.name || item.productName,
-        price: item.price || item.salePrice || item.rate,
-        qty: item.qty,
-        unit: item.unit || 'Pcs',
-        gstRate: item.gstRate || 0,
-        hsn: item.hsn || '',
-        mrp: item.mrp || item.price,
-        total: item.total,
-        pcsPerCarton: item.pcsPerCarton || 24
-      })),
-      rawCart: (invoice.items || []).map(item => ({
-        id: item.productId || item.id,
-        name: item.name || item.productName,
-        price: item.price || item.salePrice || item.rate,
-        qty: item.qty,
-        unit: item.unit || 'Pcs',
-        gstRate: item.gstRate || 0,
-        hsn: item.hsn || '',
-        mrp: item.mrp || item.price,
-        total: item.total,
-        pcsPerCarton: item.pcsPerCarton || 24
-      })),
-      selectedPartyId: invoice.partyId || '',
-      customerName: invoice.partyName || invoice.customerName || '',
-      customerPhone: invoice.partyPhone || '',
-      taxMode: invoice.taxMode || 'INTRA',
-      pricingType: invoice.pricingType || 'INCLUSIVE',
-      paymentStatus: invoice.paymentStatus || 'PAID',
-      paymentMode: invoice.paymentMode || 'CASH',
-      paidAmount: invoice.paidAmount || '',
-      notes: invoice.notes || '',
-      discountType: invoice.discountType || 'AMOUNT',
-      discountValue: invoice.discount || 0,
-      invoiceDate: invoice.date ? invoice.date.split('T')[0] : new Date().toISOString().split('T')[0],
-      roundOffEnabled: true
-    };
-    localStorage.setItem('distro_active_billing_draft', JSON.stringify(draft));
-    onClose();
-    if (onEditInvoice) onEditInvoice();
+    // Open inline edit panel — no delete, no navigation
+    setEditItems((invoice.items || []).map(item => ({ ...item })));
+    setEditPartyId(invoice.partyId || '');
+    setEditCustomerName(invoice.partyName || invoice.customerName || '');
+    setEditPaymentStatus(invoice.paymentStatus || 'PAID');
+    setEditPaymentMode(invoice.paymentMode || 'CASH');
+    setEditPaidAmount(invoice.paidAmount || '');
+    setEditNotes(invoice.notes || '');
+    setEditMode(true);
   };
+
+  const handleSaveEdit = () => {
+    const allProducts = fetchProducts();
+    // Recalculate totals for edited items
+    const updatedItems = editItems.map(item => {
+      const price = Number(item.price) || 0;
+      const qty = Number(item.qty) || 0;
+      const total = price * qty;
+      const gstRate = Number(item.gstRate) || 0;
+      const gstAmt = total - (total / (1 + gstRate / 100));
+      return { ...item, qty, price, total, itemGstAmount: gstAmt, taxableAmount: total - gstAmt };
+    });
+    const grandTotal = updatedItems.reduce((s, i) => s + (Number(i.total) || 0), 0);
+    const totalTax = updatedItems.reduce((s, i) => s + (Number(i.itemGstAmount) || 0), 0);
+    const taxableSubtotal = grandTotal - totalTax;
+
+    // Resolve party
+    const allParties = fetchParties();
+    const chosenParty = allParties.find(p => p.id === editPartyId);
+
+    const paidAmt = editPaymentStatus === 'PAID' ? grandTotal : (Number(editPaidAmount) || 0);
+
+    const updatedInvoiceData = {
+      ...invoice,
+      items: updatedItems,
+      partyId: editPartyId || invoice.partyId,
+      partyName: chosenParty?.name || editCustomerName || invoice.partyName,
+      customerName: chosenParty?.name || editCustomerName || invoice.customerName,
+      partyPhone: chosenParty?.phone || invoice.partyPhone,
+      partyAddress: chosenParty?.address || invoice.partyAddress,
+      paymentStatus: editPaymentStatus,
+      paymentMode: editPaymentMode,
+      paidAmount: paidAmt,
+      notes: editNotes,
+      grandTotal,
+      taxTotal: totalTax,
+      taxableSubtotal,
+      subtotal: taxableSubtotal,
+      subTotal: taxableSubtotal,
+      cgst: totalTax / 2,
+      sgst: totalTax / 2,
+    };
+
+    updateInvoice(invoice, updatedInvoiceData);
+    if (refreshAllData) refreshAllData();
+    setEditMode(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+
 
   const formattedDate = new Date(invoice.date).toLocaleDateString('en-IN', {
     day: '2-digit',
@@ -350,9 +375,18 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   }, [processedItems, isNonGst]);
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 1000 }}>
-      <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'A5' ? '680px' : '900px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
+    <>
+      <div className="modal-overlay" style={{ zIndex: 1000 }}>
+        <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'A5' ? '680px' : '900px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
         
+        {/* Success Banner */}
+        {saveSuccess && (
+          <div className="no-print" style={{ background: '#059669', color: '#fff', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '700', fontSize: '0.9rem' }}>
+            <CheckCircle size={18} />
+            ✅ Bill updated successfully! Same invoice number kept — {invoice.invoiceNo}
+          </div>
+        )}
+
         {/* Top Control Bar (Hidden on Print) */}
         <div className="modal-header no-print" style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: 'var(--text-main)', padding: '12px 18px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1129,5 +1163,227 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
       </div>
     </div>
+
+    {/* Inline Edit Bill Panel */}
+    {editMode && (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflow: 'auto', padding: '24px', border: '1px solid var(--border-color)' }}>
+          
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+            <div>
+              <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Edit3 size={18} color="#d97706" />
+                Edit Bill — {invoice.invoiceNo}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>Same invoice number will be kept. Changes save instantly.</div>
+            </div>
+            <button onClick={() => setEditMode(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Party / Customer */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Customer / Party</label>
+            <select
+              className="input-field"
+              value={editPartyId}
+              onChange={e => {
+                const p = fetchParties().find(x => x.id === e.target.value);
+                setEditPartyId(e.target.value);
+                if (p) setEditCustomerName(p.name);
+              }}
+              style={{ marginBottom: '6px' }}
+            >
+              <option value="">-- Cash Customer --</option>
+              {fetchParties().map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            {!editPartyId && (
+              <input
+                className="input-field"
+                placeholder="Customer name (optional)"
+                value={editCustomerName}
+                onChange={e => setEditCustomerName(e.target.value)}
+              />
+            )}
+          </div>
+
+          {/* Items Table */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Items</label>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Product</th>
+                    <th style={{ padding: '8px', textAlign: 'center', width: '80px' }}>Qty</th>
+                    <th style={{ padding: '8px', textAlign: 'right', width: '100px' }}>Rate (₹)</th>
+                    <th style={{ padding: '8px', textAlign: 'right', width: '90px' }}>Total</th>
+                    <th style={{ padding: '8px', width: '40px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {editItems.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '8px', fontWeight: '600', color: 'var(--text-main)' }}>
+                        {item.name || item.productName}
+                        {item.hsn && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
+                      </td>
+                      <td style={{ padding: '6px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...editItems];
+                              updated[idx] = { ...updated[idx], qty: Math.max(1, (Number(updated[idx].qty) || 1) - 1) };
+                              setEditItems(updated);
+                            }}
+                            style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.qty}
+                            onChange={e => {
+                              const updated = [...editItems];
+                              updated[idx] = { ...updated[idx], qty: Number(e.target.value) || 1 };
+                              setEditItems(updated);
+                            }}
+                            style={{ width: '44px', textAlign: 'center', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 4px', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.84rem' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...editItems];
+                              updated[idx] = { ...updated[idx], qty: (Number(updated[idx].qty) || 1) + 1 };
+                              setEditItems(updated);
+                            }}
+                            style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ padding: '6px' }}>
+                        <input
+                          type="number"
+                          value={item.price}
+                          onChange={e => {
+                            const updated = [...editItems];
+                            updated[idx] = { ...updated[idx], price: Number(e.target.value) || 0 };
+                            setEditItems(updated);
+                          }}
+                          style={{ width: '90px', textAlign: 'right', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 6px', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.84rem' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)' }}>
+                        ₹{((Number(item.price) || 0) * (Number(item.qty) || 0)).toFixed(2)}
+                      </td>
+                      <td style={{ padding: '6px', textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditItems(editItems.filter((_, i) => i !== idx))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171' }}
+                          title="Remove item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Add Product from inventory */}
+            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <select
+                className="input-field"
+                style={{ flex: 1, minWidth: '200px' }}
+                value=""
+                onChange={e => {
+                  if (!e.target.value) return;
+                  const prod = fetchProducts().find(p => p.id === e.target.value);
+                  if (prod) {
+                    setEditItems([...editItems, {
+                      productId: prod.id,
+                      name: prod.name,
+                      hsn: prod.hsn || '',
+                      price: prod.salePrice || prod.mrp || 0,
+                      qty: 1,
+                      unit: prod.unit || 'Pcs',
+                      gstRate: prod.gstRate || 0,
+                      mrp: prod.mrp || 0,
+                      pcsPerCarton: prod.pcsPerCarton || 24,
+                      total: prod.salePrice || 0
+                    }]);
+                  }
+                  e.target.value = '';
+                }}
+              >
+                <option value="">+ Add product from inventory...</option>
+                {fetchProducts().map(p => <option key={p.id} value={p.id}>{p.name} — ₹{p.salePrice}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Payment */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Payment Status</label>
+              <select className="input-field" value={editPaymentStatus} onChange={e => setEditPaymentStatus(e.target.value)}>
+                <option value="PAID">PAID</option>
+                <option value="UNPAID">UNPAID</option>
+                <option value="PARTIAL">PARTIAL</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Payment Mode</label>
+              <select className="input-field" value={editPaymentMode} onChange={e => setEditPaymentMode(e.target.value)}>
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="NEFT">NEFT / Bank Transfer</option>
+                <option value="CHEQUE">Cheque</option>
+              </select>
+            </div>
+            {editPaymentStatus === 'PARTIAL' && (
+              <div>
+                <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Amount Paid (₹)</label>
+                <input type="number" className="input-field" value={editPaidAmount} onChange={e => setEditPaidAmount(e.target.value)} />
+              </div>
+            )}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Notes</label>
+              <input type="text" className="input-field" value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Optional note..." />
+            </div>
+          </div>
+
+          {/* Grand Total Preview */}
+          <div style={{ padding: '12px 16px', background: 'rgba(5,150,105,0.08)', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: '700', color: 'var(--text-main)' }}>New Grand Total:</span>
+            <span style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--primary)' }}>
+              ₹{editItems.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 0), 0).toFixed(2)}
+            </span>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button onClick={() => setEditMode(false)} className="btn btn-secondary">Cancel</button>
+            <button
+              onClick={handleSaveEdit}
+              className="btn btn-primary"
+              style={{ gap: '6px', display: 'flex', alignItems: 'center' }}
+            >
+              <Save size={16} />
+              Update Bill
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
