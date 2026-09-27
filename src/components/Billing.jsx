@@ -1191,14 +1191,14 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   borderRadius: '6px'
                 }}
               >
-                {/* Left Info: Product Name & SKU / Pack Size */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {/* Left Info: Product Name & SKU / Pack Size in SAME LINE */}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                  <h4 style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-main)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1 }}>
                     {product.name}
                   </h4>
-                  <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', marginTop: '1px' }}>
-                    Pack: {product.pcsPerCarton || 24} Pcs/Ctn • SKU: {product.sku}
-                  </div>
+                  <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    • Pack: {product.pcsPerCarton || 24} Pcs/Ctn • SKU: {product.sku}
+                  </span>
                 </div>
 
                 {/* Right Info: Price */}
@@ -1700,9 +1700,11 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     return (
                       <tr key={item.productId} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <td style={{ padding: '4px 3px' }}>
-                          <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>{item.name}</div>
-                          <div style={{ fontSize: '0.64rem', color: 'var(--text-dim)' }}>
-                            Pack: {item.pcsPerCarton || 24} Pcs/Ctn • GST: {item.gstRate}%
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>{item.name}</span>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--text-dim)', whiteSpace: 'nowrap' }}>
+                              • Pack: {item.pcsPerCarton || 24} • {item.gstRate}% GST
+                            </span>
                           </div>
                         </td>
                         
