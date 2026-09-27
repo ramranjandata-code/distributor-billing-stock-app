@@ -115,8 +115,13 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
   // Generate dynamic QR codes locally & offline
   useEffect(() => {
-    generateUpiQrDataUrl(business?.upiId, business?.name, invoice.grandTotal, invoice.invoiceNo)
-      .then(url => setUpiQrUrl(url));
+    // If user has uploaded a custom UPI QR image, use it directly
+    if (business?.upiQrImage) {
+      setUpiQrUrl(business.upiQrImage);
+    } else {
+      generateUpiQrDataUrl(business?.upiId, business?.name, invoice.grandTotal, invoice.invoiceNo)
+        .then(url => setUpiQrUrl(url));
+    }
     generateEInvoiceQrDataUrl(invoice, business)
       .then(url => setEInvoiceQrUrl(url));
   }, [invoice, business]);

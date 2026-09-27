@@ -686,12 +686,16 @@ export default function Billing({ products, parties, business, refreshAllData, h
     }
 
     // Generate dynamic UPI QR code for instant payment
-    generateUpiQrDataUrl(business?.upiId, business?.name, grandTotal, savedInv.invoiceNo).then(qrUrl => {
-      setCheckoutModal({
-        invoice: savedInv,
-        upiQrUrl: qrUrl
+    if (business?.upiQrImage) {
+      setCheckoutModal({ invoice: savedInv, upiQrUrl: business.upiQrImage });
+    } else {
+      generateUpiQrDataUrl(business?.upiId, business?.name, grandTotal, savedInv.invoiceNo).then(qrUrl => {
+        setCheckoutModal({
+          invoice: savedInv,
+          upiQrUrl: qrUrl
+        });
       });
-    });
+    }
     
     // Clear bill state and remove draft on successful post
     localStorage.removeItem('distro_active_billing_draft');

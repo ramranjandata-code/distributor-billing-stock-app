@@ -394,6 +394,82 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                   onChange={e => setFormData({...formData, invoicePrefix: e.target.value})}
                 />
               </div>
+
+              <div className="form-group">
+                <label className="form-label">UPI ID / VPA (for Bill QR)</label>
+                <input 
+                  type="text" 
+                  className="input-field"
+                  placeholder="e.g. yourname@upi or 9811223344@paytm"
+                  value={formData.upiId || ''} 
+                  onChange={e => setFormData({...formData, upiId: e.target.value})}
+                />
+              </div>
+            </div>
+
+            {/* UPI QR Image Upload Section */}
+            <div style={{ marginTop: '20px', padding: '16px', border: '1.5px dashed var(--border-color)', borderRadius: '10px', background: 'rgba(5,150,105,0.04)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <span style={{ fontSize: '1.2rem' }}>📲</span>
+                <div>
+                  <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--text-main)' }}>Custom UPI QR Code Image</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Upload your own UPI QR image — it will print on every bill automatically</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                {formData.upiQrImage ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <img 
+                      src={formData.upiQrImage} 
+                      alt="UPI QR" 
+                      style={{ width: '110px', height: '110px', objectFit: 'contain', border: '1px solid var(--border-color)', borderRadius: '8px', background: '#fff', padding: '4px' }} 
+                    />
+                    <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: '4px', fontWeight: '600' }}>✅ Custom QR Saved</div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, upiQrImage: ''})}
+                      style={{ marginTop: '6px', fontSize: '0.72rem', color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Remove QR
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ width: '110px', height: '110px', border: '2px dashed var(--border-color)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '4px', color: 'var(--text-muted)', fontSize: '0.72rem', textAlign: 'center' }}>
+                    <span style={{ fontSize: '1.8rem' }}>🖼️</span>
+                    <span>No QR uploaded</span>
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <label 
+                    htmlFor="upi-qr-upload"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', background: 'var(--primary)', color: '#fff', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600' }}
+                  >
+                    📤 Upload QR Image
+                  </label>
+                  <input
+                    id="upi-qr-upload"
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      if (file.size > 500 * 1024) {
+                        alert('Image too large! Please use an image under 500KB.');
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = ev => setFormData({...formData, upiQrImage: ev.target.result});
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '6px', lineHeight: '1.5' }}>
+                    • Take screenshot of your UPI QR from any payment app<br/>
+                    • Upload PNG/JPG (max 500KB)<br/>
+                    • This QR will appear on printed bills
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
