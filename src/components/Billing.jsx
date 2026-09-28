@@ -2521,7 +2521,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Purchase / Cost Price (₹)</label>
+                  <label className="form-label">Purchase / Cost Price (Ex-GST) (₹)</label>
                   <input 
                     type="number" 
                     className="input-field" 
@@ -2544,6 +2544,39 @@ export default function Billing({ products, parties, business, refreshAllData, h
                     <option value={18}>18% GST</option>
                     <option value={28}>28% GST</option>
                   </select>
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label" style={{ color: '#047857', fontWeight: '700' }}>
+                    Purchase Price with GST (₹)
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      className="input-field"
+                      style={{ background: '#f0fdf4', fontWeight: '700', color: '#047857', borderColor: '#86efac' }}
+                      value={
+                        newProductData.purchasePrice !== '' && !isNaN(newProductData.purchasePrice)
+                          ? Number((Number(newProductData.purchasePrice) * (1 + (Number(newProductData.gstRate) || 0) / 100)).toFixed(2))
+                          : ''
+                      }
+                      onChange={e => {
+                        const withGst = parseFloat(e.target.value);
+                        if (isNaN(withGst) || withGst < 0) {
+                          setNewProductData({ ...newProductData, purchasePrice: '' });
+                        } else {
+                          const rate = Number(newProductData.gstRate) || 0;
+                          const exGst = withGst / (1 + rate / 100);
+                          setNewProductData({ ...newProductData, purchasePrice: Number(exGst.toFixed(2)) });
+                        }
+                      }}
+                      placeholder="Auto-calculated (or type to back-calc)"
+                    />
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                      (Incl. {newProductData.gstRate || 0}% GST)
+                    </span>
+                  </div>
                 </div>
 
                 <div className="form-group">

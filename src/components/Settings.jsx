@@ -938,7 +938,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Purchase Price (₹)</label>
+                  <label className="form-label">Purchase Price / Cost Price (Ex-GST) (₹)</label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -947,6 +947,9 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     value={prodFormData.purchasePrice}
                     onChange={e => setProdFormData({...prodFormData, purchasePrice: e.target.value})}
                   />
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Purchase rate excluding GST
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -962,6 +965,42 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     <option value="18">18% GST</option>
                     <option value="28">28% GST</option>
                   </select>
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label" style={{ color: '#047857', fontWeight: '700' }}>
+                    Purchase Price with GST (₹)
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      className="input-field"
+                      style={{ background: '#f0fdf4', fontWeight: '700', color: '#047857', borderColor: '#86efac' }}
+                      value={
+                        prodFormData.purchasePrice !== '' && !isNaN(prodFormData.purchasePrice)
+                          ? Number((Number(prodFormData.purchasePrice) * (1 + (Number(prodFormData.gstRate) || 0) / 100)).toFixed(2))
+                          : ''
+                      }
+                      onChange={e => {
+                        const withGst = parseFloat(e.target.value);
+                        if (isNaN(withGst) || withGst < 0) {
+                          setProdFormData({ ...prodFormData, purchasePrice: '' });
+                        } else {
+                          const rate = Number(prodFormData.gstRate) || 0;
+                          const exGst = withGst / (1 + rate / 100);
+                          setProdFormData({ ...prodFormData, purchasePrice: Number(exGst.toFixed(2)) });
+                        }
+                      }}
+                      placeholder="Auto-calculated (or type to back-calc)"
+                    />
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                      (Incl. {prodFormData.gstRate || 0}% GST)
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: '3px' }}>
+                    💡 2-Way Sync: Enter Cost Price (Ex-GST) or Purchase Price (With GST) — the other updates automatically.
+                  </div>
                 </div>
 
                 <div className="form-group">

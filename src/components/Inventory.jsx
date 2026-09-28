@@ -439,14 +439,18 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
       {/* Inventory Table Card */}
       <div className="glass-card" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <h3 style={{ fontSize: '1.1rem', fontWeight: '700' }}>
             Stock Inventory ({filteredProducts.length} Items)
           </h3>
-          <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-            Total Stock Valuation (Purchase Cost): ₹
-            {filteredProducts.reduce((sum, p) => sum + (p.currentStock * p.purchasePrice), 0).toLocaleString('en-IN')}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              Total Stock Valuation (Cost Ex-GST): <strong style={{ color: 'var(--text-main)' }}>₹{filteredProducts.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * (Number(p.purchasePrice) || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+            </span>
+            <span style={{ fontSize: '0.78rem', color: '#059669', fontWeight: '700' }}>
+              Valuation (With GST): ₹{filteredProducts.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * ((Number(p.purchasePrice) || 0) * (1 + (Number(p.gstRate) || 0) / 100))), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
@@ -460,6 +464,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 <th style={{ padding: '12px 10px' }}>Sale Price</th>
                 <th style={{ padding: '12px 10px' }}>Cost Price</th>
                 <th style={{ padding: '12px 10px' }}>GST %</th>
+                <th style={{ padding: '12px 10px', color: '#047857', fontWeight: '700' }}>Purchase Price (w/ GST)</th>
                 <th style={{ padding: '12px 10px' }}>Current Stock</th>
                 <th style={{ padding: '12px 10px', textAlign: 'right' }}>Actions</th>
               </tr>
@@ -467,7 +472,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                     No products found.
                   </td>
                 </tr>
@@ -476,6 +481,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   const isLow = prod.currentStock <= (prod.minStockLimit || 10);
                   const expInfo = getExpiryStatus(prod.expiryDate);
                   const whObj = warehouses.find(w => w.id === prod.warehouseId) || warehouses[0];
+                  const pPrice = Number(prod.purchasePrice) || 0;
+                  const gRate = Number(prod.gstRate) || 0;
+                  const purchaseWithGst = pPrice * (1 + gRate / 100);
 
                   return (
                     <tr key={prod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -504,8 +512,17 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                       </td>
                       <td style={{ padding: '12px 10px', fontWeight: '600' }}>₹{prod.mrp}</td>
                       <td style={{ padding: '12px 10px', fontWeight: '700', color: 'var(--primary)' }}>₹{prod.salePrice}</td>
-                      <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>₹{prod.purchasePrice}</td>
+                      <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>
+                        <div>₹{prod.purchasePrice}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ex-GST</div>
+                      </td>
                       <td style={{ padding: '12px 10px' }}>{prod.gstRate}%</td>
+                      <td style={{ padding: '12px 10px', fontWeight: '700', color: '#047857' }}>
+                        <div>₹{purchaseWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: '0.69rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>
+                          +₹{((pPrice * gRate) / 100).toFixed(2)} tax
+                        </div>
+                      </td>
                       <td style={{ padding: '12px 10px' }}>
                         <span className={`badge ${isLow ? 'badge-danger' : 'badge-success'}`}>
                           {formatCartonStock(prod.currentStock, prod.pcsPerCarton)}
@@ -658,7 +675,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Cost Price (₹) *</label>
+                  <label className="form-label">Cost Price / Purchase Rate (Ex-GST) (₹) *</label>
                   <input 
                     type="number" 
                     step="0.01"
@@ -667,6 +684,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     value={formData.purchasePrice}
                     onChange={e => setFormData({...formData, purchasePrice: e.target.value})}
                   />
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Basic purchase rate excluding GST
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -682,6 +702,42 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     <option value={18}>18% GST</option>
                     <option value={28}>28% GST</option>
                   </select>
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label" style={{ color: '#047857', fontWeight: '700' }}>
+                    Purchase Price with GST (₹)
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      className="input-field"
+                      style={{ background: '#f0fdf4', fontWeight: '700', color: '#047857', borderColor: '#86efac' }}
+                      value={
+                        formData.purchasePrice !== '' && !isNaN(formData.purchasePrice)
+                          ? Number((Number(formData.purchasePrice) * (1 + (Number(formData.gstRate) || 0) / 100)).toFixed(2))
+                          : ''
+                      }
+                      onChange={e => {
+                        const withGst = parseFloat(e.target.value);
+                        if (isNaN(withGst) || withGst < 0) {
+                          setFormData({ ...formData, purchasePrice: '' });
+                        } else {
+                          const rate = Number(formData.gstRate) || 0;
+                          const exGst = withGst / (1 + rate / 100);
+                          setFormData({ ...formData, purchasePrice: Number(exGst.toFixed(2)) });
+                        }
+                      }}
+                      placeholder="Auto-calculated (or type to back-calc)"
+                    />
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: '600', whiteSpace: 'nowrap' }}>
+                      (Incl. {formData.gstRate || 0}% GST)
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: '3px' }}>
+                    💡 2-Way Sync: Enter Cost Price (Ex-GST) or Purchase Price (With GST) — the other updates automatically.
+                  </div>
                 </div>
 
                 <div className="form-group">
@@ -1136,7 +1192,8 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                         <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
                           <th style={{ padding: '6px' }}>Item Name</th>
                           <th style={{ padding: '6px', textAlign: 'center' }}>Qty</th>
-                          <th style={{ padding: '6px', textAlign: 'right' }}>Cost</th>
+                          <th style={{ padding: '6px', textAlign: 'right' }}>Cost (Ex-GST)</th>
+                          <th style={{ padding: '6px', textAlign: 'right', color: '#047857' }}>Cost (+GST)</th>
                           <th style={{ padding: '6px', textAlign: 'right' }}>MRP</th>
                           <th style={{ padding: '6px' }}>Batch</th>
                           <th style={{ padding: '6px' }}>Expiry</th>
@@ -1148,6 +1205,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                             <td style={{ padding: '6px', fontWeight: '700' }}>{item.name}</td>
                             <td style={{ padding: '6px', textAlign: 'center' }}>{item.qty} Pcs</td>
                             <td style={{ padding: '6px', textAlign: 'right' }}>₹{item.purchasePrice}</td>
+                            <td style={{ padding: '6px', textAlign: 'right', fontWeight: '700', color: '#047857' }}>
+                              ₹{(Number(item.purchasePrice || 0) * (1 + (Number(item.gstRate || 5) / 100))).toFixed(2)}
+                            </td>
                             <td style={{ padding: '6px', textAlign: 'right' }}>₹{item.mrp}</td>
                             <td style={{ padding: '6px' }}>{item.batchNo}</td>
                             <td style={{ padding: '6px' }}>{item.expiryDate || 'N/A'}</td>
