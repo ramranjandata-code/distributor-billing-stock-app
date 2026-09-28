@@ -2181,7 +2181,6 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                         ) : (
                           filteredProductsForPurchase.map((p, idx) => {
                             const isHighlighted = (highlightedPurchaseProdIndex === idx);
-                            const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'P';
 
                             return (
                               <div 
@@ -2189,86 +2188,21 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 onClick={() => handleSelectProductToPurchase(p)}
                                 onMouseEnter={() => setHighlightedPurchaseProdIndex(idx)}
                                 style={{
-                                  padding: '4px 8px',
+                                  padding: '7px 12px',
                                   borderRadius: '5px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
                                   cursor: 'pointer',
                                   background: isHighlighted ? '#2563eb' : 'transparent',
                                   color: isHighlighted ? '#ffffff' : '#0f172a',
+                                  fontWeight: isHighlighted ? '700' : '500',
+                                  fontSize: '0.80rem',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
                                   transition: 'background 0.1s ease, color 0.1s ease',
                                   marginBottom: '2px'
                                 }}
                               >
-                                {/* Round Avatar Circle with Initial */}
-                                <div style={{
-                                  width: '24px',
-                                  height: '24px',
-                                  borderRadius: '50%',
-                                  background: isHighlighted ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
-                                  color: isHighlighted ? '#ffffff' : '#475569',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontWeight: '700',
-                                  fontSize: '0.72rem',
-                                  flexShrink: 0
-                                }}>
-                                  {initial}
-                                </div>
-
-                                {/* Product Details */}
-                                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                                  <div style={{
-                                    fontWeight: '700',
-                                    fontSize: '0.8rem',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    color: isHighlighted ? '#ffffff' : '#0f172a'
-                                  }}>
-                                    {p.name}
-                                  </div>
-                                  <div style={{
-                                    fontSize: '0.68rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    marginTop: '1px',
-                                    color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
-                                  }}>
-                                    <Tag size={11} style={{ flexShrink: 0 }} />
-                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                      {p.sku ? `SKU: ${p.sku}` : ''}{p.hsn ? ` • HSN: ${p.hsn}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Price & Stock status */}
-                                <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
-                                  <div style={{
-                                    fontWeight: '700',
-                                    fontSize: '0.82rem',
-                                    color: isHighlighted ? '#ffffff' : '#059669'
-                                  }}>
-                                    ₹{p.salePrice || p.mrp || 0}
-                                  </div>
-                                  <div style={{
-                                    fontSize: '0.64rem',
-                                    fontWeight: '600',
-                                    padding: '1px 5px',
-                                    borderRadius: '3px',
-                                    background: isHighlighted 
-                                      ? 'rgba(255, 255, 255, 0.2)' 
-                                      : '#f1f5f9',
-                                    color: isHighlighted 
-                                      ? '#ffffff' 
-                                      : '#475569'
-                                  }}>
-                                    Stock: {p.currentStock || 0} {p.unit || 'Pcs'}
-                                  </div>
-                                </div>
+                                {p.name}
                               </div>
                             );
                           })
@@ -2485,7 +2419,8 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                       position: 'absolute',
                                       top: 'calc(100% + 4px)',
                                       left: 0,
-                                      width: '400px',
+                                      width: '320px',
+                                      maxWidth: '90vw',
                                       zIndex: 99999,
                                       background: '#ffffff',
                                       borderRadius: '8px',
@@ -2532,7 +2467,6 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
                                         return matching.map((p, pIdx) => {
                                           const isHigh = (highlightedProductIndex === pIdx);
-                                          const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'P';
                                           return (
                                             <div
                                               key={p.id || pIdx}
@@ -2542,86 +2476,21 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                               }}
                                               onMouseEnter={() => setHighlightedProductIndex(pIdx)}
                                               style={{
-                                                padding: '5px 8px',
+                                                padding: '7px 12px',
                                                 borderRadius: '5px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '8px',
                                                 cursor: 'pointer',
                                                 background: isHigh ? '#2563eb' : 'transparent',
                                                 color: isHigh ? '#ffffff' : '#0f172a',
-                                                transition: 'all 0.1s ease',
+                                                fontWeight: isHigh ? '700' : '500',
+                                                fontSize: '0.80rem',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                transition: 'background 0.1s ease, color 0.1s ease',
                                                 marginBottom: '2px'
                                               }}
                                             >
-                                              {/* Round Avatar Circle with Initial */}
-                                              <div style={{
-                                                width: '24px',
-                                                height: '24px',
-                                                borderRadius: '50%',
-                                                background: isHigh ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
-                                                color: isHigh ? '#ffffff' : '#475569',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                fontWeight: '700',
-                                                fontSize: '0.72rem',
-                                                flexShrink: 0
-                                              }}>
-                                                {initial}
-                                              </div>
-
-                                              {/* Product Details */}
-                                              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                                                <div style={{
-                                                  fontWeight: '700',
-                                                  fontSize: '0.78rem',
-                                                  whiteSpace: 'nowrap',
-                                                  overflow: 'hidden',
-                                                  textOverflow: 'ellipsis',
-                                                  color: isHigh ? '#ffffff' : '#0f172a'
-                                                }}>
-                                                  {p.name}
-                                                </div>
-                                                <div style={{
-                                                  fontSize: '0.66rem',
-                                                  display: 'flex',
-                                                  alignItems: 'center',
-                                                  gap: '4px',
-                                                  marginTop: '1px',
-                                                  color: isHigh ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
-                                                }}>
-                                                  <Tag size={11} style={{ flexShrink: 0 }} />
-                                                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                    {p.sku ? `SKU: ${p.sku}` : ''}{p.hsn ? ` • HSN: ${p.hsn}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
-                                                  </span>
-                                                </div>
-                                              </div>
-
-                                              {/* Price & Stock status */}
-                                              <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
-                                                <div style={{
-                                                  fontWeight: '700',
-                                                  fontSize: '0.80rem',
-                                                  color: isHigh ? '#ffffff' : '#059669'
-                                                }}>
-                                                  ₹{p.salePrice || p.mrp || 0}
-                                                </div>
-                                                <div style={{
-                                                  fontSize: '0.64rem',
-                                                  fontWeight: '600',
-                                                  padding: '1px 5px',
-                                                  borderRadius: '3px',
-                                                  background: isHigh 
-                                                    ? 'rgba(255, 255, 255, 0.2)' 
-                                                    : '#f1f5f9',
-                                                  color: isHigh 
-                                                    ? '#ffffff' 
-                                                    : '#475569'
-                                                }}>
-                                                  Stock: {p.currentStock || 0} {p.unit || 'Pcs'}
-                                                </div>
-                                              </div>
+                                              {p.name}
                                             </div>
                                           );
                                         });
