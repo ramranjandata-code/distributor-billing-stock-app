@@ -254,10 +254,11 @@ input[type=number] {
   backdrop-filter: blur(8px);
   z-index: 999;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
   animation: fadeIn 0.2s ease-out;
+  overflow-y: auto;
 }
 
 .modal-content {
@@ -267,7 +268,8 @@ input[type=number] {
   border-radius: var(--radius-lg);
   max-width: 650px;
   width: 100%;
-  max-height: 90vh;
+  max-height: calc(100vh - 40px);
+  margin: auto;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   display: flex;

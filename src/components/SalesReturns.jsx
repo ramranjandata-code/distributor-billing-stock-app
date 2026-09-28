@@ -776,269 +776,479 @@ export default function SalesReturns({ onNavigateToInvoice }) {
       </div>
 
       {/* 5. CREATE RETURN (RMA) MODAL */}
-      {isCreateModalOpen && (
-        <div className="modal-overlay" style={{ zIndex: 1200, padding: '20px', overflowY: 'auto' }}>
-          <div style={{ 
-            maxWidth: '920px', 
-            width: '100%', 
-            margin: '0 auto', 
-            background: '#ffffff', 
-            borderRadius: '14px', 
-            border: '1px solid #e2e8f0', 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-            overflow: 'hidden'
-          }}>
-            {/* Modal Header */}
+      {isCreateModalOpen && (() => {
+        const selectedInv = invoices.find(i => i.id === selectedInvoiceId);
+        const selectedRows = returnItems.filter(item => item.selected);
+        const selectedCount = selectedRows.length;
+        const totalReturnValue = selectedRows.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)), 0);
+        const restockUnits = selectedRows.filter(i => i.condition === 'UNDAMAGED').reduce((sum, i) => sum + (Number(item.quantity) || 0), 0);
+        const scrapUnits = selectedRows.filter(i => i.condition === 'DAMAGED').reduce((sum, i) => sum + (Number(item.quantity) || 0), 0);
+
+        return (
+          <div 
+            className="modal-overlay" 
+            style={{ 
+              zIndex: 1200, 
+              padding: '16px', 
+              alignItems: 'flex-start',
+              overflowY: 'auto' 
+            }}
+          >
             <div style={{ 
-              padding: '16px 22px', 
-              borderBottom: '1px solid #e2e8f0', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              background: '#f8fafc'
+              maxWidth: '1040px', 
+              width: '100%', 
+              margin: '16px auto', 
+              maxHeight: 'calc(100vh - 32px)',
+              background: '#ffffff', 
+              borderRadius: '16px', 
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', 
-                  color: '#fff', 
+              {/* Modal Header (Fixed at top) */}
+              <div style={{ 
+                padding: '16px 24px', 
+                borderBottom: '1px solid #e2e8f0', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                background: '#f8fafc',
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ 
+                    width: '36px', 
+                    height: '36px', 
+                    borderRadius: '10px', 
+                    background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', 
+                    color: '#fff', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                  }}>
+                    <RotateCcw size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                      Create Sales Return (RMA)
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      Select items to return, inspect physical condition, and issue restocking or scrap write-off.
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setIsCreateModalOpen(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
+                >
+                  <X size={22} />
+                </button>
+              </div>
+
+              {/* Modal Form */}
+              <form 
+                onSubmit={handleCreateSubmit} 
+                style={{ 
                   display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center' 
-                }}>
-                  <RotateCcw size={16} />
-                </div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>
-                  Create Sales Return (RMA)
-                </h3>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setIsCreateModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                  flexDirection: 'column', 
+                  flex: '1 1 auto', 
+                  overflow: 'hidden', 
+                  minHeight: 0 
+                }}
               >
-                <X size={20} />
-              </button>
-            </div>
+                {/* Scrollable Form Body */}
+                <div style={{ 
+                  padding: '20px 24px', 
+                  overflowY: 'auto', 
+                  flex: '1 1 auto', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '16px',
+                  minHeight: 0
+                }}>
+                  {/* Row 1: Invoice Picker & Return Date */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', marginBottom: '6px' }}>
+                        1. Select Original Sales Invoice *
+                      </label>
+                      <select
+                        value={selectedInvoiceId}
+                        onChange={(e) => handleInvoiceSelect(e.target.value)}
+                        className="select-field input-field"
+                        style={{ fontSize: '0.86rem', fontWeight: '600' }}
+                        required
+                      >
+                        <option value="">-- Choose Sales Invoice --</option>
+                        {invoices.map((inv) => (
+                          <option key={inv.id} value={inv.id}>
+                            #{inv.invoiceNo} — {inv.customerName || inv.partyName} (₹{Number(inv.grandTotal || 0).toLocaleString('en-IN')})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-            {/* Modal Form */}
-            <form onSubmit={handleCreateSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {/* Row 1: Invoice Picker & Return Date */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem' }}>
-                    Select Original Sales Invoice *
-                  </label>
-                  <select
-                    value={selectedInvoiceId}
-                    onChange={(e) => handleInvoiceSelect(e.target.value)}
-                    className="select-field input-field"
-                    style={{ fontSize: '0.85rem' }}
-                    required
-                  >
-                    <option value="">-- Choose Invoice --</option>
-                    {invoices.map((inv) => (
-                      <option key={inv.id} value={inv.id}>
-                        {inv.invoiceNo} - {inv.customerName || inv.partyName} (₹{Number(inv.grandTotal || 0).toLocaleString('en-IN')})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div>
+                      <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', marginBottom: '6px' }}>
+                        2. Return Date
+                      </label>
+                      <input
+                        type="date"
+                        value={returnDate}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                        className="input-field"
+                        style={{ fontSize: '0.86rem' }}
+                      />
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem' }}>
-                    Return Date
-                  </label>
-                  <input
-                    type="date"
-                    value={returnDate}
-                    onChange={(e) => setReturnDate(e.target.value)}
-                    className="input-field"
-                    style={{ fontSize: '0.85rem' }}
-                  />
-                </div>
-              </div>
+                  {/* Customer & Invoice Details Banner */}
+                  {selectedInv && (
+                    <div style={{
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                      fontSize: '0.82rem'
+                    }}>
+                      <div>
+                        <span style={{ color: '#64748b', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Customer / Party</span>
+                        <strong style={{ fontSize: '0.94rem', color: '#1e293b' }}>{selectedInv.customerName || selectedInv.partyName || 'Customer'}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Invoice No & Date</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: '700' }}>#{selectedInv.invoiceNo}</span> • {selectedInv.date || 'N/A'}
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Billed Invoice Value</span>
+                        <strong style={{ color: '#059669', fontSize: '0.94rem' }}>₹{Number(selectedInv.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748b', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: '700', display: 'block' }}>Billed Products</span>
+                        <span style={{ fontWeight: '700' }}>{returnItems.length} Products</span>
+                      </div>
+                    </div>
+                  )}
 
-              {/* Items Table */}
-              <div>
-                <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', marginBottom: '8px', display: 'block' }}>
-                  Select Return Items & Condition Inspection
-                </label>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
-                        <th style={{ padding: '8px 10px', width: '40px', textAlign: 'center' }}>Return</th>
-                        <th style={{ padding: '8px 10px' }}>Product</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px' }}>Billed</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '90px' }}>Return Qty</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '90px' }}>Rate (₹)</th>
-                        <th style={{ padding: '8px 10px', width: '180px' }}>Condition / Scrap</th>
-                        <th style={{ padding: '8px 10px' }}>Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {returnItems.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
-                            Please select an invoice above to populate billed items.
-                          </td>
-                        </tr>
-                      ) : (
-                        returnItems.map((item, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #f1f5f9', background: item.selected ? '#f5f3ff' : '#ffffff' }}>
-                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                  {/* Items Table Section */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                      <label className="form-label" style={{ fontWeight: '800', fontSize: '0.85rem', margin: 0, color: '#1e293b' }}>
+                        Select Items to Return & Inspect Condition ({selectedCount} of {returnItems.length} items selected)
+                      </label>
+                      {returnItems.length > 0 && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allSel = returnItems.every(i => i.selected);
+                              setReturnItems(returnItems.map(i => ({ ...i, selected: !allSel })));
+                            }}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '3px 10px', fontSize: '0.74rem', fontWeight: '700' }}
+                          >
+                            {returnItems.every(i => i.selected) ? 'Deselect All' : 'Select All Items'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Table Container with Sticky Header */}
+                    <div style={{ 
+                      border: '1px solid #e2e8f0', 
+                      borderRadius: '10px', 
+                      maxHeight: '320px', 
+                      overflowY: 'auto', 
+                      overflowX: 'auto',
+                      background: '#ffffff',
+                      boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)'
+                    }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
+                          <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569', fontSize: '0.78rem' }}>
+                            <th style={{ padding: '10px 12px', width: '45px', textAlign: 'center' }}>
                               <input
                                 type="checkbox"
-                                checked={item.selected}
+                                checked={returnItems.length > 0 && returnItems.every(i => i.selected)}
                                 onChange={(e) => {
-                                  const updated = [...returnItems];
-                                  updated[index].selected = e.target.checked;
-                                  setReturnItems(updated);
+                                  const checked = e.target.checked;
+                                  setReturnItems(returnItems.map(i => ({ ...i, selected: checked })));
                                 }}
                                 style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                title="Select All / Deselect All"
                               />
-                            </td>
-                            <td style={{ padding: '8px 10px', fontWeight: '700', color: '#1e293b' }}>
-                              {item.productName}
-                              {item.sku && <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>{item.sku}</div>}
-                            </td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700', color: '#64748b' }}>
-                              {item.billedQty}
-                            </td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min="1"
-                                max={item.billedQty}
-                                value={item.quantity}
-                                disabled={!item.selected}
-                                onChange={(e) => {
-                                  const updated = [...returnItems];
-                                  updated[index].quantity = Math.max(1, Math.min(item.billedQty, Number(e.target.value) || 1));
-                                  setReturnItems(updated);
-                                }}
-                                style={{ width: '70px', textAlign: 'center', padding: '4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
-                              />
-                            </td>
-                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
-                              ₹{Number(item.unitPrice).toFixed(2)}
-                            </td>
-                            <td style={{ padding: '8px 10px' }}>
-                              <select
-                                value={item.condition}
-                                disabled={!item.selected}
-                                onChange={(e) => {
-                                  const updated = [...returnItems];
-                                  const cond = e.target.value;
-                                  updated[index].condition = cond;
-                                  updated[index].disposition = cond === 'DAMAGED' ? 'SCRAP' : 'RESTOCK';
-                                  setReturnItems(updated);
-                                }}
-                                style={{
-                                  width: '100%',
-                                  padding: '4px 6px',
-                                  fontSize: '0.78rem',
-                                  fontWeight: '700',
-                                  borderRadius: '6px',
-                                  border: item.condition === 'UNDAMAGED' ? '1px solid #a7f3d0' : '1px solid #fecaca',
-                                  background: item.condition === 'UNDAMAGED' ? '#ecfdf5' : '#fef2f2',
-                                  color: item.condition === 'UNDAMAGED' ? '#059669' : '#dc2626'
-                                }}
-                              >
-                                <option value="UNDAMAGED">Undamaged (Restock)</option>
-                                <option value="DAMAGED">Damaged (Scrap Write-Off)</option>
-                              </select>
-                            </td>
-                            <td style={{ padding: '8px 10px' }}>
-                              <input
-                                type="text"
-                                placeholder="Reason for return..."
-                                value={item.reason}
-                                disabled={!item.selected}
-                                onChange={(e) => {
-                                  const updated = [...returnItems];
-                                  updated[index].reason = e.target.value;
-                                  setReturnItems(updated);
-                                }}
-                                style={{ width: '100%', padding: '4px 8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                              />
-                            </td>
+                            </th>
+                            <th style={{ padding: '10px 12px', minWidth: '220px' }}>Product Description</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'center', width: '70px' }}>Billed</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'center', width: '90px' }}>Return Qty</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', width: '85px' }}>Rate (₹)</th>
+                            <th style={{ padding: '10px 12px', minWidth: '200px' }}>Condition / Disposition</th>
+                            <th style={{ padding: '10px 12px', minWidth: '150px' }}>Return Reason</th>
+                            <th style={{ padding: '10px 12px', textAlign: 'right', width: '95px' }}>Line Total</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {returnItems.length === 0 ? (
+                            <tr>
+                              <td colSpan={8} style={{ textAlign: 'center', padding: '36px 20px', color: '#94a3b8' }}>
+                                <RotateCcw size={32} style={{ opacity: 0.4, margin: '0 auto 8px auto', display: 'block' }} />
+                                Please select a sales invoice above to view and inspect returnable items.
+                              </td>
+                            </tr>
+                          ) : (
+                            returnItems.map((item, index) => {
+                              const lineVal = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+                              return (
+                                <tr 
+                                  key={index} 
+                                  style={{ 
+                                    borderBottom: '1px solid #f1f5f9', 
+                                    background: item.selected ? '#f5f3ff' : '#ffffff',
+                                    transition: 'background 0.15s ease'
+                                  }}
+                                >
+                                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={item.selected}
+                                      onChange={(e) => {
+                                        const updated = [...returnItems];
+                                        updated[index].selected = e.target.checked;
+                                        setReturnItems(updated);
+                                      }}
+                                      style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '10px 12px', fontWeight: '700', color: '#1e293b' }}>
+                                    <div>{item.productName}</div>
+                                    {item.sku && <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace', fontWeight: '500' }}>{item.sku}</div>}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '700', color: '#64748b' }}>
+                                    {item.billedQty}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max={item.billedQty}
+                                      value={item.quantity}
+                                      disabled={!item.selected}
+                                      onChange={(e) => {
+                                        const updated = [...returnItems];
+                                        updated[index].quantity = Math.max(1, Math.min(item.billedQty, Number(e.target.value) || 1));
+                                        setReturnItems(updated);
+                                      }}
+                                      style={{ 
+                                        width: '70px', 
+                                        textAlign: 'center', 
+                                        padding: '5px', 
+                                        borderRadius: '6px', 
+                                        border: '1px solid #cbd5e1', 
+                                        fontSize: '0.84rem',
+                                        fontWeight: '700',
+                                        background: item.selected ? '#ffffff' : '#f8fafc',
+                                        color: item.selected ? '#1e293b' : '#94a3b8'
+                                      }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: '#1e293b' }}>
+                                    ₹{Number(item.unitPrice).toFixed(2)}
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <select
+                                      value={item.condition}
+                                      disabled={!item.selected}
+                                      onChange={(e) => {
+                                        const updated = [...returnItems];
+                                        const cond = e.target.value;
+                                        updated[index].condition = cond;
+                                        updated[index].disposition = cond === 'DAMAGED' ? 'SCRAP' : 'RESTOCK';
+                                        setReturnItems(updated);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '5px 8px',
+                                        fontSize: '0.8rem',
+                                        fontWeight: '700',
+                                        borderRadius: '6px',
+                                        border: item.condition === 'UNDAMAGED' ? '1px solid #a7f3d0' : '1px solid #fecaca',
+                                        background: item.condition === 'UNDAMAGED' ? '#ecfdf5' : '#fef2f2',
+                                        color: item.condition === 'UNDAMAGED' ? '#059669' : '#dc2626',
+                                        cursor: item.selected ? 'pointer' : 'not-allowed'
+                                      }}
+                                    >
+                                      <option value="UNDAMAGED">Undamaged (Restock)</option>
+                                      <option value="DAMAGED">Damaged (Scrap Write-Off)</option>
+                                    </select>
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <input
+                                      type="text"
+                                      placeholder="Reason for return..."
+                                      value={item.reason}
+                                      disabled={!item.selected}
+                                      onChange={(e) => {
+                                        const updated = [...returnItems];
+                                        updated[index].reason = e.target.value;
+                                        setReturnItems(updated);
+                                      }}
+                                      style={{ 
+                                        width: '100%', 
+                                        padding: '5px 8px', 
+                                        fontSize: '0.8rem', 
+                                        borderRadius: '6px', 
+                                        border: '1px solid #cbd5e1',
+                                        background: item.selected ? '#ffffff' : '#f8fafc'
+                                      }}
+                                    />
+                                  </td>
+                                  <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: item.selected ? '#7c3aed' : '#94a3b8' }}>
+                                    ₹{lineVal.toFixed(2)}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Live Calculation Strip */}
+                    {selectedCount > 0 && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        background: '#f5f3ff',
+                        border: '1px solid #ddd6fe',
+                        fontSize: '0.82rem',
+                        marginTop: '4px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: '800', color: '#6b21a8' }}>
+                            ✓ {selectedCount} of {returnItems.length} Products Selected
+                          </span>
+                          <span style={{ color: '#059669', fontWeight: '700' }}>
+                            📦 Restocking to Warehouse: {restockUnits} Pcs
+                          </span>
+                          <span style={{ color: '#dc2626', fontWeight: '700' }}>
+                            ⚠️ Scrap / Damage Loss: {scrapUnits} Pcs
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '0.96rem', fontWeight: '900', color: '#4f46e5' }}>
+                          Total Refund / Credit: ₹{totalReturnValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notes & Remarks */}
+                  <div>
+                    <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', marginBottom: '4px' }}>
+                      Internal Notes / Transporter Details
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={returnNotes}
+                      onChange={(e) => setReturnNotes(e.target.value)}
+                      placeholder="Additional return notes, transporter details or customer remarks..."
+                      className="input-field"
+                      style={{ fontSize: '0.85rem' }}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Notes */}
-              <div>
-                <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem' }}>
-                  Internal Notes / Transporter Details
-                </label>
-                <textarea
-                  rows={2}
-                  value={returnNotes}
-                  onChange={(e) => setReturnNotes(e.target.value)}
-                  placeholder="Additional return notes, transporter details or remarks..."
-                  className="input-field"
-                  style={{ fontSize: '0.85rem' }}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="btn btn-secondary"
-                  style={{ fontWeight: '700', padding: '8px 16px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ fontWeight: '800', padding: '8px 20px', background: '#7c3aed' }}
-                >
-                  Create Return (Draft)
-                </button>
-              </div>
-            </form>
+                {/* Fixed Modal Footer */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  padding: '14px 24px', 
+                  borderTop: '1px solid #e2e8f0', 
+                  background: '#f8fafc',
+                  flexShrink: 0
+                }}>
+                  <div style={{ fontSize: '0.84rem', color: '#64748b' }}>
+                    {selectedCount > 0 ? (
+                      <span>Total Return Amount: <strong style={{ color: '#1e293b', fontSize: '0.95rem' }}>₹{totalReturnValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
+                    ) : (
+                      <span style={{ color: '#dc2626', fontWeight: '600' }}>* Select at least 1 item to proceed</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateModalOpen(false)}
+                      className="btn btn-secondary"
+                      style={{ fontWeight: '700', padding: '8px 18px' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={selectedCount === 0}
+                      className="btn btn-primary"
+                      style={{ 
+                        fontWeight: '800', 
+                        padding: '8px 22px', 
+                        background: selectedCount > 0 ? 'linear-gradient(135deg, #7c3aed, #4f46e5)' : '#cbd5e1',
+                        cursor: selectedCount > 0 ? 'pointer' : 'not-allowed',
+                        boxShadow: selectedCount > 0 ? '0 4px 12px rgba(124, 58, 237, 0.3)' : 'none'
+                      }}
+                    >
+                      Create Return ({selectedCount > 0 ? `₹${totalReturnValue.toFixed(2)}` : 'Draft'})
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 6. DETAIL / INSPECTION MODAL */}
       {isDetailModalOpen && selectedReturn && (
-        <div className="modal-overlay" style={{ zIndex: 1200, padding: '20px', overflowY: 'auto' }}>
+        <div className="modal-overlay" style={{ zIndex: 1200, padding: '16px', alignItems: 'flex-start', overflowY: 'auto' }}>
           <div style={{ 
-            maxWidth: '820px', 
+            maxWidth: '880px', 
             width: '100%', 
-            margin: '0 auto', 
+            margin: '16px auto', 
+            maxHeight: 'calc(100vh - 32px)',
             background: '#ffffff', 
-            borderRadius: '14px', 
+            borderRadius: '16px', 
             border: '1px solid #e2e8f0', 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-            overflow: 'hidden'
+            boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             {/* Header */}
             <div style={{ 
-              padding: '16px 22px', 
+              padding: '16px 24px', 
               borderBottom: '1px solid #e2e8f0', 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center',
-              background: '#f8fafc'
+              background: '#f8fafc',
+              flexShrink: 0
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ 
                   width: '36px', 
                   height: '36px', 
-                  borderRadius: '8px', 
+                  borderRadius: '10px', 
                   background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', 
                   color: '#fff', 
                   display: 'flex', 
@@ -1070,20 +1280,20 @@ export default function SalesReturns({ onNavigateToInvoice }) {
               <button 
                 type="button" 
                 onClick={() => setIsDetailModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
               >
-                <X size={20} />
+                <X size={22} />
               </button>
             </div>
 
-            {/* Content */}
-            <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* Scrollable Content Body */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
               {/* Meta Grid */}
               <div style={{ 
                 display: 'grid', 
                 gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', 
                 gap: '12px', 
-                padding: '14px', 
+                padding: '14px 16px', 
                 background: '#f8fafc', 
                 borderRadius: '10px', 
                 border: '1px solid #e2e8f0', 
@@ -1108,38 +1318,38 @@ export default function SalesReturns({ onNavigateToInvoice }) {
               </div>
 
               {/* Items List */}
-              <div>
-                <h4 style={{ fontSize: '0.84rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h4 style={{ fontSize: '0.84rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em', margin: 0 }}>
                   Returned Items Breakdown
                 </h4>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', maxHeight: '280px', overflowY: 'auto', overflowX: 'auto', background: '#ffffff', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
-                        <th style={{ padding: '8px 12px' }}>Item Name</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'center' }}>Qty</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>Rate</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'center' }}>Condition</th>
-                        <th style={{ padding: '8px 12px' }}>Disposition Handling</th>
-                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>Amount</th>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                        <th style={{ padding: '10px 12px' }}>Item Name</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Rate</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Condition</th>
+                        <th style={{ padding: '10px 12px' }}>Disposition Handling</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Amount</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(selectedReturn.items || []).map((it, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '8px 12px', fontWeight: '700', color: '#1e293b' }}>
+                          <td style={{ padding: '10px 12px', fontWeight: '700', color: '#1e293b' }}>
                             {it.productName}
                             {it.reason && <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>{it.reason}</div>}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '800', color: '#1e293b' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '800', color: '#1e293b' }}>
                             {it.quantity}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', color: '#64748b' }}>
                             ₹{Number(it.unitPrice).toFixed(2)}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                             <span style={{
-                              padding: '2px 8px',
+                              padding: '3px 8px',
                               borderRadius: '6px',
                               fontSize: '0.72rem',
                               fontWeight: '800',
@@ -1149,14 +1359,14 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                               {it.condition}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 12px', color: '#475569', fontWeight: '600' }}>
+                          <td style={{ padding: '10px 12px', color: '#475569', fontWeight: '600' }}>
                             {it.condition === 'UNDAMAGED' ? (
-                              <span style={{ color: '#059669' }}>Restocked to Godown</span>
+                              <span style={{ color: '#059669', fontWeight: '700' }}>📦 Restocked to Godown</span>
                             ) : (
-                              <span style={{ color: '#dc2626' }}>Written off as Scrap Loss</span>
+                              <span style={{ color: '#dc2626', fontWeight: '700' }}>⚠️ Written off as Scrap Loss</span>
                             )}
                           </td>
-                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '800', color: '#1e293b' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: '#1e293b' }}>
                             ₹{Number(it.amount || (it.quantity * it.unitPrice)).toFixed(2)}
                           </td>
                         </tr>
@@ -1182,59 +1392,59 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                   </div>
                 </div>
               )}
+            </div>
 
-              {/* Modal Actions */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {selectedReturn.status === 'Draft' && (
-                    <button
-                      type="button"
-                      onClick={() => handleReceive(selectedReturn.id)}
-                      className="btn btn-primary"
-                      style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', background: '#4f46e5' }}
-                    >
-                      <PackageCheck size={14} />
-                      <span>Receive & Inspect Items</span>
-                    </button>
-                  )}
+            {/* Modal Actions Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {selectedReturn.status === 'Draft' && (
+                  <button
+                    type="button"
+                    onClick={() => handleReceive(selectedReturn.id)}
+                    className="btn btn-primary"
+                    style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', background: '#4f46e5' }}
+                  >
+                    <PackageCheck size={14} />
+                    <span>Receive & Inspect Items</span>
+                  </button>
+                )}
 
-                  {selectedReturn.status === 'Received' && (
-                    <button
-                      type="button"
-                      onClick={() => handleIssueCreditNote(selectedReturn.id)}
-                      className="btn btn-primary"
-                      style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', background: '#7c3aed' }}
-                    >
-                      <CreditCard size={14} />
-                      <span>Issue Credit Note</span>
-                    </button>
-                  )}
+                {selectedReturn.status === 'Received' && (
+                  <button
+                    type="button"
+                    onClick={() => handleIssueCreditNote(selectedReturn.id)}
+                    className="btn btn-primary"
+                    style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', background: '#7c3aed' }}
+                  >
+                    <CreditCard size={14} />
+                    <span>Issue Credit Note</span>
+                  </button>
+                )}
 
-                  {(selectedReturn.status === 'Received' || selectedReturn.status === 'Credit Issued') && !selectedReturn.replacementInvoiceId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsDetailModalOpen(false);
-                        handleOpenReplacement(selectedReturn);
-                      }}
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#0d9488', borderColor: '#99f6e4', background: '#f0fdfa' }}
-                    >
-                      <ArrowRightLeft size={14} />
-                      <span>Create Replacement Invoice</span>
-                    </button>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsDetailModalOpen(false)}
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 16px', fontSize: '0.82rem', fontWeight: '700' }}
-                >
-                  Close
-                </button>
+                {(selectedReturn.status === 'Received' || selectedReturn.status === 'Credit Issued') && !selectedReturn.replacementInvoiceId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDetailModalOpen(false);
+                      handleOpenReplacement(selectedReturn);
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#0d9488', borderColor: '#99f6e4', background: '#f0fdfa' }}
+                  >
+                    <ArrowRightLeft size={14} />
+                    <span>Create Replacement Invoice</span>
+                  </button>
+                )}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="btn btn-secondary"
+                style={{ padding: '6px 18px', fontSize: '0.82rem', fontWeight: '700' }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -1242,78 +1452,102 @@ export default function SalesReturns({ onNavigateToInvoice }) {
 
       {/* 7. REPLACEMENT INVOICE MODAL */}
       {isReplacementModalOpen && selectedReturn && (
-        <div className="modal-overlay" style={{ zIndex: 1200, padding: '20px', overflowY: 'auto' }}>
+        <div className="modal-overlay" style={{ zIndex: 1200, padding: '16px', alignItems: 'flex-start', overflowY: 'auto' }}>
           <div style={{ 
-            maxWidth: '820px', 
+            maxWidth: '880px', 
             width: '100%', 
-            margin: '0 auto', 
+            margin: '16px auto', 
+            maxHeight: 'calc(100vh - 32px)',
             background: '#ffffff', 
-            borderRadius: '14px', 
+            borderRadius: '16px', 
             border: '1px solid #e2e8f0', 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-            overflow: 'hidden'
+            boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             {/* Header */}
             <div style={{ 
-              padding: '16px 22px', 
+              padding: '16px 24px', 
               borderBottom: '1px solid #e2e8f0', 
               display: 'flex', 
               justifyContent: 'space-between', 
               alignItems: 'center',
-              background: '#f8fafc'
+              background: '#f8fafc',
+              flexShrink: 0
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '10px', 
                   background: 'linear-gradient(135deg, #0d9488, #059669)', 
                   color: '#fff', 
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center' 
                 }}>
-                  <ArrowRightLeft size={16} />
+                  <ArrowRightLeft size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>
                     Create Product Replacement Invoice
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b' }}>
-                    Applying credit of ₹{Number(selectedReturn.totalAmount).toLocaleString('en-IN')} from Return {selectedReturn.returnNumber}
+                    Applying credit note balance of ₹{Number(selectedReturn.totalAmount).toLocaleString('en-IN')} from Return #{selectedReturn.returnNumber}
                   </p>
                 </div>
               </div>
               <button 
                 type="button" 
                 onClick={() => setIsReplacementModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
               >
-                <X size={20} />
+                <X size={22} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleReplacementSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', margin: 0 }}>
-                    Replacement Products to Dispatch
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleAddReplacementRow}
-                    style={{ background: 'none', border: 'none', color: '#0d9488', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    <Plus size={14} />
-                    <span>+ Add Product</span>
-                  </button>
-                </div>
+            <form 
+              onSubmit={handleReplacementSubmit} 
+              style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                flex: '1 1 auto', 
+                overflow: 'hidden', 
+                minHeight: 0 
+              }}
+            >
+              {/* Scrollable Body */}
+              <div style={{ 
+                padding: '20px 24px', 
+                overflowY: 'auto', 
+                flex: '1 1 auto', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '16px',
+                minHeight: 0
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label" style={{ fontWeight: '800', fontSize: '0.85rem', margin: 0, color: '#1e293b' }}>
+                      Replacement Products to Dispatch
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddReplacementRow}
+                      className="btn btn-secondary btn-sm"
+                      style={{ color: '#0d9488', fontWeight: '700', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Plus size={14} />
+                      <span>+ Add Another Product</span>
+                    </button>
+                  </div>
 
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', maxHeight: '260px', overflowY: 'auto', overflowX: 'auto', background: '#ffffff', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.02)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                        <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
                         <th style={{ padding: '8px 12px' }}>Product</th>
                         <th style={{ padding: '8px 12px', textAlign: 'center', width: '90px' }}>Qty</th>
                         <th style={{ padding: '8px 12px', textAlign: 'right', width: '110px' }}>Rate (₹)</th>
@@ -1408,20 +1642,23 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 );
               })()}
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                {/* End of Scrollable Body */}
+              </div>
+
+              {/* Fixed Modal Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={() => setIsReplacementModalOpen(false)}
                   className="btn btn-secondary"
-                  style={{ fontWeight: '700', padding: '8px 16px' }}
+                  style={{ fontWeight: '700', padding: '8px 18px' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="btn btn-primary"
-                  style={{ fontWeight: '800', padding: '8px 20px', background: '#0d9488' }}
+                  style={{ fontWeight: '800', padding: '8px 22px', background: 'linear-gradient(135deg, #0d9488, #059669)', border: 'none', boxShadow: '0 4px 12px rgba(13, 148, 136, 0.3)' }}
                 >
                   Confirm & Generate Replacement Invoice
                 </button>
