@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   saveProduct, 
   deleteProduct, 
@@ -14,6 +14,7 @@ import {
 import { 
   Package, 
   Plus, 
+  PlusCircle,
   Search, 
   Edit3, 
   Trash2, 
@@ -34,7 +35,9 @@ import {
   CheckCircle,
   Sparkles,
   Layers,
-  ShoppingBag
+  ShoppingBag,
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 
 export default function Inventory({ products, refreshAllData }) {
@@ -49,6 +52,23 @@ export default function Inventory({ products, refreshAllData }) {
   const [suppliers, setSuppliers] = useState(fetchSuppliers());
   const [quickSupplierModalOpen, setQuickSupplierModalOpen] = useState(false);
   const [newSupplierData, setNewSupplierData] = useState({ name: '', gstin: '', phone: '', city: '' });
+
+  // Supplier Search Dropdown in Add New Purchase
+  const [showSupplierSuggestions, setShowSupplierSuggestions] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [highlightedSupplierIndex, setHighlightedSupplierIndex] = useState(0);
+  const [selectedSupplierObj, setSelectedSupplierObj] = useState(null);
+  const supplierDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target)) {
+        setShowSupplierSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -290,8 +310,55 @@ export default function Inventory({ products, refreshAllData }) {
       billNo: '',
       warehouseId: warehouses[0]?.id || 'wh_main'
     });
+    setSupplierSearchTerm('');
+    setSelectedSupplierObj(null);
+    setShowSupplierSuggestions(false);
     setPurchaseRows([emptyPurchaseRow()]);
     setPurchaseModalOpen(true);
+  };
+
+  const filteredSuppliersForPurchase = useMemo(() => {
+    const list = suppliers || [];
+    if (!supplierSearchTerm.trim()) return list;
+    const q = supplierSearchTerm.toLowerCase();
+    return list.filter(s => 
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.gstin || '').toLowerCase().includes(q) ||
+      (s.phone || '').toLowerCase().includes(q) ||
+      (s.city || '').toLowerCase().includes(q)
+    );
+  }, [suppliers, supplierSearchTerm]);
+
+  const handleSelectSupplierFromList = (supplier) => {
+    if (supplier) {
+      setSelectedSupplierObj(supplier);
+      setPurchaseHeader(prev => ({
+        ...prev,
+        partyName: supplier.name,
+        partyGst: supplier.gstin || ''
+      }));
+      setSupplierSearchTerm('');
+    } else {
+      setSelectedSupplierObj(null);
+      setPurchaseHeader(prev => ({
+        ...prev,
+        partyName: '',
+        partyGst: ''
+      }));
+      setSupplierSearchTerm('');
+    }
+  };
+
+  const handleOpenQuickSupplierFromDropdown = () => {
+    const typed = (supplierSearchTerm || purchaseHeader.partyName || '').trim();
+    setNewSupplierData({
+      name: typed,
+      gstin: '',
+      phone: '',
+      city: ''
+    });
+    setShowSupplierSuggestions(false);
+    setQuickSupplierModalOpen(true);
   };
 
   const handleAddPurchaseRow = () => {
@@ -386,11 +453,13 @@ export default function Inventory({ products, refreshAllData }) {
     });
     const updatedSupps = fetchSuppliers();
     setSuppliers(updatedSupps);
+    setSelectedSupplierObj(created);
     setPurchaseHeader(prev => ({
       ...prev,
       partyName: created.name,
       partyGst: created.gstin || ''
     }));
+    setSupplierSearchTerm('');
     setNewSupplierData({ name: '', gstin: '', phone: '', city: '' });
     setQuickSupplierModalOpen(false);
   };
@@ -1459,39 +1528,282 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               {/* Header Fields: Party, GST, Date, Bill No, Warehouse */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                 
-                <div className="form-group" style={{ margin: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label className="form-label" style={{ fontWeight: '700', margin: 0, color: '#047857' }}>
-                      Purchase Party / Supplier Name *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setQuickSupplierModalOpen(true)}
-                      style={{ fontSize: '0.74rem', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', cursor: 'pointer', fontWeight: '700', padding: '2px 8px', borderRadius: '6px' }}
-                      title="Add a new Purchase Party (Vendor)"
+                <div className="form-group" style={{ margin: 0, position: 'relative' }} ref={supplierDropdownRef}>
+                  <label className="form-label" style={{ fontWeight: '700', marginBottom: '4px', color: '#047857' }}>
+                    Purchase Party / Supplier Name *
+                  </label>
+
+                  {/* Input Search Container matching user screenshot */}
+                  <div
+                    style={{
+                      height: '36px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: '#ffffff',
+                      borderRadius: '6px',
+                      border: showSupplierSuggestions ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                      boxShadow: showSupplierSuggestions ? '0 0 0 2px rgba(37, 99, 235, 0.12)' : 'none',
+                      overflow: 'hidden',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <input 
+                      type="text"
+                      placeholder="Select or add a customer"
+                      style={{ 
+                        flex: 1,
+                        height: '100%',
+                        paddingLeft: '10px', 
+                        paddingRight: '6px',
+                        fontSize: '0.84rem', 
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                        color: 'var(--text-main, #0f172a)',
+                        cursor: 'text'
+                      }}
+                      value={
+                        selectedSupplierObj 
+                          ? (supplierSearchTerm !== '' ? supplierSearchTerm : selectedSupplierObj.name)
+                          : (supplierSearchTerm || purchaseHeader.partyName || '')
+                      }
+                      onClick={() => {
+                        setShowSupplierSuggestions(true);
+                        setHighlightedSupplierIndex(0);
+                      }}
+                      onFocus={() => {
+                        setShowSupplierSuggestions(true);
+                        setHighlightedSupplierIndex(0);
+                      }}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setSupplierSearchTerm(val);
+                        setPurchaseHeader(prev => ({ ...prev, partyName: val }));
+                        setSelectedSupplierObj(null);
+                        setShowSupplierSuggestions(true);
+                        setHighlightedSupplierIndex(0);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          if (filteredSuppliersForPurchase.length > 0) {
+                            setHighlightedSupplierIndex(prev => (prev + 1) % filteredSuppliersForPurchase.length);
+                          }
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          if (filteredSuppliersForPurchase.length > 0) {
+                            setHighlightedSupplierIndex(prev => (prev - 1 + filteredSuppliersForPurchase.length) % filteredSuppliersForPurchase.length);
+                          }
+                        } else if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (filteredSuppliersForPurchase.length > 0 && filteredSuppliersForPurchase[highlightedSupplierIndex]) {
+                            handleSelectSupplierFromList(filteredSuppliersForPurchase[highlightedSupplierIndex]);
+                            setShowSupplierSuggestions(false);
+                          } else if (supplierSearchTerm.trim()) {
+                            setPurchaseHeader(prev => ({ ...prev, partyName: supplierSearchTerm.trim() }));
+                            setShowSupplierSuggestions(false);
+                          }
+                        } else if (e.key === 'Escape') {
+                          setShowSupplierSuggestions(false);
+                        }
+                      }}
+                    />
+
+                    {/* Clear ✕ button if text or supplier selected */}
+                    {(selectedSupplierObj || purchaseHeader.partyName || supplierSearchTerm) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectSupplierFromList(null);
+                          setShowSupplierSuggestions(true);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#94a3b8',
+                          fontSize: '14px',
+                          fontWeight: 'bold',
+                          padding: '4px 6px',
+                          lineHeight: 1
+                        }}
+                        title="Clear Supplier"
+                      >
+                        ✕
+                      </button>
+                    )}
+
+                    {/* Down Chevron icon */}
+                    <div 
+                      onClick={() => setShowSupplierSuggestions(!showSupplierSuggestions)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '0 8px 0 2px',
+                        cursor: 'pointer',
+                        color: '#64748b'
+                      }}
+                      title="Open Supplier List"
                     >
-                      + New Purchase Party
-                    </button>
+                      <ChevronDown size={16} color="#64748b" />
+                    </div>
                   </div>
-                  <input 
-                    type="text" 
-                    className="input-field"
-                    placeholder="Type or choose purchase party / supplier..."
-                    list="supplier-options-list"
-                    value={purchaseHeader.partyName}
-                    onChange={e => handlePartySelectOrChange(e.target.value)}
-                    required
-                  />
-                  <datalist id="supplier-options-list">
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.name}>
-                        {s.name} {s.gstin ? `(${s.gstin})` : ''}
-                      </option>
-                    ))}
-                  </datalist>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Only Purchase Parties (Suppliers/Vendors) appear here
-                  </div>
+
+                  {/* Dropdown Popup matching exact user screenshot */}
+                  {showSupplierSuggestions && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 1200,
+                        background: '#ffffff',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        border: '1px solid #e2e8f0',
+                        padding: '6px',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Scrollable list of suppliers */}
+                      <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                        {filteredSuppliersForPurchase.length === 0 ? (
+                          <div style={{ padding: '14px 12px', fontSize: '0.84rem', color: '#64748b', textAlign: 'center' }}>
+                            No supplier found for "{supplierSearchTerm || purchaseHeader.partyName}"
+                          </div>
+                        ) : (
+                          filteredSuppliersForPurchase.map((s, idx) => {
+                            const isHighlighted = (highlightedSupplierIndex === idx);
+                            const initial = s.name ? s.name.trim().charAt(0).toUpperCase() : 'S';
+
+                            return (
+                              <div 
+                                key={s.id || idx}
+                                onClick={() => {
+                                  handleSelectSupplierFromList(s);
+                                  setShowSupplierSuggestions(false);
+                                }}
+                                onMouseEnter={() => setHighlightedSupplierIndex(idx)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  cursor: 'pointer',
+                                  background: isHighlighted ? '#2563eb' : 'transparent',
+                                  color: isHighlighted ? '#ffffff' : '#0f172a',
+                                  transition: 'background 0.1s ease, color 0.1s ease',
+                                  marginBottom: '3px'
+                                }}
+                              >
+                                {/* Round Avatar Circle with Initial */}
+                                <div style={{
+                                  width: '26px',
+                                  height: '26px',
+                                  borderRadius: '50%',
+                                  background: isHighlighted ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
+                                  color: isHighlighted ? '#ffffff' : '#475569',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: '800',
+                                  fontSize: '0.78rem',
+                                  flexShrink: 0
+                                }}>
+                                  {initial}
+                                </div>
+
+                                {/* Supplier Details */}
+                                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                  <div style={{
+                                    fontWeight: '700',
+                                    fontSize: '0.84rem',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    color: isHighlighted ? '#ffffff' : '#0f172a'
+                                  }}>
+                                    {s.name}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '0.72rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    marginTop: '1px',
+                                    color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
+                                  }}>
+                                    <FileText size={11} style={{ flexShrink: 0 }} />
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {s.name} {s.gstin ? `• ${s.gstin}` : ''} {s.phone ? `• ${s.phone}` : ''} {s.city ? `• ${s.city}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* GST Tag */}
+                                {s.gstin && (
+                                  <div style={{
+                                    flexShrink: 0,
+                                    fontSize: '0.68rem',
+                                    fontWeight: '700',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: isHighlighted ? 'rgba(255, 255, 255, 0.2)' : '#ecfdf5',
+                                    color: isHighlighted ? '#ffffff' : '#047857'
+                                  }}>
+                                    GST
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Bottom Row: ⊕ New Customer / New Supplier */}
+                      <div 
+                        onClick={handleOpenQuickSupplierFromDropdown}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '7px 10px',
+                          cursor: 'pointer',
+                          color: '#2563eb',
+                          fontWeight: '700',
+                          fontSize: '0.8rem',
+                          borderTop: '1px solid #f1f5f9',
+                          borderRadius: '0 0 6px 6px',
+                          transition: 'background 0.15s ease',
+                          marginTop: '2px'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <PlusCircle size={15} color="#2563eb" />
+                        <span>New Customer</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Selected Supplier summary badge */}
+                  {selectedSupplierObj && (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 8px', borderRadius: '6px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                      <span style={{ color: '#166534', fontWeight: '700' }}>
+                        ✓ {selectedSupplierObj.name} {selectedSupplierObj.gstin ? `(${selectedSupplierObj.gstin})` : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectSupplierFromList(null)}
+                        style={{ background: 'none', border: 'none', color: '#15803d', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
