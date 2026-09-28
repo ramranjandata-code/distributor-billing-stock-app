@@ -3,7 +3,6 @@ import {
   RotateCcw,
   Plus,
   Search,
-  Filter,
   CheckCircle2,
   AlertTriangle,
   CreditCard,
@@ -120,7 +119,6 @@ export default function SalesReturns({ onNavigateToInvoice }) {
       return;
     }
 
-    // Verify quantity does not exceed billed quantity
     for (const row of selectedRows) {
       if (row.quantity > row.billedQty) {
         alert(`Return quantity for ${row.productName} cannot exceed original billed quantity (${row.billedQty}).`);
@@ -128,7 +126,7 @@ export default function SalesReturns({ onNavigateToInvoice }) {
       }
     }
 
-    const newReturn = saveSalesReturn({
+    saveSalesReturn({
       invoiceId: inv.id,
       invoiceNo: inv.invoiceNo,
       customerId: inv.partyId,
@@ -281,35 +279,59 @@ export default function SalesReturns({ onNavigateToInvoice }) {
     return true;
   });
 
-  const getStatusBadge = (status) => {
+  const getStatusBadgeStyle = (status) => {
     switch (status) {
       case 'Draft':
-        return 'bg-amber-100 text-amber-800 border-amber-200';
+        return { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' };
       case 'Received':
-        return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+        return { background: '#e0e7ff', color: '#4338ca', border: '1px solid #c7d2fe' };
       case 'Credit Issued':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
+        return { background: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff' };
       case 'Completed':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        return { background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' };
       default:
-        return 'bg-slate-100 text-slate-800 border-slate-200';
+        return { background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' };
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-        <div>
-          <div className="flex items-center gap-2">
-            <RotateCcw className="w-6 h-6 text-indigo-600" />
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
-              Sales Returns & Replacements (RMA)
-            </h1>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      
+      {/* 1. Header Control Banner */}
+      <div style={{ 
+        background: '#ffffff', 
+        borderRadius: '14px', 
+        padding: '16px 22px', 
+        border: '1px solid #e2e8f0', 
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '14px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ 
+            width: '42px', 
+            height: '42px', 
+            borderRadius: '10px', 
+            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', 
+            color: '#ffffff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)'
+          }}>
+            <RotateCcw size={22} />
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Modeled after Zoho Books & Inventory: Manage resalable restocks, damaged scrap write-offs, credit notes, and replacement billing.
-          </p>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)' }}>
+              Sales Returns & Replacements (RMA)
+            </h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Zoho-grade RMA: Resalable restocks, damaged scrap write-offs, credit notes & replacement billing
+            </p>
+          </div>
         </div>
 
         <button
@@ -319,300 +341,501 @@ export default function SalesReturns({ onNavigateToInvoice }) {
               handleInvoiceSelect(invoices[0].id);
             }
           }}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors"
+          className="btn btn-primary"
+          style={{ 
+            fontWeight: '700', 
+            padding: '8px 18px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '6px',
+            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)'
+          }}
         >
-          <Plus className="w-4 h-4" />
-          Create Return (RMA)
+          <Plus size={16} />
+          <span>+ Create Return (RMA)</span>
         </button>
       </div>
 
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. Executive KPI Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+        
         {/* Card 1: Total Returns */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div style={{ 
+          background: '#ffffff', 
+          borderRadius: '12px', 
+          padding: '16px', 
+          border: '1px solid #e2e8f0', 
+          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
           <div>
-            <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Total Returns
             </span>
-            <div className="text-xl font-bold text-slate-800 mt-1">
+            <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#1e293b', marginTop: '4px' }}>
               {totalReturnsCount}
             </div>
-            <span className="text-xs text-slate-400">
+            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
               Value: ₹{totalReturnValue.toLocaleString('en-IN')}
-            </span>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
-            <RotateCcw className="w-5 h-5" />
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '10px', 
+            background: '#f5f3ff', 
+            color: '#7c3aed', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            border: '1px solid #ddd6fe'
+          }}>
+            <RotateCcw size={20} />
           </div>
         </div>
 
-        {/* Card 2: Restocked */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        {/* Card 2: Restocked to Godown */}
+        <div style={{ 
+          background: '#ffffff', 
+          borderRadius: '12px', 
+          padding: '16px', 
+          border: '1px solid #e2e8f0', 
+          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
           <div>
-            <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Restocked to Godown
             </span>
-            <div className="text-xl font-bold text-emerald-600 mt-1">
-              {totalRestockedPcs} <span className="text-xs font-medium text-slate-500">Pcs</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#059669', marginTop: '4px' }}>
+              {totalRestockedPcs} <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#64748b' }}>Pcs</span>
             </div>
-            <span className="text-xs text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium">
+            <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: '700', marginTop: '2px' }}>
               Resalable inventory
-            </span>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-            <PackageCheck className="w-5 h-5" />
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '10px', 
+            background: '#ecfdf5', 
+            color: '#059669', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            border: '1px solid #a7f3d0'
+          }}>
+            <PackageCheck size={20} />
           </div>
         </div>
 
-        {/* Card 3: Scrapped / Damaged */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        {/* Card 3: Scrap & Damage Loss */}
+        <div style={{ 
+          background: '#ffffff', 
+          borderRadius: '12px', 
+          padding: '16px', 
+          border: '1px solid #e2e8f0', 
+          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
           <div>
-            <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Scrap & Damage Loss
             </span>
-            <div className="text-xl font-bold text-rose-600 mt-1">
-              {totalScrappedPcs} <span className="text-xs font-medium text-slate-500">Pcs</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#dc2626', marginTop: '4px' }}>
+              {totalScrappedPcs} <span style={{ fontSize: '0.8rem', fontWeight: '600', color: '#64748b' }}>Pcs</span>
             </div>
-            <span className="text-xs text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-medium">
+            <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: '700', marginTop: '2px' }}>
               ₹{totalScrapValue.toLocaleString('en-IN')} written-off
-            </span>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
-            <AlertTriangle className="w-5 h-5" />
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '10px', 
+            background: '#fef2f2', 
+            color: '#dc2626', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            border: '1px solid #fecaca'
+          }}>
+            <AlertTriangle size={20} />
           </div>
         </div>
 
         {/* Card 4: Credit Notes Issued */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div style={{ 
+          background: '#ffffff', 
+          borderRadius: '12px', 
+          padding: '16px', 
+          border: '1px solid #e2e8f0', 
+          boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
           <div>
-            <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Credit Notes Issued
             </span>
-            <div className="text-xl font-bold text-purple-600 mt-1">
+            <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#7c3aed', marginTop: '4px' }}>
               {totalCreditIssuedCount}
             </div>
-            <span className="text-xs text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded font-medium">
+            <div style={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: '700', marginTop: '2px' }}>
               Khata ledgers adjusted
-            </span>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
-            <CreditCard className="w-5 h-5" />
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            borderRadius: '10px', 
+            background: '#faf5ff', 
+            color: '#7c3aed', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            border: '1px solid #e9d5ff'
+          }}>
+            <CreditCard size={20} />
           </div>
         </div>
       </div>
 
-      {/* Filter Tabs & Search Bar */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+      {/* 3. Filter Tabs & Search Bar Card */}
+      <div style={{ 
+        background: '#ffffff', 
+        borderRadius: '12px', 
+        border: '1px solid #e2e8f0', 
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        overflow: 'hidden'
+      }}>
+        <div style={{ 
+          padding: '12px 18px', 
+          borderBottom: '1px solid #e2e8f0', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          flexWrap: 'wrap', 
+          gap: '12px',
+          background: '#f8fafc'
+        }}>
           {/* Status Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
-            {['ALL', 'Draft', 'Received', 'Credit Issued', 'Completed'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-                  activeTab === tab
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                {tab === 'ALL' ? 'All Returns' : tab}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto' }}>
+            {['ALL', 'Draft', 'Received', 'Credit Issued', 'Completed'].map((tab) => {
+              const isSelected = activeTab === tab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: isSelected ? '1px solid #7c3aed' : '1px solid #cbd5e1',
+                    background: isSelected ? '#7c3aed' : '#ffffff',
+                    color: isSelected ? '#ffffff' : '#475569',
+                    fontSize: '0.8rem',
+                    fontWeight: isSelected ? '800' : '600',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {tab === 'ALL' ? 'All Returns' : tab}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search Box */}
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <div style={{ position: 'relative', width: '280px' }}>
+            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
             <input
               type="text"
-              placeholder="Search by RMA, Customer, Inv#..."
+              placeholder="Search RMA, Customer, Inv#..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              className="input-field"
+              style={{ paddingLeft: '32px', fontSize: '0.85rem', padding: '7px 10px 7px 32px' }}
             />
           </div>
         </div>
 
-        {/* Returns Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        {/* 4. Returns Data Table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
             <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Return #</th>
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Original Inv #</th>
-                <th className="py-3 px-4">Customer</th>
-                <th className="py-3 px-4 text-center">Items</th>
-                <th className="py-3 px-4 text-right">Total (₹)</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Linked Documents</th>
-                <th className="py-3 px-4 text-center">Actions</th>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569', fontWeight: '700' }}>
+                <th style={{ padding: '10px 14px' }}>Return #</th>
+                <th style={{ padding: '10px 14px' }}>Date</th>
+                <th style={{ padding: '10px 14px' }}>Original Inv #</th>
+                <th style={{ padding: '10px 14px' }}>Customer / Retailer</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center' }}>Items</th>
+                <th style={{ padding: '10px 14px', textAlign: 'right' }}>Total Value (₹)</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center' }}>Status</th>
+                <th style={{ padding: '10px 14px' }}>Linked Documents</th>
+                <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody>
               {filteredReturns.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    <RotateCcw className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                    <p className="text-xs font-medium">No sales return records found.</p>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 14px', color: '#94a3b8' }}>
+                    <RotateCcw size={32} style={{ margin: '0 auto 8px auto', opacity: 0.4 }} />
+                    <p style={{ margin: 0, fontWeight: '600' }}>No sales return records found.</p>
                   </td>
                 </tr>
               ) : (
-                filteredReturns.map((ret) => (
-                  <tr key={ret.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-indigo-600">
-                      {ret.returnNumber}
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
-                      {ret.returnDate}
-                    </td>
-                    <td className="py-3 px-4">
-                      {ret.invoiceNo ? (
-                        <button
-                          type="button"
-                          onClick={() => onNavigateToInvoice && onNavigateToInvoice(ret.invoiceId)}
-                          className="font-mono text-slate-700 hover:text-indigo-600 hover:underline inline-flex items-center gap-1 font-medium"
-                        >
-                          {ret.invoiceNo}
-                          <ArrowUpRight className="w-3 h-3 opacity-60" />
-                        </button>
-                      ) : (
-                        <span className="text-slate-400 italic">Direct Return</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 font-medium text-slate-800">
-                      {ret.customerName}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full font-medium text-[11px]">
-                        {ret.items?.length || 0} item{ret.items?.length !== 1 ? 's' : ''}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right font-bold text-slate-800">
-                      ₹{Number(ret.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(ret.status)}`}>
-                        {ret.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col gap-1 text-[11px]">
-                        {ret.creditNoteNo && (
-                          <span className="inline-flex items-center gap-1 text-purple-700 font-mono">
-                            <CreditCard className="w-3 h-3" />
-                            {ret.creditNoteNo}
-                          </span>
-                        )}
-                        {ret.replacementInvoiceNo && (
-                          <span className="inline-flex items-center gap-1 text-teal-700 font-mono">
-                            <ArrowRightLeft className="w-3 h-3" />
-                            {ret.replacementInvoiceNo}
-                          </span>
-                        )}
-                        {!ret.creditNoteNo && !ret.replacementInvoiceNo && (
-                          <span className="text-slate-400 italic text-[11px]">None</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          type="button"
-                          title="View Details"
-                          onClick={() => {
-                            setSelectedReturn(ret);
-                            setIsDetailModalOpen(true);
-                          }}
-                          className="p-1 hover:bg-slate-100 text-slate-600 rounded transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                filteredReturns.map((ret) => {
+                  const badgeStyle = getStatusBadgeStyle(ret.status);
+                  return (
+                    <tr 
+                      key={ret.id}
+                      style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}
+                    >
+                      {/* Return # */}
+                      <td style={{ padding: '10px 14px', fontWeight: '800', color: '#7c3aed', fontFamily: 'monospace' }}>
+                        {ret.returnNumber}
+                      </td>
 
-                        {ret.status === 'Draft' && (
+                      {/* Date */}
+                      <td style={{ padding: '10px 14px', color: '#64748b' }}>
+                        {ret.returnDate}
+                      </td>
+
+                      {/* Original Invoice # */}
+                      <td style={{ padding: '10px 14px' }}>
+                        {ret.invoiceNo ? (
                           <button
                             type="button"
-                            title="Receive & Inspect Items"
-                            onClick={() => handleReceive(ret.id)}
-                            className="p-1 hover:bg-indigo-50 text-indigo-600 rounded transition-colors"
+                            onClick={() => onNavigateToInvoice && onNavigateToInvoice(ret.invoiceId)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              color: '#2563eb',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontFamily: 'monospace'
+                            }}
                           >
-                            <PackageCheck className="w-4 h-4" />
+                            <span>{ret.invoiceNo}</span>
+                            <ArrowUpRight size={12} />
                           </button>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Direct Return</span>
                         )}
+                      </td>
 
-                        {ret.status === 'Received' && (
+                      {/* Customer */}
+                      <td style={{ padding: '10px 14px', fontWeight: '700', color: '#1e293b' }}>
+                        {ret.customerName}
+                      </td>
+
+                      {/* Items Count */}
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <span style={{ 
+                          background: '#f1f5f9', 
+                          padding: '2px 8px', 
+                          borderRadius: '12px', 
+                          fontSize: '0.74rem', 
+                          fontWeight: '700',
+                          color: '#475569'
+                        }}>
+                          {ret.items?.length || 0} item{ret.items?.length !== 1 ? 's' : ''}
+                        </span>
+                      </td>
+
+                      {/* Total Value */}
+                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '800', color: '#1e293b' }}>
+                        ₹{Number(ret.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          fontSize: '0.74rem',
+                          fontWeight: '800',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.02em',
+                          ...badgeStyle
+                        }}>
+                          {ret.status}
+                        </span>
+                      </td>
+
+                      {/* Linked Documents */}
+                      <td style={{ padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.76rem' }}>
+                          {ret.creditNoteNo && (
+                            <span style={{ color: '#7e22ce', fontWeight: '700', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <CreditCard size={12} />
+                              {ret.creditNoteNo}
+                            </span>
+                          )}
+                          {ret.replacementInvoiceNo && (
+                            <span style={{ color: '#0d9488', fontWeight: '700', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <ArrowRightLeft size={12} />
+                              {ret.replacementInvoiceNo}
+                            </span>
+                          )}
+                          {!ret.creditNoteNo && !ret.replacementInvoiceNo && (
+                            <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>None</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Action Buttons */}
+                      <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <button
                             type="button"
-                            title="Issue Credit Note"
-                            onClick={() => handleIssueCreditNote(ret.id)}
-                            className="p-1 hover:bg-purple-50 text-purple-600 rounded transition-colors"
+                            title="Inspect Details"
+                            onClick={() => {
+                              setSelectedReturn(ret);
+                              setIsDetailModalOpen(true);
+                            }}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '4px 8px', fontSize: '0.74rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px' }}
                           >
-                            <CreditCard className="w-4 h-4" />
+                            <Eye size={12} />
+                            <span>View</span>
                           </button>
-                        )}
 
-                        {(ret.status === 'Received' || ret.status === 'Credit Issued') && !ret.replacementInvoiceId && (
+                          {ret.status === 'Draft' && (
+                            <button
+                              type="button"
+                              title="Receive & Inspect Items"
+                              onClick={() => handleReceive(ret.id)}
+                              className="btn btn-primary btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '0.74rem', fontWeight: '700', background: '#4f46e5' }}
+                            >
+                              <PackageCheck size={12} />
+                              <span>Receive</span>
+                            </button>
+                          )}
+
+                          {ret.status === 'Received' && (
+                            <button
+                              type="button"
+                              title="Issue Credit Note"
+                              onClick={() => handleIssueCreditNote(ret.id)}
+                              className="btn btn-primary btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '0.74rem', fontWeight: '700', background: '#7c3aed' }}
+                            >
+                              <CreditCard size={12} />
+                              <span>Credit Note</span>
+                            </button>
+                          )}
+
+                          {(ret.status === 'Received' || ret.status === 'Credit Issued') && !ret.replacementInvoiceId && (
+                            <button
+                              type="button"
+                              title="Create Replacement Invoice"
+                              onClick={() => handleOpenReplacement(ret)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '0.74rem', fontWeight: '700', color: '#0d9488', borderColor: '#99f6e4', background: '#f0fdfa' }}
+                            >
+                              <ArrowRightLeft size={12} />
+                              <span>Replace</span>
+                            </button>
+                          )}
+
                           <button
                             type="button"
-                            title="Create Replacement Invoice"
-                            onClick={() => handleOpenReplacement(ret)}
-                            className="p-1 hover:bg-teal-50 text-teal-600 rounded transition-colors"
+                            title="Delete Return"
+                            onClick={() => handleDelete(ret.id)}
+                            className="btn btn-sm"
+                            style={{ padding: '4px 8px', background: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5' }}
                           >
-                            <ArrowRightLeft className="w-4 h-4" />
+                            <Trash2 size={12} />
                           </button>
-                        )}
-
-                        <button
-                          type="button"
-                          title="Delete Return"
-                          onClick={() => handleDelete(ret.id)}
-                          className="p-1 hover:bg-rose-50 text-rose-500 rounded transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* CREATE RETURN MODAL WIZARD */}
+      {/* 5. CREATE RETURN (RMA) MODAL */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="modal-overlay" style={{ zIndex: 1200, padding: '20px', overflowY: 'auto' }}>
+          <div style={{ 
+            maxWidth: '920px', 
+            width: '100%', 
+            margin: '0 auto', 
+            background: '#ffffff', 
+            borderRadius: '14px', 
+            border: '1px solid #e2e8f0', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
+          }}>
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <div className="flex items-center gap-2">
-                <RotateCcw className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-base font-bold text-slate-800">
+            <div style={{ 
+              padding: '16px 22px', 
+              borderBottom: '1px solid #e2e8f0', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '8px', 
+                  background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', 
+                  color: '#fff', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <RotateCcw size={16} />
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>
                   Create Sales Return (RMA)
-                </h2>
+                </h3>
               </div>
-              <button
+              <button 
+                type="button" 
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
               >
-                <X className="w-5 h-5" />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Modal Body */}
-            <form onSubmit={handleCreateSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+            {/* Modal Form */}
+            <form onSubmit={handleCreateSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {/* Row 1: Invoice Picker & Return Date */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem' }}>
                     Select Original Sales Invoice *
                   </label>
                   <select
                     value={selectedInvoiceId}
                     onChange={(e) => handleInvoiceSelect(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    className="select-field input-field"
+                    style={{ fontSize: '0.85rem' }}
                     required
                   >
                     <option value="">-- Choose Invoice --</option>
@@ -625,47 +848,48 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem' }}>
                     Return Date
                   </label>
                   <input
                     type="date"
                     value={returnDate}
                     onChange={(e) => setReturnDate(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                    className="input-field"
+                    style={{ fontSize: '0.85rem' }}
                   />
                 </div>
               </div>
 
-              {/* Items Selection Table */}
+              {/* Items Table */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', marginBottom: '8px', display: 'block' }}>
                   Select Return Items & Condition Inspection
                 </label>
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                     <thead>
-                      <tr className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200 text-[11px]">
-                        <th className="py-2.5 px-3 w-10 text-center">Return</th>
-                        <th className="py-2.5 px-3">Product Name</th>
-                        <th className="py-2.5 px-3 w-20 text-center">Billed</th>
-                        <th className="py-2.5 px-3 w-24 text-center">Return Qty</th>
-                        <th className="py-2.5 px-3 w-28 text-right">Rate (₹)</th>
-                        <th className="py-2.5 px-3 w-36">Condition / Scrap</th>
-                        <th className="py-2.5 px-3">Reason</th>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                        <th style={{ padding: '8px 10px', width: '40px', textAlign: 'center' }}>Return</th>
+                        <th style={{ padding: '8px 10px' }}>Product</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px' }}>Billed</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '90px' }}>Return Qty</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '90px' }}>Rate (₹)</th>
+                        <th style={{ padding: '8px 10px', width: '180px' }}>Condition / Scrap</th>
+                        <th style={{ padding: '8px 10px' }}>Reason</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody>
                       {returnItems.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-6 text-center text-slate-400">
-                            Please select an invoice above to load billed items.
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
+                            Please select an invoice above to populate billed items.
                           </td>
                         </tr>
                       ) : (
                         returnItems.map((item, index) => (
-                          <tr key={index} className={item.selected ? 'bg-indigo-50/30' : ''}>
-                            <td className="py-2 px-3 text-center">
+                          <tr key={index} style={{ borderBottom: '1px solid #f1f5f9', background: item.selected ? '#f5f3ff' : '#ffffff' }}>
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                               <input
                                 type="checkbox"
                                 checked={item.selected}
@@ -674,17 +898,17 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                                   updated[index].selected = e.target.checked;
                                   setReturnItems(updated);
                                 }}
-                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                               />
                             </td>
-                            <td className="py-2 px-3 font-medium text-slate-800">
+                            <td style={{ padding: '8px 10px', fontWeight: '700', color: '#1e293b' }}>
                               {item.productName}
-                              {item.sku && <div className="text-[10px] text-slate-400 font-mono">{item.sku}</div>}
+                              {item.sku && <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>{item.sku}</div>}
                             </td>
-                            <td className="py-2 px-3 text-center font-semibold text-slate-600">
+                            <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700', color: '#64748b' }}>
                               {item.billedQty}
                             </td>
-                            <td className="py-2 px-3">
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                               <input
                                 type="number"
                                 min="1"
@@ -696,13 +920,13 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                                   updated[index].quantity = Math.max(1, Math.min(item.billedQty, Number(e.target.value) || 1));
                                   setReturnItems(updated);
                                 }}
-                                className="w-20 text-center py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100"
+                                style={{ width: '70px', textAlign: 'center', padding: '4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                               />
                             </td>
-                            <td className="py-2 px-3 text-right font-medium text-slate-700">
+                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
                               ₹{Number(item.unitPrice).toFixed(2)}
                             </td>
-                            <td className="py-2 px-3">
+                            <td style={{ padding: '8px 10px' }}>
                               <select
                                 value={item.condition}
                                 disabled={!item.selected}
@@ -713,17 +937,22 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                                   updated[index].disposition = cond === 'DAMAGED' ? 'SCRAP' : 'RESTOCK';
                                   setReturnItems(updated);
                                 }}
-                                className={`w-full py-1 px-2 text-xs border rounded font-semibold focus:outline-none ${
-                                  item.condition === 'UNDAMAGED'
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                    : 'bg-rose-50 text-rose-800 border-rose-300'
-                                }`}
+                                style={{
+                                  width: '100%',
+                                  padding: '4px 6px',
+                                  fontSize: '0.78rem',
+                                  fontWeight: '700',
+                                  borderRadius: '6px',
+                                  border: item.condition === 'UNDAMAGED' ? '1px solid #a7f3d0' : '1px solid #fecaca',
+                                  background: item.condition === 'UNDAMAGED' ? '#ecfdf5' : '#fef2f2',
+                                  color: item.condition === 'UNDAMAGED' ? '#059669' : '#dc2626'
+                                }}
                               >
                                 <option value="UNDAMAGED">Undamaged (Restock)</option>
-                                <option value="DAMAGED">Damaged (Scrap / Write-off)</option>
+                                <option value="DAMAGED">Damaged (Scrap Write-Off)</option>
                               </select>
                             </td>
-                            <td className="py-2 px-3">
+                            <td style={{ padding: '8px 10px' }}>
                               <input
                                 type="text"
                                 placeholder="Reason for return..."
@@ -734,7 +963,7 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                                   updated[index].reason = e.target.value;
                                   setReturnItems(updated);
                                 }}
-                                className="w-full py-1 px-2 text-xs border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100"
+                                style={{ width: '100%', padding: '4px 8px', fontSize: '0.8rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
                               />
                             </td>
                           </tr>
@@ -747,30 +976,33 @@ export default function SalesReturns({ onNavigateToInvoice }) {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Internal Notes / Customer Comments
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem' }}>
+                  Internal Notes / Transporter Details
                 </label>
                 <textarea
                   rows={2}
                   value={returnNotes}
                   onChange={(e) => setReturnNotes(e.target.value)}
                   placeholder="Additional return notes, transporter details or remarks..."
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  className="input-field"
+                  style={{ fontSize: '0.85rem' }}
                 />
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-300 transition-colors"
+                  className="btn btn-secondary"
+                  style={{ fontWeight: '700', padding: '8px 16px' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
+                  className="btn btn-primary"
+                  style={{ fontWeight: '800', padding: '8px 20px', background: '#7c3aed' }}
                 >
                   Create Return (Draft)
                 </button>
@@ -780,100 +1012,151 @@ export default function SalesReturns({ onNavigateToInvoice }) {
         </div>
       )}
 
-      {/* DETAIL / INSPECTION MODAL */}
+      {/* 6. DETAIL / INSPECTION MODAL */}
       {isDetailModalOpen && selectedReturn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="modal-overlay" style={{ zIndex: 1200, padding: '20px', overflowY: 'auto' }}>
+          <div style={{ 
+            maxWidth: '820px', 
+            width: '100%', 
+            margin: '0 auto', 
+            background: '#ffffff', 
+            borderRadius: '14px', 
+            border: '1px solid #e2e8f0', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
+          }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+            <div style={{ 
+              padding: '16px 22px', 
+              borderBottom: '1px solid #e2e8f0', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '8px', 
+                  background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', 
+                  color: '#fff', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontWeight: '800',
+                  fontSize: '0.85rem'
+                }}>
                   RMA
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-800">
-                    Sales Return Details: {selectedReturn.returnNumber}
-                  </h2>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border mt-1 ${getStatusBadge(selectedReturn.status)}`}>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                    Sales Return: {selectedReturn.returnNumber}
+                  </h3>
+                  <span style={{
+                    display: 'inline-block',
+                    marginTop: '2px',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.72rem',
+                    fontWeight: '800',
+                    textTransform: 'uppercase',
+                    ...getStatusBadgeStyle(selectedReturn.status)
+                  }}>
                     Status: {selectedReturn.status}
                   </span>
                 </div>
               </div>
-              <button
+              <button 
+                type="button" 
                 onClick={() => setIsDetailModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
               >
-                <X className="w-5 h-5" />
+                <X size={20} />
               </button>
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-6">
+            <div style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               {/* Meta Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', 
+                gap: '12px', 
+                padding: '14px', 
+                background: '#f8fafc', 
+                borderRadius: '10px', 
+                border: '1px solid #e2e8f0', 
+                fontSize: '0.82rem' 
+              }}>
                 <div>
-                  <span className="text-slate-400 font-medium block">Original Invoice</span>
-                  <span className="font-semibold text-slate-800 font-mono">{selectedReturn.invoiceNo || 'N/A'}</span>
+                  <span style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: '700', display: 'block' }}>Original Invoice</span>
+                  <span style={{ fontWeight: '800', color: '#1e293b', fontFamily: 'monospace' }}>{selectedReturn.invoiceNo || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Customer</span>
-                  <span className="font-semibold text-slate-800">{selectedReturn.customerName}</span>
+                  <span style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: '700', display: 'block' }}>Customer</span>
+                  <span style={{ fontWeight: '800', color: '#1e293b' }}>{selectedReturn.customerName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Return Date</span>
-                  <span className="font-semibold text-slate-800">{selectedReturn.returnDate}</span>
+                  <span style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: '700', display: 'block' }}>Return Date</span>
+                  <span style={{ fontWeight: '800', color: '#1e293b' }}>{selectedReturn.returnDate}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block">Total Value</span>
-                  <span className="font-bold text-indigo-600">₹{Number(selectedReturn.totalAmount || 0).toLocaleString('en-IN')}</span>
+                  <span style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: '700', display: 'block' }}>Total Value</span>
+                  <span style={{ fontWeight: '900', color: '#7c3aed' }}>₹{Number(selectedReturn.totalAmount || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
               {/* Items List */}
               <div>
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                <h4 style={{ fontSize: '0.84rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '8px' }}>
                   Returned Items Breakdown
                 </h4>
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                     <thead>
-                      <tr className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
-                        <th className="py-2.5 px-3">Item Name</th>
-                        <th className="py-2.5 px-3 text-center">Qty</th>
-                        <th className="py-2.5 px-3 text-right">Rate</th>
-                        <th className="py-2.5 px-3 text-center">Condition</th>
-                        <th className="py-2.5 px-3">Disposition Handling</th>
-                        <th className="py-2.5 px-3 text-right">Amount</th>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                        <th style={{ padding: '8px 12px' }}>Item Name</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>Rate</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'center' }}>Condition</th>
+                        <th style={{ padding: '8px 12px' }}>Disposition Handling</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right' }}>Amount</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody>
                       {(selectedReturn.items || []).map((it, idx) => (
-                        <tr key={idx}>
-                          <td className="py-2 px-3 font-medium text-slate-800">
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: '700', color: '#1e293b' }}>
                             {it.productName}
-                            {it.reason && <div className="text-[10px] text-slate-400 italic">{it.reason}</div>}
+                            {it.reason && <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>{it.reason}</div>}
                           </td>
-                          <td className="py-2 px-3 text-center font-bold text-slate-700">
+                          <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: '800', color: '#1e293b' }}>
                             {it.quantity}
                           </td>
-                          <td className="py-2 px-3 text-right text-slate-600">
+                          <td style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b' }}>
                             ₹{Number(it.unitPrice).toFixed(2)}
                           </td>
-                          <td className="py-2 px-3 text-center">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                              it.condition === 'UNDAMAGED' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                            }`}>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: '800',
+                              background: it.condition === 'UNDAMAGED' ? '#ecfdf5' : '#fef2f2',
+                              color: it.condition === 'UNDAMAGED' ? '#059669' : '#dc2626'
+                            }}>
                               {it.condition}
                             </span>
                           </td>
-                          <td className="py-2 px-3 text-slate-600">
+                          <td style={{ padding: '8px 12px', color: '#475569', fontWeight: '600' }}>
                             {it.condition === 'UNDAMAGED' ? (
-                              <span className="text-emerald-700 font-medium">Restocked to Warehouse</span>
+                              <span style={{ color: '#059669' }}>Restocked to Godown</span>
                             ) : (
-                              <span className="text-rose-700 font-medium">Written off as Scrap Loss</span>
+                              <span style={{ color: '#dc2626' }}>Written off as Scrap Loss</span>
                             )}
                           </td>
-                          <td className="py-2 px-3 text-right font-bold text-slate-800">
+                          <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '800', color: '#1e293b' }}>
                             ₹{Number(it.amount || (it.quantity * it.unitPrice)).toFixed(2)}
                           </td>
                         </tr>
@@ -883,34 +1166,35 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 </div>
               </div>
 
-              {/* Linked Records */}
+              {/* Linked Documents Box */}
               {(selectedReturn.creditNoteNo || selectedReturn.replacementInvoiceNo) && (
-                <div className="p-4 bg-indigo-50/50 rounded-lg border border-indigo-100 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-semibold text-indigo-900 block mb-1">Linked Accounting Documents:</span>
-                    <div className="flex gap-4">
-                      {selectedReturn.creditNoteNo && (
-                        <span className="font-mono text-purple-700 font-bold">Credit Note: {selectedReturn.creditNoteNo}</span>
-                      )}
-                      {selectedReturn.replacementInvoiceNo && (
-                        <span className="font-mono text-teal-700 font-bold">Replacement: {selectedReturn.replacementInvoiceNo}</span>
-                      )}
-                    </div>
+                <div style={{ padding: '14px', background: '#faf5ff', borderRadius: '10px', border: '1px solid #e9d5ff', fontSize: '0.82rem' }}>
+                  <span style={{ fontWeight: '800', color: '#7e22ce', display: 'block', marginBottom: '4px' }}>
+                    Linked Accounting Documents:
+                  </span>
+                  <div style={{ display: 'flex', gap: '16px', fontFamily: 'monospace' }}>
+                    {selectedReturn.creditNoteNo && (
+                      <span style={{ color: '#7c3aed', fontWeight: '800' }}>Credit Note: {selectedReturn.creditNoteNo}</span>
+                    )}
+                    {selectedReturn.replacementInvoiceNo && (
+                      <span style={{ color: '#0d9488', fontWeight: '800' }}>Replacement Invoice: {selectedReturn.replacementInvoiceNo}</span>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Modal Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-                <div className="flex gap-2">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                   {selectedReturn.status === 'Draft' && (
                     <button
                       type="button"
                       onClick={() => handleReceive(selectedReturn.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold shadow-sm"
+                      className="btn btn-primary"
+                      style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', background: '#4f46e5' }}
                     >
-                      <PackageCheck className="w-3.5 h-3.5" />
-                      Receive & Inspect Items
+                      <PackageCheck size={14} />
+                      <span>Receive & Inspect Items</span>
                     </button>
                   )}
 
@@ -918,10 +1202,11 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                     <button
                       type="button"
                       onClick={() => handleIssueCreditNote(selectedReturn.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-semibold shadow-sm"
+                      className="btn btn-primary"
+                      style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', background: '#7c3aed' }}
                     >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      Issue Credit Note
+                      <CreditCard size={14} />
+                      <span>Issue Credit Note</span>
                     </button>
                   )}
 
@@ -932,10 +1217,11 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                         setIsDetailModalOpen(false);
                         handleOpenReplacement(selectedReturn);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-semibold shadow-sm"
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', color: '#0d9488', borderColor: '#99f6e4', background: '#f0fdfa' }}
                     >
-                      <ArrowRightLeft className="w-3.5 h-3.5" />
-                      Create Replacement Invoice
+                      <ArrowRightLeft size={14} />
+                      <span>Create Replacement Invoice</span>
                     </button>
                   )}
                 </div>
@@ -943,7 +1229,8 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 <button
                   type="button"
                   onClick={() => setIsDetailModalOpen(false)}
-                  className="px-4 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded border border-slate-300"
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 16px', fontSize: '0.82rem', fontWeight: '700' }}
                 >
                   Close
                 </button>
@@ -953,70 +1240,98 @@ export default function SalesReturns({ onNavigateToInvoice }) {
         </div>
       )}
 
-      {/* REPLACEMENT INVOICE MODAL */}
+      {/* 7. REPLACEMENT INVOICE MODAL */}
       {isReplacementModalOpen && selectedReturn && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="modal-overlay" style={{ zIndex: 1200, padding: '20px', overflowY: 'auto' }}>
+          <div style={{ 
+            maxWidth: '820px', 
+            width: '100%', 
+            margin: '0 auto', 
+            background: '#ffffff', 
+            borderRadius: '14px', 
+            border: '1px solid #e2e8f0', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            overflow: 'hidden'
+          }}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <div className="flex items-center gap-2">
-                <ArrowRightLeft className="w-5 h-5 text-teal-600" />
+            <div style={{ 
+              padding: '16px 22px', 
+              borderBottom: '1px solid #e2e8f0', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              background: '#f8fafc'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '8px', 
+                  background: 'linear-gradient(135deg, #0d9488, #059669)', 
+                  color: '#fff', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <ArrowRightLeft size={16} />
+                </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-800">
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>
                     Create Product Replacement Invoice
-                  </h2>
-                  <p className="text-[11px] text-slate-500">
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b' }}>
                     Applying credit of ₹{Number(selectedReturn.totalAmount).toLocaleString('en-IN')} from Return {selectedReturn.returnNumber}
                   </p>
                 </div>
               </div>
-              <button
+              <button 
+                type="button" 
                 onClick={() => setIsReplacementModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
               >
-                <X className="w-5 h-5" />
+                <X size={20} />
               </button>
             </div>
 
-            {/* Body */}
-            <form onSubmit={handleReplacementSubmit} className="p-6 space-y-5">
-              {/* Product rows */}
+            {/* Form */}
+            <form onSubmit={handleReplacementSubmit} style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-slate-700">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.82rem', margin: 0 }}>
                     Replacement Products to Dispatch
                   </label>
                   <button
                     type="button"
                     onClick={handleAddReplacementRow}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-700"
+                    style={{ background: 'none', border: 'none', color: '#0d9488', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Product
+                    <Plus size={14} />
+                    <span>+ Add Product</span>
                   </button>
                 </div>
 
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                     <thead>
-                      <tr className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200 text-[11px]">
-                        <th className="py-2.5 px-3">Select Product</th>
-                        <th className="py-2.5 px-3 w-24 text-center">Qty</th>
-                        <th className="py-2.5 px-3 w-28 text-right">Sale Price (₹)</th>
-                        <th className="py-2.5 px-3 w-28 text-right">Line Total (₹)</th>
-                        <th className="py-2.5 px-3 w-10 text-center"></th>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
+                        <th style={{ padding: '8px 12px' }}>Product</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'center', width: '90px' }}>Qty</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', width: '110px' }}>Rate (₹)</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'right', width: '110px' }}>Total (₹)</th>
+                        <th style={{ padding: '8px 12px', width: '40px', textAlign: 'center' }}></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody>
                       {replacementItems.map((item, index) => {
                         const lineTotal = (Number(item.qty) || 1) * (Number(item.salePrice) || 0);
                         return (
-                          <tr key={index}>
-                            <td className="py-2 px-3">
+                          <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px 12px' }}>
                               <select
                                 value={item.productId}
                                 onChange={(e) => handleReplacementRowChange(index, 'productId', e.target.value)}
-                                className="w-full py-1 px-2 border border-slate-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                className="select-field input-field"
+                                style={{ padding: '4px 8px', fontSize: '0.82rem' }}
                               >
                                 {products.map((p) => (
                                   <option key={p.id} value={p.id}>
@@ -1025,36 +1340,36 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                                 ))}
                               </select>
                             </td>
-                            <td className="py-2 px-3 text-center">
+                            <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                               <input
                                 type="number"
                                 min="1"
                                 value={item.qty}
                                 onChange={(e) => handleReplacementRowChange(index, 'qty', Math.max(1, Number(e.target.value) || 1))}
-                                className="w-20 text-center py-1 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                style={{ width: '70px', textAlign: 'center', padding: '4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                               />
                             </td>
-                            <td className="py-2 px-3 text-right">
+                            <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                               <input
                                 type="number"
                                 min="0"
                                 step="0.01"
                                 value={item.salePrice}
                                 onChange={(e) => handleReplacementRowChange(index, 'salePrice', Number(e.target.value) || 0)}
-                                className="w-24 text-right py-1 px-2 border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                style={{ width: '90px', textAlign: 'right', padding: '4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
                               />
                             </td>
-                            <td className="py-2 px-3 text-right font-bold text-slate-800">
+                            <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: '800', color: '#1e293b' }}>
                               ₹{lineTotal.toFixed(2)}
                             </td>
-                            <td className="py-2 px-3 text-center">
+                            <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                               {replacementItems.length > 1 && (
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveReplacementRow(index)}
-                                  className="text-rose-500 hover:text-rose-700"
+                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 size={14} />
                                 </button>
                               )}
                             </td>
@@ -1074,18 +1389,18 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 const residualDue = Math.max(0, repTotal - creditOffset);
 
                 return (
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
-                    <div className="flex justify-between text-slate-600">
+                  <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.84rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
                       <span>Replacement Invoice Subtotal:</span>
-                      <span className="font-semibold text-slate-800">₹{repTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span style={{ fontWeight: '700', color: '#1e293b' }}>₹{repTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between text-emerald-700">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669' }}>
                       <span>Credit Note Offset Applied ({selectedReturn.creditNoteNo || 'Return Credit'}):</span>
-                      <span className="font-bold">-₹{creditOffset.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span style={{ fontWeight: '800' }}>-₹{creditOffset.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t border-slate-200 text-sm font-bold text-slate-900">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid #e2e8f0', fontWeight: '800', fontSize: '0.92rem', color: '#1e293b' }}>
                       <span>Net Balance Due by Customer:</span>
-                      <span className={residualDue === 0 ? 'text-emerald-600' : 'text-amber-600'}>
+                      <span style={{ color: residualDue === 0 ? '#059669' : '#d97706' }}>
                         {residualDue === 0 ? '₹0.00 (Fully Paid by Credit)' : `₹${residualDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                       </span>
                     </div>
@@ -1093,18 +1408,20 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 );
               })()}
 
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
                 <button
                   type="button"
                   onClick={() => setIsReplacementModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-lg border border-slate-300"
+                  className="btn btn-secondary"
+                  style={{ fontWeight: '700', padding: '8px 16px' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-sm transition-colors"
+                  className="btn btn-primary"
+                  style={{ fontWeight: '800', padding: '8px 20px', background: '#0d9488' }}
                 >
                   Confirm & Generate Replacement Invoice
                 </button>

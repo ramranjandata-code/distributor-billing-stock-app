@@ -68,64 +68,64 @@ export default function InvoiceHistoryTimeline({
       case 'CREATED':
         return {
           label: 'Invoice Created',
-          bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-          dot: 'bg-emerald-500',
+          style: { background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0' },
+          dot: '#059669',
           icon: FileText
         };
       case 'UPDATED':
         return {
           label: 'Invoice Updated',
-          bg: 'bg-blue-50 text-blue-700 border-blue-200',
-          dot: 'bg-blue-500',
+          style: { background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' },
+          dot: '#2563eb',
           icon: FileText
         };
       case 'RECEIPT_CREATED':
         return {
           label: 'Payment Received',
-          bg: 'bg-green-50 text-green-700 border-green-200',
-          dot: 'bg-green-600',
+          style: { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' },
+          dot: '#16a34a',
           icon: Receipt
         };
       case 'RETURN_INITIATED':
         return {
           label: 'Return Initiated',
-          bg: 'bg-amber-50 text-amber-700 border-amber-200',
-          dot: 'bg-amber-500',
+          style: { background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a' },
+          dot: '#d97706',
           icon: RotateCcw
         };
       case 'RETURN_RECEIVED':
         return {
           label: 'Return Received & Inspected',
-          bg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-          dot: 'bg-indigo-600',
+          style: { background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe' },
+          dot: '#4f46e5',
           icon: CheckCircle2
         };
       case 'CREDIT_NOTE_ISSUED':
         return {
           label: 'Credit Note Issued',
-          bg: 'bg-rose-50 text-rose-700 border-rose-200',
-          dot: 'bg-rose-500',
+          style: { background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3' },
+          dot: '#e11d48',
           icon: CreditCard
         };
       case 'REPLACEMENT_LINKED':
         return {
           label: 'Replacement Generated',
-          bg: 'bg-teal-50 text-teal-700 border-teal-200',
-          dot: 'bg-teal-500',
+          style: { background: '#f0fdfa', color: '#0d9488', border: '1px solid #99f6e4' },
+          dot: '#0d9488',
           icon: ArrowRightLeft
         };
       case 'STATUS_CHANGE':
         return {
           label: 'Status Changed',
-          bg: 'bg-slate-100 text-slate-700 border-slate-300',
-          dot: 'bg-slate-500',
+          style: { background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' },
+          dot: '#64748b',
           icon: AlertCircle
         };
       default:
         return {
           label: actionType || 'Activity',
-          bg: 'bg-gray-100 text-gray-700 border-gray-200',
-          dot: 'bg-gray-400',
+          style: { background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' },
+          dot: '#94a3b8',
           icon: Clock
         };
     }
@@ -136,7 +136,6 @@ export default function InvoiceHistoryTimeline({
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     
-    // Format: DD-MM-YYYY HH:MM:SS
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
@@ -147,126 +146,276 @@ export default function InvoiceHistoryTimeline({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 sm:p-5">
+    <div style={{
+      background: '#ffffff',
+      borderRadius: '12px',
+      border: '1px solid #e2e8f0',
+      padding: '18px 22px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '16px'
+    }}>
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <div className="flex items-center gap-2">
-          <Clock className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-base font-semibold text-slate-800">
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: '12px',
+        borderBottom: '1px solid #e2e8f0'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Clock size={18} color="#4f46e5" />
+          <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: '800', color: '#1e293b' }}>
             Invoice History & Activity Audit Trail
           </h3>
         </div>
-        <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
-          {logs.length} event{logs.length !== 1 ? 's' : ''} recorded
+        <span style={{
+          background: '#f1f5f9',
+          color: '#475569',
+          padding: '2px 10px',
+          borderRadius: '12px',
+          fontSize: '0.74rem',
+          fontWeight: '700'
+        }}>
+          {logs.length} event{logs.length !== 1 ? 's' : ''} logged
         </span>
       </div>
 
       {/* Add Quick Audit Note */}
-      <form onSubmit={handleAddNote} className="mb-5 flex gap-2">
-        <div className="relative flex-1">
-          <MessageSquare className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+      <form onSubmit={handleAddNote} style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <MessageSquare size={15} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
           <input
             type="text"
             placeholder="Add internal audit note or comment for this invoice..."
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+            className="input-field"
+            style={{ paddingLeft: '32px', fontSize: '0.82rem', padding: '7px 10px 7px 32px' }}
           />
         </div>
         <button
           type="submit"
           disabled={!newNote.trim() || isSubmitting}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-medium rounded-md transition-colors shadow-sm"
+          className="btn btn-primary"
+          style={{
+            padding: '7px 14px',
+            fontSize: '0.82rem',
+            fontWeight: '700',
+            background: '#4f46e5',
+            opacity: (!newNote.trim() || isSubmitting) ? 0.6 : 1
+          }}
         >
-          <Plus className="w-3.5 h-3.5" />
-          Post Note
+          <Plus size={14} />
+          <span>Post Note</span>
         </button>
       </form>
 
       {/* Timeline Stream */}
       {logs.length === 0 ? (
-        <div className="text-center py-8 text-slate-400">
-          <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          <p className="text-xs font-medium">No activity history recorded yet for this invoice.</p>
+        <div style={{ textAlign: 'center', padding: '36px 16px', color: '#94a3b8' }}>
+          <Clock size={28} style={{ margin: '0 auto 8px auto', opacity: 0.4 }} />
+          <p style={{ margin: 0, fontSize: '0.84rem', fontWeight: '600' }}>
+            No activity history recorded yet for this invoice.
+          </p>
         </div>
       ) : (
-        <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+        <div style={{
+          position: 'relative',
+          paddingLeft: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          {/* Vertical Connecting Line */}
+          <div style={{
+            position: 'absolute',
+            left: '9px',
+            top: '8px',
+            bottom: '8px',
+            width: '2px',
+            background: '#e2e8f0'
+          }} />
+
           {logs.map((log) => {
             const badge = getActionBadge(log.actionType);
             const Icon = badge.icon;
 
             return (
-              <div key={log.id} className="relative group">
-                {/* Timeline node dot */}
-                <div className={`absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 border-white ${badge.dot} shadow-sm ring-2 ring-slate-100`} />
+              <div key={log.id} style={{ position: 'relative' }}>
+                {/* Node Dot */}
+                <div style={{
+                  position: 'absolute',
+                  left: '-24px',
+                  top: '6px',
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  background: badge.dot,
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 0 0 2px #f1f5f9'
+                }} />
 
-                <div className="bg-slate-50/70 hover:bg-slate-50 rounded-lg p-3 border border-slate-200/80 transition-colors">
-                  {/* Top Bar: Action badge, user, timestamp */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${badge.bg}`}>
-                        <Icon className="w-3 h-3" />
-                        {badge.label}
+                <div style={{
+                  background: '#f8fafc',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}>
+                  {/* Top Line */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: '800',
+                        ...badge.style
+                      }}>
+                        <Icon size={12} />
+                        <span>{badge.label}</span>
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium">
-                        <User className="w-3 h-3 text-slate-400" />
-                        {log.userId || 'Administrator'}
+
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.78rem',
+                        color: '#475569',
+                        fontWeight: '600'
+                      }}>
+                        <User size={12} color="#94a3b8" />
+                        <span>{log.userId || 'Administrator'}</span>
                       </span>
                     </div>
 
-                    <span className="text-[11px] text-slate-400 font-mono">
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontFamily: 'monospace' }}>
                       {formatDate(log.createdAt)}
                     </span>
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-slate-700 leading-relaxed font-normal">
+                  <p style={{
+                    margin: '2px 0 0 0',
+                    fontSize: '0.82rem',
+                    color: '#334155',
+                    lineHeight: '1.45',
+                    fontWeight: '500'
+                  }}>
                     {log.description}
                   </p>
 
-                  {/* Document Deep Link Pills (SR-..., CN-..., INV-...) */}
+                  {/* Linked Record Deep Links */}
                   {(log.referenceDocumentId || log.referenceDocumentType) && (
-                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center gap-2">
-                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    <div style={{
+                      marginTop: '4px',
+                      paddingTop: '6px',
+                      borderTop: '1px solid #e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '0.75rem'
+                    }}>
+                      <span style={{ fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.7rem' }}>
                         Linked Record:
                       </span>
                       {log.referenceDocumentType === 'RETURN' && (
                         <button
                           type="button"
                           onClick={() => onNavigateToDocument && onNavigateToDocument('return', log.referenceDocumentId)}
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded font-medium transition-colors"
+                          style={{
+                            background: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            color: '#b45309',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontWeight: '700',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
                         >
-                          <RotateCcw className="w-3 h-3" />
-                          View Return (RMA)
-                          <ExternalLink className="w-2.5 h-2.5" />
+                          <RotateCcw size={12} />
+                          <span>View Return (RMA)</span>
+                          <ExternalLink size={10} />
                         </button>
                       )}
                       {log.referenceDocumentType === 'CREDIT_NOTE' && (
                         <button
                           type="button"
                           onClick={() => onNavigateToDocument && onNavigateToDocument('invoice', log.referenceDocumentId)}
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded font-medium transition-colors"
+                          style={{
+                            background: '#fff1f2',
+                            border: '1px solid #fecdd3',
+                            color: '#e11d48',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontWeight: '700',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
                         >
-                          <CreditCard className="w-3 h-3" />
-                          View Credit Note
-                          <ExternalLink className="w-2.5 h-2.5" />
+                          <CreditCard size={12} />
+                          <span>View Credit Note</span>
+                          <ExternalLink size={10} />
                         </button>
                       )}
                       {log.referenceDocumentType === 'REPLACEMENT_INVOICE' && (
                         <button
                           type="button"
                           onClick={() => onNavigateToDocument && onNavigateToDocument('invoice', log.referenceDocumentId)}
-                          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-teal-100 hover:bg-teal-200 text-teal-800 rounded font-medium transition-colors"
+                          style={{
+                            background: '#f0fdfa',
+                            border: '1px solid #99f6e4',
+                            color: '#0d9488',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontWeight: '700',
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
                         >
-                          <ArrowRightLeft className="w-3 h-3" />
-                          View Replacement Invoice
-                          <ExternalLink className="w-2.5 h-2.5" />
+                          <ArrowRightLeft size={12} />
+                          <span>View Replacement Invoice</span>
+                          <ExternalLink size={10} />
                         </button>
                       )}
                       {log.referenceDocumentType === 'PAYMENT' && (
-                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-green-100 text-green-800 rounded font-medium">
-                          <Receipt className="w-3 h-3" />
-                          Receipt Voucher
+                        <span style={{
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          color: '#16a34a',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontWeight: '700',
+                          fontSize: '0.75rem',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <Receipt size={12} />
+                          <span>Receipt Voucher</span>
                         </span>
                       )}
                     </div>
