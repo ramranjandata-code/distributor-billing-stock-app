@@ -42,6 +42,7 @@ import {
 } from '../utils/storage';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
+import InvoiceHistoryTimeline from './InvoiceHistoryTimeline';
 
 export default function OdooInvoiceForm({ 
   invoice: initialInvoice, 
@@ -51,7 +52,9 @@ export default function OdooInvoiceForm({
   onClose, 
   onSave, 
   refreshAllData, 
-  handlePrintInvoice 
+  handlePrintInvoice,
+  onOpenSalesReturn,
+  onNavigateToDocument
 }) {
   const currentOp = getCurrentOperator();
   const warehouses = fetchWarehouses();
@@ -510,6 +513,17 @@ export default function OdooInvoiceForm({
                 <RotateCcw size={14} />
                 <span>Credit Note (Refund)</span>
               </button>
+              {onOpenSalesReturn && (
+                <button 
+                  onClick={() => onOpenSalesReturn(invoice)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#4f46e5', borderColor: '#c7d2fe', background: '#eef2ff' }}
+                  title="Create Sales Return (RMA) for this invoice"
+                >
+                  <RotateCcw size={14} />
+                  <span>Create Return (RMA)</span>
+                </button>
+              )}
               <button 
                 onClick={handleResetDraft}
                 className="btn btn-secondary btn-sm"
@@ -521,14 +535,27 @@ export default function OdooInvoiceForm({
           )}
 
           {invoice.state === 'paid' && (
-            <button 
-              onClick={() => setCreditNoteModalOpen(true)}
-              className="btn btn-secondary btn-sm"
-              style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <RotateCcw size={14} />
-              <span>Credit Note (Refund)</span>
-            </button>
+            <>
+              <button 
+                onClick={() => setCreditNoteModalOpen(true)}
+                className="btn btn-secondary btn-sm"
+                style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RotateCcw size={14} />
+                <span>Credit Note (Refund)</span>
+              </button>
+              {onOpenSalesReturn && (
+                <button 
+                  onClick={() => onOpenSalesReturn(invoice)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', color: '#4f46e5', borderColor: '#c7d2fe', background: '#eef2ff' }}
+                  title="Create Sales Return (RMA) for this invoice"
+                >
+                  <RotateCcw size={14} />
+                  <span>Create Return (RMA)</span>
+                </button>
+              )}
+            </>
           )}
 
           {/* Universal Print & WhatsApp Share */}
@@ -901,7 +928,28 @@ export default function OdooInvoiceForm({
               }}
             >
               <MessageSquare size={16} />
-              <span>Chatter & History ({(invoice.chatter || []).length})</span>
+              <span>Chatter ({(invoice.chatter || []).length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveNotebookTab('history')}
+              style={{
+                padding: '10px 18px',
+                border: 'none',
+                borderBottom: activeNotebookTab === 'history' ? '3px solid #4f46e5' : '3px solid transparent',
+                background: 'none',
+                fontWeight: activeNotebookTab === 'history' ? '800' : '600',
+                color: activeNotebookTab === 'history' ? '#4f46e5' : '#64748b',
+                fontSize: '0.92rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Clock size={16} />
+              <span>History & Audit Trail</span>
             </button>
           </div>
 
@@ -1409,6 +1457,16 @@ export default function OdooInvoiceForm({
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: INVOICE HISTORY & ACTIVITY AUDIT TRAIL */}
+          {activeNotebookTab === 'history' && (
+            <div>
+              <InvoiceHistoryTimeline 
+                invoiceId={invoice.id} 
+                onNavigateToDocument={onNavigateToDocument}
+              />
             </div>
           )}
 

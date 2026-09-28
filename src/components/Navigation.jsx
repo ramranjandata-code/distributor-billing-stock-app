@@ -10,7 +10,8 @@ import {
   Settings, 
   Boxes,
   ShieldCheck,
-  Building2
+  Building2,
+  RotateCcw
 } from 'lucide-react';
 
 export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t }) {
@@ -18,6 +19,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
     { id: 'dashboard', label: t('dashboard') || 'Dashboard', icon: LayoutDashboard },
     { id: 'billing', label: 'Invoicing', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
     { id: 'invoices', label: 'Invoices', icon: FileText },
+    { id: 'returns', label: 'Returns (RMA)', icon: RotateCcw },
     { id: 'inventory', label: t('inventory') || 'Inventory', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'badge-danger' },
     { id: 'parties', label: t('parties') || 'Parties', icon: Users },
     { id: 'banking', label: t('banking') || 'Banking', icon: Building2, badge: 'Live', badgeColor: 'badge-success' },

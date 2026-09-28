@@ -449,6 +449,19 @@ export default function InvoiceHistory({
                             <span>Open</span>
                           </button>
 
+                          {inv.state !== 'draft' && inv.state !== 'cancel' && (
+                            <button 
+                              onClick={() => {
+                                if (setActiveTab) setActiveTab('returns');
+                              }}
+                              className="btn btn-secondary btn-sm"
+                              title="Create Return / RMA"
+                              style={{ padding: '4px 8px', color: '#4f46e5', borderColor: '#c7d2fe', background: '#eef2ff' }}
+                            >
+                              <RotateCcw size={13} />
+                            </button>
+                          )}
+
                           <button 
                             onClick={() => handlePrintInvoice && handlePrintInvoice(inv)}
                             className="btn btn-secondary btn-sm"
@@ -493,6 +506,16 @@ export default function InvoiceHistory({
               }}
               refreshAllData={refreshAllData}
               handlePrintInvoice={handlePrintInvoice}
+              onOpenSalesReturn={(inv) => {
+                setSelectedInvoiceForEdit(null);
+                if (setActiveTab) setActiveTab('returns');
+              }}
+              onNavigateToDocument={(type, id) => {
+                if (type === 'return' && setActiveTab) {
+                  setSelectedInvoiceForEdit(null);
+                  setActiveTab('returns');
+                }
+              }}
             />
           </div>
         </div>

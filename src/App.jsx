@@ -23,6 +23,7 @@ import AuditSecurity from './components/AuditSecurity';
 import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 import AppLauncher from './components/AppLauncher';
+import SalesReturns from './components/SalesReturns';
 
 import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer, LayoutGrid, AlertCircle, Trash2, X } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
@@ -478,6 +479,14 @@ export default function App() {
             handlePrintInvoice={handlePrintInvoice}
             refreshAllData={refreshAllData}
             t={translate}
+          />
+        )}
+
+        {activeTab === 'returns' && (
+          <SalesReturns 
+            onNavigateToInvoice={(invId) => {
+              navigateToTab('invoices');
+            }}
           />
         )}
 

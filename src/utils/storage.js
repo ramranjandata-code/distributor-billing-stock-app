@@ -24,7 +24,9 @@ const STORAGE_KEYS = {
   SECURITY_SETTINGS: 'distro_security_settings',
   EXPENSES: 'distro_expenses',
   PROPRIETOR_CAPITAL: 'distro_proprietor_capital',
-  DELETED_IDS: 'distro_deleted_ids'
+  DELETED_IDS: 'distro_deleted_ids',
+  RETURNS: 'distro_sales_returns',
+  INVOICE_HISTORY: 'distro_invoice_history_logs'
 };
 
 const DEFAULT_BUSINESS = REAL_DEFAULT_BUSINESS;
@@ -408,6 +410,14 @@ export const fetchCloudData = async (force = false) => {
           setStorageData(STORAGE_KEYS.WAREHOUSES, mergeById(getStorageData(STORAGE_KEYS.WAREHOUSES, []), remote.warehouses, activeDelSet));
         }
 
+        if (Array.isArray(remote.salesReturns || remote.returns)) {
+          setStorageData(STORAGE_KEYS.RETURNS, mergeById(getStorageData(STORAGE_KEYS.RETURNS, []), remote.salesReturns || remote.returns, activeDelSet));
+        }
+
+        if (Array.isArray(remote.invoiceHistory || remote.invoiceHistoryLogs)) {
+          setStorageData(STORAGE_KEYS.INVOICE_HISTORY, mergeById(getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []), remote.invoiceHistory || remote.invoiceHistoryLogs, activeDelSet));
+        }
+
         if (remote.proprietorCapital && typeof remote.proprietorCapital === 'object') {
           const localCap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
           setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, { ...localCap, ...remote.proprietorCapital });
@@ -448,6 +458,8 @@ export const pushLocalDataToCloud = async () => {
   const bankTransactions = getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []);
   const proprietorCapital = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
   const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+  const salesReturns = getStorageData(STORAGE_KEYS.RETURNS, []).filter(r => r && !delSet.has(r.id));
+  const invoiceHistory = getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []);
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   const deletedIds = getDeletedIds();
   const now = Date.now();
@@ -468,6 +480,8 @@ export const pushLocalDataToCloud = async () => {
       bankTransactions,
       proprietorCapital,
       warehouses,
+      salesReturns,
+      invoiceHistory,
       deletedIds,
       lastUpdated: now
     }),
@@ -594,6 +608,8 @@ export const exportFullBackupJSON = () => {
     proprietorCapital: getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL),
     securitySettings: getStorageData(STORAGE_KEYS.SECURITY_SETTINGS, DEFAULT_SECURITY),
     auditLogs: getStorageData(STORAGE_KEYS.AUDIT_LOGS, []),
+    salesReturns: getStorageData(STORAGE_KEYS.RETURNS, []),
+    invoiceHistory: getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []),
     deletedIds: getDeletedIds()
   };
 
@@ -639,6 +655,16 @@ export const importFullBackupJSON = (backupObj) => {
   if (Array.isArray(invoices) && invoices.length > 0) {
     const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
     setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, invoices));
+  }
+
+  if (Array.isArray(backupObj.salesReturns || backupObj.returns)) {
+    const localReturns = getStorageData(STORAGE_KEYS.RETURNS, []);
+    setStorageData(STORAGE_KEYS.RETURNS, mergeById(localReturns, backupObj.salesReturns || backupObj.returns));
+  }
+
+  if (Array.isArray(backupObj.invoiceHistory || backupObj.invoiceHistoryLogs)) {
+    const localHistory = getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []);
+    setStorageData(STORAGE_KEYS.INVOICE_HISTORY, mergeById(localHistory, backupObj.invoiceHistory || backupObj.invoiceHistoryLogs));
   }
 
   if (Array.isArray(backupObj.bankAccounts || backupObj.bank_accounts)) {
@@ -970,6 +996,76 @@ export const deleteParty = (id) => {
   return parties;
 };
 
+// --- INVOICE HISTORY / ACTIVITY AUDIT TRAIL SERVICE ---
+export const InvoiceHistoryLogger = {
+  log: ({
+    invoiceId,
+    actionType, // 'CREATED', 'UPDATED', 'RECEIPT_CREATED', 'RETURN_INITIATED', 'RETURN_RECEIVED', 'CREDIT_NOTE_ISSUED', 'REPLACEMENT_LINKED', 'GSTR1_EXPORTED', 'STATUS_CHANGE'
+    description,
+    referenceDocumentId = null,
+    referenceDocumentType = null, // 'RETURN', 'CREDIT_NOTE', 'REPLACEMENT_INVOICE', 'PAYMENT'
+    metadata = null,
+    userId = null
+  }) => {
+    if (!invoiceId) return null;
+    const currentOp = getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
+    const resolvedUser = userId || currentOp?.name || 'Administrator';
+    const logs = getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []);
+
+    const newEntry = {
+      id: 'ih_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      invoiceId: String(invoiceId),
+      userId: resolvedUser,
+      actionType,
+      description,
+      referenceDocumentId: referenceDocumentId ? String(referenceDocumentId) : null,
+      referenceDocumentType: referenceDocumentType || null,
+      metadata: metadata || null,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [newEntry, ...logs];
+    setStorageData(STORAGE_KEYS.INVOICE_HISTORY, updated);
+
+    // Sync to Supabase invoice_history_logs table if cloud active
+    try {
+      const client = getSupabaseClient();
+      if (client) {
+        client.from('invoice_history_logs').insert([{
+          invoice_id: newEntry.invoiceId,
+          user_id: newEntry.userId,
+          action_type: newEntry.actionType,
+          description: newEntry.description,
+          reference_document_id: newEntry.referenceDocumentId,
+          reference_document_type: newEntry.referenceDocumentType,
+          metadata: newEntry.metadata,
+          created_at: newEntry.createdAt
+        }]).then(() => {}).catch(() => {});
+      }
+    } catch (e) {}
+
+    autoCloudSync();
+    return newEntry;
+  },
+
+  getLogs: (invoiceId) => {
+    if (!invoiceId) return [];
+    const logs = getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []);
+    return logs
+      .filter(l => l && String(l.invoiceId) === String(invoiceId))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  getAllLogs: () => {
+    return getStorageData(STORAGE_KEYS.INVOICE_HISTORY, [])
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+};
+
+export const fetchInvoiceHistory = (invoiceId) => {
+  return InvoiceHistoryLogger.getLogs(invoiceId);
+};
+
 // Operations: Invoices
 export const fetchInvoices = () => {
   const delSet = new Set(getDeletedIds());
@@ -1136,6 +1232,16 @@ export const saveInvoice = (invoiceData) => {
     `${isDraft ? 'Created Draft Invoice' : 'Confirmed Invoice'} #${newInvoice.invoiceNo} for ${newInvoice.customerName || 'Cash Sale'} (₹${Number(newInvoice.grandTotal || 0).toLocaleString('en-IN')})`
   );
 
+  // 5. Log Invoice Activity History
+  InvoiceHistoryLogger.log({
+    invoiceId: newInvoice.id,
+    actionType: existingIndex > -1 ? 'UPDATED' : 'CREATED',
+    description: isDraft 
+      ? `Draft Invoice #${newInvoice.invoiceNo} saved (${newInvoice.items?.length || 0} items, ₹${Number(newInvoice.grandTotal || 0).toLocaleString('en-IN')})`
+      : `Invoice #${newInvoice.invoiceNo} created for ${newInvoice.customerName || 'Customer'} (₹${Number(newInvoice.grandTotal || 0).toLocaleString('en-IN')})`,
+    metadata: { invoiceNo: newInvoice.invoiceNo, grandTotal: newInvoice.grandTotal, state: newInvoice.state }
+  });
+
   autoCloudSync();
   return newInvoice;
 };
@@ -1237,6 +1343,14 @@ export const postInvoice = (invoiceId) => {
   const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
   logAuditAction('POST_INVOICE', 'Billing & Invoicing', `Confirmed & Posted Invoice #${officialInvoiceNo} (₹${grandTotal.toLocaleString('en-IN')})`);
+  
+  InvoiceHistoryLogger.log({
+    invoiceId: invoiceId,
+    actionType: 'STATUS_CHANGE',
+    description: `Invoice confirmed & posted with sequence #${officialInvoiceNo} (Residual due: ₹${amountDue.toLocaleString('en-IN')})`,
+    metadata: { invoiceNo: officialInvoiceNo, state: newState, amountDue }
+  });
+
   autoCloudSync();
   return updatedInvoice;
 };
@@ -1302,6 +1416,16 @@ export const registerInvoicePayment = (invoiceId, {
   const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
   logAuditAction('REGISTER_PAYMENT', 'Accounting & Invoicing', `Recorded payment of ₹${payAmt.toLocaleString('en-IN')} on invoice #${target.invoiceNo} (${journal})`);
+  
+  InvoiceHistoryLogger.log({
+    invoiceId: invoiceId,
+    actionType: 'RECEIPT_CREATED',
+    description: `Payment receipt recorded: ₹${payAmt.toLocaleString('en-IN')} via ${journal} (${paymentMethod}). Remaining residual: ₹${newAmountDue.toLocaleString('en-IN')}`,
+    referenceDocumentId: newPaymentEntry.id,
+    referenceDocumentType: 'PAYMENT',
+    metadata: { amount: payAmt, journal, paymentMethod, remainingDue: newAmountDue }
+  });
+
   autoCloudSync();
   return updatedInvoice;
 };
@@ -1374,6 +1498,16 @@ export const createCreditNote = (invoiceId, reason = 'Customer Return / Pricing 
   const updatedInvoices = [creditNote, ...invoices.map(i => i.id === invoiceId ? originalWithChatter : i)];
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
   logAuditAction('CREDIT_NOTE_CREATED', 'Accounting & Invoicing', `Created Credit Note #${creditNoteNo} reversing #${target.invoiceNo} (₹${Number(target.grandTotal).toLocaleString('en-IN')})`);
+  
+  InvoiceHistoryLogger.log({
+    invoiceId: target.id,
+    actionType: 'CREDIT_NOTE_ISSUED',
+    description: `Reversal Credit Note #${creditNoteNo} issued for ₹${Number(target.grandTotal).toLocaleString('en-IN')}. Reason: ${reason}`,
+    referenceDocumentId: creditNote.id,
+    referenceDocumentType: 'CREDIT_NOTE',
+    metadata: { creditNoteNo, creditAmount: target.grandTotal, reason }
+  });
+
   autoCloudSync();
   return creditNote;
 };
@@ -1422,6 +1556,14 @@ export const resetInvoiceToDraft = (invoiceId) => {
   const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
   logAuditAction('RESET_TO_DRAFT', 'Billing & Invoicing', `Invoice #${target.invoiceNo} reset to draft`);
+  
+  InvoiceHistoryLogger.log({
+    invoiceId: invoiceId,
+    actionType: 'STATUS_CHANGE',
+    description: `Invoice #${target.invoiceNo} reset to draft. Inventory deductions & ledger debits reversed.`,
+    metadata: { invoiceNo: target.invoiceNo, state: 'draft' }
+  });
+
   autoCloudSync();
   return updatedInvoice;
 };
@@ -1470,6 +1612,14 @@ export const cancelInvoice = (invoiceId) => {
   const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
   logAuditAction('CANCEL_INVOICE', 'Billing & Invoicing', `Cancelled Invoice #${target.invoiceNo}`);
+  
+  InvoiceHistoryLogger.log({
+    invoiceId: invoiceId,
+    actionType: 'STATUS_CHANGE',
+    description: `Invoice #${target.invoiceNo} cancelled. Inventory deductions & ledger debits reversed.`,
+    metadata: { invoiceNo: target.invoiceNo, state: 'cancel' }
+  });
+
   autoCloudSync();
   return updatedInvoice;
 };
@@ -1521,6 +1671,414 @@ export const deleteInvoice = (invoiceId) => {
 
   autoCloudSync();
   return updatedInvoices;
+};
+
+// --- ENTERPRISE MODULE: SALES RETURNS & REPLACEMENTS (RMA) ---
+
+export const getNextReturnNumber = () => {
+  const returns = getStorageData(STORAGE_KEYS.RETURNS, []);
+  const year = new Date().getFullYear();
+  const nextSeq = String(returns.length + 1).padStart(3, '0');
+  return `SR-${year}-${nextSeq}`;
+};
+
+export const fetchSalesReturns = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.RETURNS, []).filter(r => r && !delSet.has(r.id));
+};
+
+export const saveSalesReturn = (returnData) => {
+  if (returnData.id) {
+    unrecordDeletedId(returnData.id);
+  }
+  const returns = fetchSalesReturns();
+  const returnNumber = returnData.returnNumber || getNextReturnNumber();
+  const id = returnData.id || ('sr_' + Date.now());
+
+  // Calculate and standardize items
+  const items = (returnData.items || []).map(item => {
+    const qty = Number(item.quantity !== undefined ? item.quantity : item.qty) || 1;
+    const unitPrice = Number(item.unitPrice !== undefined ? item.unitPrice : (item.salePrice || item.rate || item.price)) || 0;
+    const taxRate = Number(item.taxRate !== undefined ? item.taxRate : (item.gstRate || 0)) || 0;
+    const rawAmount = qty * unitPrice * (1 + taxRate / 100);
+    const amount = Number(item.amount !== undefined ? item.amount : rawAmount);
+
+    return {
+      id: item.id || ('sri_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
+      productId: item.productId || item.item_id || '',
+      productName: item.productName || item.name || 'Returned Product',
+      sku: item.sku || '',
+      quantity: qty,
+      unitPrice,
+      taxRate,
+      condition: item.condition || 'UNDAMAGED', // 'UNDAMAGED' | 'DAMAGED'
+      disposition: item.disposition || (item.condition === 'DAMAGED' ? 'SCRAP' : 'RESTOCK'), // 'RESTOCK' | 'SCRAP'
+      reason: item.reason || 'Customer Return',
+      amount: Math.round(amount * 100) / 100
+    };
+  });
+
+  const totalAmount = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+
+  const newReturn = {
+    ...returnData,
+    id,
+    returnNumber,
+    invoiceId: returnData.invoiceId ? String(returnData.invoiceId) : '',
+    invoiceNo: returnData.invoiceNo || '',
+    customerId: returnData.customerId || returnData.partyId || '',
+    customerName: returnData.customerName || returnData.partyName || 'Customer',
+    returnDate: returnData.returnDate || new Date().toISOString().split('T')[0],
+    status: returnData.status || 'Draft', // 'Draft' | 'Received' | 'Credit Issued' | 'Completed'
+    items,
+    totalAmount: Math.round(totalAmount * 100) / 100,
+    creditNoteId: returnData.creditNoteId || null,
+    creditNoteNo: returnData.creditNoteNo || null,
+    replacementInvoiceId: returnData.replacementInvoiceId || null,
+    replacementInvoiceNo: returnData.replacementInvoiceNo || null,
+    notes: returnData.notes || '',
+    createdAt: returnData.createdAt || new Date().toISOString()
+  };
+
+  const existingIndex = returns.findIndex(r => r.id === newReturn.id);
+  let updatedReturns;
+  if (existingIndex > -1) {
+    updatedReturns = [...returns];
+    updatedReturns[existingIndex] = newReturn;
+  } else {
+    updatedReturns = [newReturn, ...returns];
+  }
+  setStorageData(STORAGE_KEYS.RETURNS, updatedReturns);
+
+  // Log in Invoice History of the parent invoice
+  if (newReturn.invoiceId) {
+    InvoiceHistoryLogger.log({
+      invoiceId: newReturn.invoiceId,
+      actionType: 'RETURN_INITIATED',
+      description: `Sales Return ${returnNumber} initiated for ${items.length} item(s) (Total: ₹${Number(newReturn.totalAmount).toLocaleString('en-IN')}) [Status: ${newReturn.status}]`,
+      referenceDocumentId: newReturn.id,
+      referenceDocumentType: 'RETURN',
+      metadata: { returnNumber, totalAmount: newReturn.totalAmount, itemCount: items.length }
+    });
+  }
+
+  logAuditAction(
+    'SALES_RETURN_CREATED',
+    'Sales Returns & RMA',
+    `Return ${returnNumber} created against Inv #${newReturn.invoiceNo || 'N/A'} for ${newReturn.customerName} (₹${Number(newReturn.totalAmount).toLocaleString('en-IN')})`
+  );
+
+  autoCloudSync();
+  return newReturn;
+};
+
+export const receiveSalesReturnItems = (returnId) => {
+  const returns = fetchSalesReturns();
+  const target = returns.find(r => r.id === returnId);
+  if (!target) return null;
+
+  let restockedCount = 0;
+  let scrappedCount = 0;
+  let scrapLossValue = 0;
+
+  (target.items || []).forEach(item => {
+    const qty = Number(item.quantity) || 0;
+    if (qty <= 0) return;
+
+    if (item.condition === 'UNDAMAGED' || item.disposition === 'RESTOCK') {
+      // 1. Restock to warehouse inventory
+      if (item.productId) {
+        updateProductStock(item.productId, qty, `Sales Return Restock (${target.returnNumber})`);
+        restockedCount += qty;
+      }
+    } else {
+      // 2. Damaged / Defective: Write off to Scrap expense, do NOT add to sellable stock
+      scrappedCount += qty;
+      const itemCost = qty * (Number(item.unitPrice) || 0);
+      scrapLossValue += itemCost;
+      saveExpense({
+        category: 'Scrap & Damage Write-off',
+        amount: Math.round(itemCost * 100) / 100,
+        paidTo: 'Scrap / Written-Off Goods',
+        notes: `Damaged return write-off: ${qty} pcs of ${item.productName} from RMA ${target.returnNumber}. Reason: ${item.reason || 'Damaged goods'}`,
+        paymentMode: 'CASH',
+        date: new Date().toISOString().split('T')[0]
+      });
+    }
+  });
+
+  const updatedReturn = {
+    ...target,
+    status: 'Received',
+    receivedAt: new Date().toISOString()
+  };
+
+  const updatedReturns = returns.map(r => r.id === returnId ? updatedReturn : r);
+  setStorageData(STORAGE_KEYS.RETURNS, updatedReturns);
+
+  if (target.invoiceId) {
+    InvoiceHistoryLogger.log({
+      invoiceId: target.invoiceId,
+      actionType: 'RETURN_RECEIVED',
+      description: `Return ${target.returnNumber} intake completed: ${restockedCount} pcs restocked to inventory, ${scrappedCount} pcs written off to scrap (Loss: ₹${scrapLossValue.toLocaleString('en-IN')})`,
+      referenceDocumentId: target.id,
+      referenceDocumentType: 'RETURN',
+      metadata: { restockedCount, scrappedCount, scrapLossValue }
+    });
+  }
+
+  logAuditAction(
+    'SALES_RETURN_RECEIVED',
+    'Sales Returns & RMA',
+    `Return ${target.returnNumber} received: ${restockedCount} pcs restocked, ${scrappedCount} pcs scrapped`
+  );
+
+  autoCloudSync();
+  return updatedReturn;
+};
+
+export const issueReturnCreditNote = (returnId) => {
+  const returns = fetchSalesReturns();
+  const target = returns.find(r => r.id === returnId);
+  if (!target) return null;
+
+  const invoices = fetchInvoices();
+  const parentInvoice = invoices.find(i => i.id === target.invoiceId || i.invoiceNo === target.invoiceNo);
+  const creditNoteNo = `CN/${new Date().getFullYear()}/${invoices.length + 1001}`;
+  const creditAmount = Number(target.totalAmount) || 0;
+  const currentOp = getCurrentOperator();
+
+  // Create Credit Note Document
+  const creditNote = {
+    id: 'cn_' + Date.now(),
+    documentType: 'out_refund',
+    invoiceNo: creditNoteNo,
+    reversalOf: target.invoiceNo || (parentInvoice?.invoiceNo || ''),
+    reversalReason: `Sales Return ${target.returnNumber} Credit Note`,
+    returnId: target.id,
+    returnNumber: target.returnNumber,
+    date: new Date().toISOString(),
+    partyId: target.customerId || parentInvoice?.partyId,
+    partyName: target.customerName || parentInvoice?.partyName || 'Customer',
+    customerName: target.customerName || parentInvoice?.partyName || 'Customer',
+    items: target.items.map(it => ({
+      ...it,
+      name: it.productName,
+      qty: it.quantity,
+      salePrice: it.unitPrice,
+      total: it.amount
+    })),
+    subtotal: creditAmount,
+    taxTotal: 0,
+    grandTotal: creditAmount,
+    paidAmount: creditAmount,
+    amountDue: 0,
+    balanceAmount: 0,
+    state: 'posted',
+    paymentStatus: 'PAID',
+    paymentMode: 'CREDIT_NOTE',
+    chatter: [{
+      id: 'cht_' + Date.now(),
+      date: new Date().toISOString(),
+      author: currentOp?.name || 'Administrator',
+      text: `Credit Note created for Sales Return #${target.returnNumber}. Credit: ₹${creditAmount.toLocaleString('en-IN')}`,
+      type: 'system'
+    }]
+  };
+
+  // Adjust party ledger balance if customer exists
+  const partyId = target.customerId || parentInvoice?.partyId;
+  if (partyId) {
+    updatePartyBalance(partyId, -creditAmount);
+  }
+
+  // Save Credit Note into invoices list
+  const updatedInvoices = [creditNote, ...invoices];
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+  // Update Return status
+  const updatedReturn = {
+    ...target,
+    status: 'Credit Issued',
+    creditNoteId: creditNote.id,
+    creditNoteNo: creditNote.invoiceNo
+  };
+  const updatedReturns = returns.map(r => r.id === returnId ? updatedReturn : r);
+  setStorageData(STORAGE_KEYS.RETURNS, updatedReturns);
+
+  // Log on original invoice
+  if (target.invoiceId) {
+    InvoiceHistoryLogger.log({
+      invoiceId: target.invoiceId,
+      actionType: 'CREDIT_NOTE_ISSUED',
+      description: `Credit Note #${creditNote.invoiceNo} issued for ₹${creditAmount.toLocaleString('en-IN')} against Return ${target.returnNumber}`,
+      referenceDocumentId: creditNote.id,
+      referenceDocumentType: 'CREDIT_NOTE',
+      metadata: { creditNoteNo: creditNote.invoiceNo, creditAmount }
+    });
+  }
+
+  logAuditAction(
+    'RETURN_CREDIT_NOTE_ISSUED',
+    'Sales Returns & RMA',
+    `Credit Note #${creditNote.invoiceNo} issued for ₹${creditAmount.toLocaleString('en-IN')} against Return ${target.returnNumber}`
+  );
+
+  autoCloudSync();
+  return { returnObj: updatedReturn, creditNote };
+};
+
+export const createReturnReplacementInvoice = (returnId, replacementItems) => {
+  const returns = fetchSalesReturns();
+  const target = returns.find(r => r.id === returnId);
+  if (!target) return null;
+
+  const invoices = fetchInvoices();
+  const parentInvoice = invoices.find(i => i.id === target.invoiceId || i.invoiceNo === target.invoiceNo);
+  const products = fetchProducts();
+  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const currentOp = getCurrentOperator();
+
+  const startingNumber = Number(business.nextInvoiceNumber) || 1001;
+  const nextNumber = startingNumber + invoices.length;
+  const replacementInvoiceNo = `${business.invoicePrefix || 'INV/26-27/'}${nextNumber}`;
+
+  let subtotal = 0;
+  let taxTotal = 0;
+  const items = replacementItems.map(it => {
+    const qty = Number(it.quantity || it.qty) || 1;
+    const salePrice = Number(it.salePrice || it.unitPrice || it.rate) || 0;
+    const gstRate = Number(it.taxRate || it.gstRate) || 0;
+    const lineSubtotal = qty * salePrice;
+    const lineTax = (lineSubtotal * gstRate) / 100;
+    const lineTotal = lineSubtotal + lineTax;
+    subtotal += lineSubtotal;
+    taxTotal += lineTax;
+    return {
+      productId: it.productId || it.id,
+      name: it.name || it.productName,
+      sku: it.sku || '',
+      qty,
+      salePrice,
+      gstRate,
+      taxableAmount: lineSubtotal,
+      total: lineTotal
+    };
+  });
+
+  const grandTotal = Math.round((subtotal + taxTotal) * 100) / 100;
+
+  // Credit offset: credit from return
+  const availableCredit = Number(target.totalAmount) || 0;
+  const creditOffset = Math.min(availableCredit, grandTotal);
+  const amountDue = Math.max(0, grandTotal - creditOffset);
+  const paidAmount = creditOffset;
+  const paymentStatus = amountDue === 0 ? 'PAID' : (paidAmount > 0 ? 'PARTIAL' : 'UNPAID');
+  const odooState = amountDue === 0 ? 'paid' : (paidAmount > 0 ? 'in_payment' : 'posted');
+
+  const replacementInvoice = {
+    id: 'inv_' + Date.now(),
+    documentType: 'out_invoice',
+    invoiceNo: replacementInvoiceNo,
+    date: new Date().toISOString(),
+    partyId: target.customerId || parentInvoice?.partyId,
+    partyName: target.customerName || parentInvoice?.partyName || 'Customer',
+    customerName: target.customerName || parentInvoice?.partyName || 'Customer',
+    items,
+    subtotal,
+    subTotal: subtotal,
+    taxableAmount: subtotal,
+    taxTotal,
+    grandTotal,
+    paidAmount,
+    amountDue,
+    balanceAmount: amountDue,
+    paymentStatus,
+    state: odooState,
+    paymentMode: creditOffset > 0 ? 'CREDIT_OFFSET' : 'CASH',
+    replacementForReturnId: target.id,
+    replacementForReturnNo: target.returnNumber,
+    creditOffsetApplied: creditOffset,
+    chatter: [{
+      id: 'cht_' + Date.now(),
+      date: new Date().toISOString(),
+      author: currentOp?.name || 'Administrator',
+      text: `Replacement invoice generated for Return #${target.returnNumber}. Applied credit offset of ₹${creditOffset.toLocaleString('en-IN')}. Residual due: ₹${amountDue.toLocaleString('en-IN')}`,
+      type: 'system'
+    }]
+  };
+
+  // Deduct inventory stock for replacement items
+  const updatedProducts = products.map(p => {
+    const item = items.find(i => i.productId === p.id);
+    if (item) {
+      return { ...p, currentStock: Math.max(0, (Number(p.currentStock) || 0) - Number(item.qty)) };
+    }
+    return p;
+  });
+  setStorageData(STORAGE_KEYS.PRODUCTS, updatedProducts);
+
+  // If residual due remains, update customer balance
+  const partyId = replacementInvoice.partyId;
+  if (partyId && amountDue > 0) {
+    updatePartyBalance(partyId, amountDue);
+  }
+
+  // Save replacement invoice
+  const updatedInvoices = [replacementInvoice, ...invoices];
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+  // Update Return
+  const updatedReturn = {
+    ...target,
+    status: 'Completed',
+    replacementInvoiceId: replacementInvoice.id,
+    replacementInvoiceNo: replacementInvoice.invoiceNo
+  };
+  const updatedReturns = returns.map(r => r.id === returnId ? updatedReturn : r);
+  setStorageData(STORAGE_KEYS.RETURNS, updatedReturns);
+
+  // Log on original invoice
+  if (target.invoiceId) {
+    InvoiceHistoryLogger.log({
+      invoiceId: target.invoiceId,
+      actionType: 'REPLACEMENT_LINKED',
+      description: `Replacement Invoice #${replacementInvoice.invoiceNo} issued and linked to Return ${target.returnNumber}. ₹${creditOffset.toLocaleString('en-IN')} credit offset applied (Residual due: ₹${amountDue.toLocaleString('en-IN')})`,
+      referenceDocumentId: replacementInvoice.id,
+      referenceDocumentType: 'REPLACEMENT_INVOICE',
+      metadata: { replacementInvoiceNo: replacementInvoice.invoiceNo, creditOffset, amountDue }
+    });
+  }
+
+  // Log on replacement invoice itself
+  InvoiceHistoryLogger.log({
+    invoiceId: replacementInvoice.id,
+    actionType: 'CREATED',
+    description: `Replacement Invoice created for Return ${target.returnNumber} (Original Inv #${target.invoiceNo || 'N/A'}) with ₹${creditOffset.toLocaleString('en-IN')} credit offset applied`,
+    referenceDocumentId: target.id,
+    referenceDocumentType: 'RETURN',
+    metadata: { returnNumber: target.returnNumber, creditOffset }
+  });
+
+  logAuditAction(
+    'REPLACEMENT_INVOICE_CREATED',
+    'Sales Returns & RMA',
+    `Replacement Inv #${replacementInvoice.invoiceNo} created for Return ${target.returnNumber} with ₹${creditOffset.toLocaleString('en-IN')} credit offset`
+  );
+
+  autoCloudSync();
+  return { returnObj: updatedReturn, replacementInvoice };
+};
+
+export const deleteSalesReturn = (id) => {
+  recordDeletedId(id);
+  const returns = fetchSalesReturns();
+  const target = returns.find(r => r.id === id);
+  const updated = returns.filter(r => r.id !== id);
+  setStorageData(STORAGE_KEYS.RETURNS, updated);
+  logAuditAction('DELETE_SALES_RETURN', 'Sales Returns & RMA', `Deleted Sales Return ${target?.returnNumber || id}`);
+  autoCloudSync();
+  return updated;
 };
 
 // Operations: Business Settings
@@ -1828,7 +2386,9 @@ export const exportBackupJSON = () => {
     bankTransactions: fetchBankTransactions(),
     expenses: fetchExpenses(),
     proprietorCapital: fetchProprietorCapital(),
-    auditLogs: fetchAuditLogs()
+    auditLogs: fetchAuditLogs(),
+    salesReturns: getStorageData(STORAGE_KEYS.RETURNS, []),
+    invoiceHistory: getStorageData(STORAGE_KEYS.INVOICE_HISTORY, [])
   };
   return JSON.stringify(data, null, 2);
 };
@@ -1848,6 +2408,8 @@ export const restoreBackupJSON = (jsonString) => {
     if (Array.isArray(data.bankAccounts)) setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, data.bankAccounts);
     if (Array.isArray(data.bankTransactions)) setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, data.bankTransactions);
     if (Array.isArray(data.expenses)) setStorageData(STORAGE_KEYS.EXPENSES, data.expenses);
+    if (Array.isArray(data.salesReturns || data.returns)) setStorageData(STORAGE_KEYS.RETURNS, data.salesReturns || data.returns);
+    if (Array.isArray(data.invoiceHistory || data.invoiceHistoryLogs)) setStorageData(STORAGE_KEYS.INVOICE_HISTORY, data.invoiceHistory || data.invoiceHistoryLogs);
     if (data.proprietorCapital && typeof data.proprietorCapital === 'object') setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, data.proprietorCapital);
 
     logAuditAction('RESTORE_BACKUP', 'Security & Audit', 'Full enterprise database restored from JSON backup');

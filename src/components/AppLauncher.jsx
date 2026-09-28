@@ -99,6 +99,23 @@ export default function AppLauncher({
       )
     },
     {
+      id: 'returns',
+      name: 'Sales Returns (RMA)',
+      category: 'Billing',
+      description: 'Undamaged Restocks, Scrap Loss Write-Offs & Replacement Billing',
+      gradient: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+      shadowColor: 'rgba(124, 58, 237, 0.25)',
+      badge: 'Zoho Flow',
+      badgeBg: '#ede9fe',
+      badgeColor: '#7c3aed',
+      icon: (
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="1 4 1 10 7 10" />
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+        </svg>
+      )
+    },
+    {
       id: 'inventory',
       name: 'Inventory',
       category: 'Stock',
