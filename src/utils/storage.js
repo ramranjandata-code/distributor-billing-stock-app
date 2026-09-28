@@ -865,6 +865,17 @@ export const savePurchase = (purchaseData) => {
   return { success: true, purchase: newPurchase };
 };
 
+export const deletePurchase = (purchaseId) => {
+  recordDeletedId(purchaseId);
+  const purchases = fetchPurchases();
+  const target = purchases.find(p => p.id === purchaseId);
+  const updated = purchases.filter(p => p.id !== purchaseId);
+  setStorageData(STORAGE_KEYS.PURCHASES, updated);
+  logAuditAction('DELETE_PURCHASE', 'Suppliers & Purchases', `Deleted purchase bill #${target?.billNo || purchaseId} from ${target?.partyName || 'Supplier'}`);
+  autoCloudSync();
+  return updated;
+};
+
 // Operations: Suppliers / Purchase Parties (Vendors)
 export const fetchSuppliers = () => {
   const delSet = new Set(getDeletedIds());

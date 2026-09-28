@@ -8,13 +8,15 @@ import {
   fetchSuppliers,
   saveSupplier,
   savePurchase,
+  fetchPurchases,
+  deletePurchase,
   transferStockBetweenWarehouses, 
   logAuditAction 
 } from '../utils/storage';
 import { 
   Package, 
   Plus, 
-  PlusCircle,
+  PlusCircle, 
   Search, 
   Edit3, 
   Trash2, 
@@ -37,10 +39,13 @@ import {
   Layers,
   ShoppingBag,
   ChevronDown,
-  FileText
+  FileText,
+  Eye,
+  Printer,
+  Receipt
 } from 'lucide-react';
 
-export default function Inventory({ products, refreshAllData }) {
+export default function Inventory({ products, refreshAllData, defaultSubTab = 'stock' }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [warehouseFilter, setWarehouseFilter] = useState('ALL');
@@ -135,6 +140,28 @@ export default function Inventory({ products, refreshAllData }) {
   });
 
   const [purchaseRows, setPurchaseRows] = useState([emptyPurchaseRow()]);
+
+  // Sub-Tab Switching (Stock vs Purchases)
+  const [inventorySubTab, setInventorySubTab] = useState(defaultSubTab || 'stock');
+  const [purchases, setPurchases] = useState(() => fetchPurchases());
+  const [purchaseSearchTerm, setPurchaseSearchTerm] = useState('');
+  const [viewingPurchaseBill, setViewingPurchaseBill] = useState(null);
+
+  useEffect(() => {
+    setPurchases(fetchPurchases());
+    const handleDataChanged = () => {
+      setPurchases(fetchPurchases());
+      setSuppliers(fetchSuppliers());
+    };
+    window.addEventListener('distro_data_changed', handleDataChanged);
+    return () => window.removeEventListener('distro_data_changed', handleDataChanged);
+  }, []);
+
+  useEffect(() => {
+    if (defaultSubTab) {
+      setInventorySubTab(defaultSubTab);
+    }
+  }, [defaultSubTab]);
 
   // Inter-Warehouse Transfer Modal State
   const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -708,9 +735,11 @@ export default function Inventory({ products, refreshAllData }) {
     };
 
     savePurchase(purchasePayload);
+    setPurchases(fetchPurchases());
     refreshAllData();
     alert(`✅ Purchase bill recorded successfully! Stock inventory updated for ${validItems.length} products.`);
     setPurchaseModalOpen(false);
+    setInventorySubTab('purchases');
   };
 
   // Photo-to-Purchase & Excel/CSV Parsing Handler
@@ -803,12 +832,260 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
     setImportRawText('');
   };
 
+  // Purchases History Filtering & KPIs
+  const filteredPurchases = useMemo(() => {
+    return purchases.filter(p => {
+      const q = purchaseSearchTerm.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        (p.billNo && p.billNo.toLowerCase().includes(q)) ||
+        (p.partyName && p.partyName.toLowerCase().includes(q)) ||
+        (p.partyGst && p.partyGst.toLowerCase().includes(q)) ||
+        (p.items && p.items.some(it => it.name && it.name.toLowerCase().includes(q)))
+      );
+    });
+  }, [purchases, purchaseSearchTerm]);
+
+  const purchaseKpis = useMemo(() => {
+    const totalBills = purchases.length;
+    const totalInwardValue = purchases.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0);
+    const uniqueSuppliers = new Set(purchases.map(p => p.partyName?.trim().toLowerCase()).filter(Boolean)).size;
+    const totalItemsInwarded = purchases.reduce((sum, p) => sum + (p.items?.reduce((s, it) => s + (Number(it.qty) || 0), 0) || 0), 0);
+    return { totalBills, totalInwardValue, uniqueSuppliers, totalItemsInwarded };
+  }, [purchases]);
+
+  const handleDeletePurchase = (e, purchaseId, billNo) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete purchase bill #${billNo || purchaseId}? This action cannot be undone.`)) {
+      const updated = deletePurchase(purchaseId);
+      setPurchases(updated);
+      refreshAllData();
+    }
+  };
+
+  const handlePrintPurchaseBill = (bill) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print the purchase bill.');
+      return;
+    }
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Purchase Bill - ${bill.billNo || bill.id}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #1e293b; line-height: 1.4; }
+          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }
+          .title { font-size: 20px; font-weight: bold; color: #0f172a; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+          th { background: #f1f5f9; font-weight: 600; color: #334155; }
+          .text-right { text-align: right; }
+          .totals-table { width: 320px; margin-left: auto; margin-top: 16px; font-size: 13px; }
+          .totals-table td { border: none; padding: 5px 8px; }
+          .totals-table tr.grand { font-weight: bold; font-size: 15px; border-top: 2px solid #0f172a; }
+          @media print {
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="title">PURCHASE / INWARD BILL</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Record ID: ${bill.id}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 16px; font-weight: bold; color: #0f172a;">Bill #: ${bill.billNo || 'N/A'}</div>
+            <div style="font-size: 13px; color: #475569; margin-top: 2px;">Date: ${bill.date || 'N/A'}</div>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px;">Supplier / Vendor Details</div>
+            <div style="font-weight: bold; font-size: 15px; color: #0f172a;">${bill.partyName || 'Unknown Vendor'}</div>
+            ${bill.partyGst ? `<div style="font-size: 12px; margin-top: 3px; color: #334155;">GSTIN: <strong>${bill.partyGst}</strong></div>` : ''}
+            ${bill.partyPhone ? `<div style="font-size: 12px; margin-top: 2px; color: #475569;">Phone: ${bill.partyPhone}</div>` : ''}
+            ${bill.partyAddress ? `<div style="font-size: 12px; margin-top: 2px; color: #475569;">Address: ${bill.partyAddress}</div>` : ''}
+          </div>
+          <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <div style="font-weight: 700; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 6px; letter-spacing: 0.5px;">Destination Warehouse & Status</div>
+            <div style="font-weight: bold; font-size: 14px; color: #0f172a;">${bill.warehouseId ? (bill.warehouseId === 'wh_main' ? 'Main Warehouse (Bhiwandi Central)' : (bill.warehouseId === 'wh_store' ? 'Store Front Display Rack' : bill.warehouseId)) : 'Default Warehouse'}</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Total Items: <strong>${bill.items?.length || 0} Products</strong></div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Recorded On: ${bill.createdAt ? new Date(bill.createdAt).toLocaleString('en-IN') : 'N/A'}</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 35px;">#</th>
+              <th>Product Description</th>
+              <th class="text-right">Qty</th>
+              <th class="text-right">Rate (Ex-GST)</th>
+              <th class="text-right">GST %</th>
+              <th class="text-right">Rate (With GST)</th>
+              <th class="text-right">Total Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(bill.items || []).map((item, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>
+                  <strong>${item.name || 'Item'}</strong>
+                  ${item.hsn ? `<span style="font-size: 10px; color: #64748b; display: block;">HSN: ${item.hsn}</span>` : ''}
+                </td>
+                <td class="text-right" style="font-weight: 600;">${item.qty}</td>
+                <td class="text-right">₹${Number(item.purchasePrice || 0).toFixed(2)}</td>
+                <td class="text-right">${item.gstRate || 0}%</td>
+                <td class="text-right">₹${Number(item.purchasePriceWithGst || 0).toFixed(2)}</td>
+                <td class="text-right" style="font-weight: 700;">₹${Number(item.total || (Number(item.qty || 0) * Number(item.purchasePriceWithGst || item.purchasePrice || 0))).toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <table class="totals-table">
+          <tr>
+            <td style="color: #64748b;">Subtotal (Ex-GST):</td>
+            <td class="text-right" style="font-weight: 600;">₹${Number(bill.totalAmountExGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Total GST:</td>
+            <td class="text-right" style="font-weight: 600;">₹${Number(bill.totalGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr class="grand">
+            <td>Grand Total:</td>
+            <td class="text-right" style="color: #047857;">₹${Number(bill.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          </tr>
+        </table>
+
+        <div style="margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 12px;">
+          Generated from DistroPulse ERP &bull; Purchase Inward Register &bull; ${new Date().toLocaleString('en-IN')}
+        </div>
+      </body>
+      </html>
+    `;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 300);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
-      {/* Top Filter & Action Bar */}
-      <div className="glass-card" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+      {/* Sub-Tab Navigation Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: 'var(--surface-color)',
+        padding: '8px 12px',
+        borderRadius: '12px',
+        border: '1px solid var(--border-color)',
+        boxShadow: 'var(--shadow-sm)',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setInventorySubTab('stock')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '8px',
+              border: inventorySubTab === 'stock' ? '1px solid var(--primary)' : '1px solid transparent',
+              fontWeight: '600',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+              background: inventorySubTab === 'stock' ? 'var(--primary)' : 'transparent',
+              color: inventorySubTab === 'stock' ? '#ffffff' : 'var(--text-muted)'
+            }}
+          >
+            <Boxes size={18} />
+            <span>Products & Stock Inventory</span>
+            <span style={{
+              background: inventorySubTab === 'stock' ? 'rgba(255,255,255,0.25)' : 'var(--bg-color)',
+              color: inventorySubTab === 'stock' ? '#ffffff' : 'var(--text-muted)',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '0.74rem',
+              fontWeight: '700'
+            }}>
+              {products.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setInventorySubTab('purchases')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 18px',
+              borderRadius: '8px',
+              border: inventorySubTab === 'purchases' ? '1px solid var(--primary)' : '1px solid transparent',
+              fontWeight: '600',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease-in-out',
+              background: inventorySubTab === 'purchases' ? 'var(--primary)' : 'transparent',
+              color: inventorySubTab === 'purchases' ? '#ffffff' : 'var(--text-muted)'
+            }}
+          >
+            <Receipt size={18} />
+            <span>Purchase Bills & Inward Records</span>
+            <span style={{
+              background: inventorySubTab === 'purchases' ? 'rgba(255,255,255,0.25)' : 'var(--bg-color)',
+              color: inventorySubTab === 'purchases' ? '#ffffff' : 'var(--text-muted)',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              fontSize: '0.74rem',
+              fontWeight: '700'
+            }}>
+              {purchases.length}
+            </span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setPurchaseModalOpen(true)}
+          className="btn btn-primary"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 16px',
+            fontSize: '0.84rem',
+            fontWeight: '600',
+            background: '#059669',
+            borderColor: '#059669'
+          }}
+        >
+          <Plus size={16} />
+          <span>+ Add New Purchase</span>
+        </button>
+      </div>
+
+      {inventorySubTab === 'stock' && (
+        <>
+          {/* Top Filter & Action Bar */}
+          <div className="glass-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '280px' }}>
             <div style={{ position: 'relative', width: '100%' }}>
@@ -1046,6 +1323,319 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
           </table>
         </div>
       </div>
+      </>
+      )}
+
+      {/* Purchase Bills & Inward Records Tab View */}
+      {inventorySubTab === 'purchases' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Purchase KPI Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <div className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '10px',
+                background: 'rgba(59, 130, 246, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#2563eb'
+              }}>
+                <Receipt size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+                  Total Purchase Bills
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '2px' }}>
+                  {purchaseKpis.totalBills}
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '10px',
+                background: 'rgba(16, 185, 129, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#059669'
+              }}>
+                <ShoppingBag size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+                  Total Inward Value
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: '800', color: '#059669', marginTop: '2px' }}>
+                  ₹{purchaseKpis.totalInwardValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '10px',
+                background: 'rgba(139, 92, 246, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#7c3aed'
+              }}>
+                <Building2 size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+                  Vendors / Suppliers
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '2px' }}>
+                  {purchaseKpis.uniqueSuppliers}
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '10px',
+                background: 'rgba(245, 158, 11, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#d97706'
+              }}>
+                <Boxes size={24} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+                  Total Units Inwarded
+                </div>
+                <div style={{ fontSize: '1.45rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '2px' }}>
+                  {purchaseKpis.totalItemsInwarded.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search Bar & Action Header */}
+          <div className="glass-card" style={{ padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: '280px', maxWidth: '520px' }}>
+                <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder="Search by Bill No, Supplier Name, GSTIN, or Product..."
+                  style={{ paddingLeft: '38px', width: '100%' }}
+                  value={purchaseSearchTerm}
+                  onChange={e => setPurchaseSearchTerm(e.target.value)}
+                />
+                {purchaseSearchTerm && (
+                  <button
+                    onClick={() => setPurchaseSearchTerm('')}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPurchaseModalOpen(true)}
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#059669', borderColor: '#059669' }}
+                >
+                  <Plus size={16} />
+                  <span>+ Record New Purchase</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Purchase Bills Table */}
+          <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <th style={{ padding: '14px 16px' }}>Bill # & Date</th>
+                    <th style={{ padding: '14px 16px' }}>Supplier / Vendor</th>
+                    <th style={{ padding: '14px 16px' }}>Warehouse</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'center' }}>Items</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'right' }}>Subtotal (Ex-GST)</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'right' }}>Total GST</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'right' }}>Grand Total</th>
+                    <th style={{ padding: '14px 16px', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPurchases.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                          <Receipt size={42} color="var(--text-muted)" style={{ opacity: 0.5 }} />
+                          <div style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                            {purchases.length === 0 ? 'No purchase bills recorded yet' : 'No matching purchase bills found'}
+                          </div>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', maxWidth: '420px', margin: 0 }}>
+                            {purchases.length === 0 
+                              ? 'Record your purchase inward bills to automatically add stock into your warehouse and maintain an auditable ledger.'
+                              : `No bill matches "${purchaseSearchTerm}". Try clearing your search term.`}
+                          </p>
+                          {purchases.length === 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => setPurchaseModalOpen(true)}
+                              className="btn btn-primary"
+                              style={{ marginTop: '8px', background: '#059669', borderColor: '#059669' }}
+                            >
+                              <Plus size={16} /> Record First Purchase Bill
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setPurchaseSearchTerm('')}
+                              className="btn btn-secondary"
+                              style={{ marginTop: '6px' }}
+                            >
+                              Clear Search
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPurchases.map((bill) => {
+                      const totalUnits = (bill.items || []).reduce((s, it) => s + (Number(it.qty) || 0), 0);
+                      return (
+                        <tr 
+                          key={bill.id}
+                          style={{
+                            borderBottom: '1px solid var(--border-color)',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ fontWeight: '700', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Receipt size={14} />
+                              <span>{bill.billNo || bill.id.substring(0, 10)}</span>
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                              {bill.date || 'N/A'}
+                            </div>
+                          </td>
+
+                          <td style={{ padding: '14px 16px' }}>
+                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>
+                              {bill.partyName || 'Supplier'}
+                            </div>
+                            {bill.partyGst && (
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', fontFamily: 'monospace' }}>
+                                GST: {bill.partyGst}
+                              </div>
+                            )}
+                          </td>
+
+                          <td style={{ padding: '14px 16px' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: '600',
+                              background: 'rgba(59, 130, 246, 0.1)',
+                              color: '#3b82f6',
+                              border: '1px solid rgba(59, 130, 246, 0.2)'
+                            }}>
+                              {bill.warehouseId === 'wh_store' ? 'Store Front' : 'Main Warehouse'}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              padding: '3px 9px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: '700',
+                              background: 'var(--surface-color)',
+                              border: '1px solid var(--border-color)',
+                              color: 'var(--text-main)'
+                            }}>
+                              {bill.items?.length || 0} items ({totalUnits} pcs)
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                            ₹{Number(bill.totalAmountExGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+
+                          <td style={{ padding: '14px 16px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                            ₹{Number(bill.totalGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+
+                          <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                            <span style={{ fontWeight: '800', color: '#059669', fontSize: '0.94rem' }}>
+                              ₹{Number(bill.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </td>
+
+                          <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setViewingPurchaseBill(bill)}
+                                className="btn btn-secondary btn-sm"
+                                title="View Complete Bill"
+                                style={{ padding: '5px 8px' }}
+                              >
+                                <Eye size={15} color="var(--primary)" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handlePrintPurchaseBill(bill)}
+                                className="btn btn-secondary btn-sm"
+                                title="Print Bill"
+                                style={{ padding: '5px 8px' }}
+                              >
+                                <Printer size={15} color="var(--text-muted)" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeletePurchase(e, bill.id, bill.billNo)}
+                                className="btn btn-danger btn-sm"
+                                title="Delete Bill Record"
+                                style={{ padding: '5px 8px' }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* Add / Edit Product Modal */}
       {productModalOpen && (
@@ -2946,6 +3536,178 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Purchase Bill Details Modal */}
+      {viewingPurchaseBill && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(5, 150, 105, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                  <Receipt size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
+                    Purchase Inward Bill #{viewingPurchaseBill.billNo || viewingPurchaseBill.id}
+                  </h3>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Recorded on {viewingPurchaseBill.createdAt ? new Date(viewingPurchaseBill.createdAt).toLocaleString('en-IN') : (viewingPurchaseBill.date || 'N/A')}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingPurchaseBill(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '18px', paddingTop: '16px' }}>
+              {/* Supplier & Warehouse Metadata Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                <div style={{ background: 'var(--surface-color)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Supplier / Party Details
+                  </div>
+                  <div style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                    {viewingPurchaseBill.partyName || 'Unknown Supplier'}
+                  </div>
+                  {viewingPurchaseBill.partyGst && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      GSTIN: <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{viewingPurchaseBill.partyGst}</strong>
+                    </div>
+                  )}
+                  {viewingPurchaseBill.partyPhone && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Phone: <span style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.partyPhone}</span>
+                    </div>
+                  )}
+                  {viewingPurchaseBill.partyAddress && (
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Address: <span style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.partyAddress}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background: 'var(--surface-color)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                    Bill & Warehouse Details
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.82rem' }}>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Bill Date:</span>
+                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>{viewingPurchaseBill.date || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Bill Number:</span>
+                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>{viewingPurchaseBill.billNo || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Destination:</span>
+                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>
+                        {viewingPurchaseBill.warehouseId === 'wh_store' ? 'Store Front Display' : 'Main Warehouse'}
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-muted)' }}>Total Products:</span>
+                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>
+                        {viewingPurchaseBill.items?.length || 0} Lines
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--surface-color)', padding: '10px 14px', borderBottom: '1px solid var(--border-color)', fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                  Inward Products Breakdown
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '10px 12px', textAlign: 'center', width: '35px' }}>#</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'left' }}>Product Name</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>MRP</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Sale Price</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>GST %</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Rate (Ex-GST)</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Rate (With GST)</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Line Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(viewingPurchaseBill.items || []).map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{item.name}</div>
+                            {item.hsn && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '700' }}>{item.qty}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                            {item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                            {item.salePrice ? `₹${Number(item.salePrice).toFixed(2)}` : '-'}
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>{item.gstRate || 0}%</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>₹{Number(item.purchasePrice || 0).toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>₹{Number(item.purchasePriceWithGst || 0).toFixed(2)}</td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#059669' }}>
+                            ₹{Number(item.total || ((Number(item.qty) || 0) * (Number(item.purchasePriceWithGst || item.purchasePrice) || 0))).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Totals Summary */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ width: '300px', background: 'var(--surface-color)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    <span>Subtotal (Ex-GST):</span>
+                    <strong style={{ color: 'var(--text-main)' }}>₹{Number(viewingPurchaseBill.totalAmountExGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    <span>Total GST Amount:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>₹{Number(viewingPurchaseBill.totalGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: '800', borderTop: '1px solid var(--border-color)', paddingTop: '8px', marginTop: '2px' }}>
+                    <span style={{ color: 'var(--text-main)' }}>Grand Total:</span>
+                    <span style={{ color: '#059669' }}>₹{Number(viewingPurchaseBill.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => handlePrintPurchaseBill(viewingPurchaseBill)}
+                className="btn btn-secondary"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Printer size={16} />
+                <span>Print Bill</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewingPurchaseBill(null)}
+                className="btn btn-primary"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
