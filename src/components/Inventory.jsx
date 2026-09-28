@@ -93,7 +93,7 @@ export default function Inventory({ products, refreshAllData }) {
       if (purchaseProdSearchRef.current && !purchaseProdSearchRef.current.contains(event.target)) {
         setShowPurchaseProdSuggestions(false);
       }
-      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
+      if (!event.target.closest('.purchase-row-product-cell')) {
         setActiveProductRowId(null);
       }
     };
@@ -2323,7 +2323,15 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   </button>
                 </div>
 
-                <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                <div style={{ 
+                  overflow: 'visible', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '8px',
+                  minHeight: activeProductRowId ? '320px' : 'auto',
+                  paddingBottom: activeProductRowId ? '220px' : '0px',
+                  transition: 'padding-bottom 0.2s ease, min-height 0.2s ease',
+                  position: 'relative'
+                }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                     <thead>
                       <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.68rem', letterSpacing: '0.3px' }}>
@@ -2345,12 +2353,27 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                         const lineTotal = (Number(row.qty) || 0) * (Number(row.purchasePriceWithGst) || 0);
 
                         return (
-                          <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                          <tr 
+                            key={row.id} 
+                            style={{ 
+                              borderBottom: '1px solid #e2e8f0', 
+                              background: idx % 2 === 0 ? '#fff' : '#f8fafc',
+                              position: activeProductRowId === row.id ? 'relative' : 'static',
+                              zIndex: activeProductRowId === row.id ? 200 : 1
+                            }}
+                          >
                             <td style={{ padding: '4px 4px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.70rem' }}>{idx + 1}</td>
                             
                             {/* Product */}
-                            <td style={{ padding: '4px 3px', position: 'relative' }}>
-                              <div style={{ position: 'relative' }}>
+                            <td 
+                              className="purchase-row-product-cell" 
+                              style={{ 
+                                padding: '4px 3px', 
+                                position: 'relative',
+                                zIndex: activeProductRowId === row.id ? 200 : 1
+                              }}
+                            >
+                              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                 <input 
                                   type="text" 
                                   className="input-field" 
@@ -2367,7 +2390,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                   onChange={e => {
                                     const val = e.target.value;
                                     handleRowFieldChange(idx, 'name', val);
-                                    const matched = products.find(p => p.name.toLowerCase() === val.toLowerCase());
+                                    const matched = products.find(p => (p.name || '').toLowerCase() === val.toLowerCase());
                                     if (matched) {
                                       handleProductSelect(idx, matched.id);
                                     }
@@ -2377,7 +2400,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                   onKeyDown={e => {
                                     const query = (row.name || '').trim().toLowerCase();
                                     const matching = products.filter(p => 
-                                      !query || p.name.toLowerCase().includes(query) || (p.brand && p.brand.toLowerCase().includes(query)) || (p.sku && p.sku.toLowerCase().includes(query))
+                                      !query || 
+                                      (p.name && p.name.toLowerCase().includes(query)) || 
+                                      (p.brand && p.brand.toLowerCase().includes(query)) || 
+                                      (p.sku && p.sku.toLowerCase().includes(query)) || 
+                                      (p.hsn && p.hsn.toLowerCase().includes(query))
                                     );
                                     if (e.key === 'ArrowDown') {
                                       e.preventDefault();
@@ -2401,40 +2428,104 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                       setActiveProductRowId(null);
                                     }
                                   }}
-                                  style={{ fontSize: '0.72rem', padding: '3px 6px', height: '27px', width: '100%' }}
+                                  style={{ 
+                                    fontSize: '0.74rem', 
+                                    padding: '3px 26px 3px 6px', 
+                                    height: '28px', 
+                                    width: '100%',
+                                    borderColor: activeProductRowId === row.id ? '#2563eb' : undefined,
+                                    boxShadow: activeProductRowId === row.id ? '0 0 0 2px rgba(37, 99, 235, 0.15)' : undefined
+                                  }}
                                   required
                                 />
+
+                                {/* Clear or Chevron button on the right */}
+                                <div style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                  {row.name ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRowFieldChange(idx, 'name', '');
+                                        handleRowFieldChange(idx, 'productId', '');
+                                        setActiveProductRowId(row.id);
+                                      }}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: '#94a3b8',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        padding: '1px 3px',
+                                        lineHeight: 1
+                                      }}
+                                      title="Clear Product"
+                                    >
+                                      ✕
+                                    </button>
+                                  ) : null}
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveProductRowId(activeProductRowId === row.id ? null : row.id);
+                                      setHighlightedProductIndex(0);
+                                    }}
+                                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '1px' }}
+                                    title="Toggle product list"
+                                  >
+                                    <ChevronDown size={13} color="#64748b" />
+                                  </div>
+                                </div>
 
                                 {/* Custom Dropdown with + Add New Product option matching exact Billing format */}
                                 {activeProductRowId === row.id && (
                                   <div 
-                                    ref={productDropdownRef}
                                     style={{
                                       position: 'absolute',
-                                      top: 'calc(100% + 2px)',
+                                      top: 'calc(100% + 4px)',
                                       left: 0,
-                                      width: '380px',
-                                      zIndex: 1100,
+                                      width: '400px',
+                                      zIndex: 99999,
                                       background: '#ffffff',
                                       borderRadius: '8px',
-                                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
-                                      border: '1px solid #cbd5e1',
+                                      boxShadow: '0 12px 32px rgba(0, 0, 0, 0.22), 0 4px 10px rgba(0, 0, 0, 0.08)',
+                                      border: '1.5px solid #2563eb',
                                       padding: '6px',
                                       overflow: 'hidden',
                                       textAlign: 'left'
                                     }}
                                   >
-                                    <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                                    {/* Mini header showing count */}
+                                    <div style={{ 
+                                      padding: '3px 8px 5px', 
+                                      fontSize: '0.68rem', 
+                                      fontWeight: '700', 
+                                      color: '#64748b', 
+                                      borderBottom: '1px solid #f1f5f9',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'center'
+                                    }}>
+                                      <span>📦 Products ({products.length} available)</span>
+                                      <span style={{ fontSize: '0.64rem', color: '#94a3b8' }}>Type to filter</span>
+                                    </div>
+
+                                    <div style={{ maxHeight: '230px', overflowY: 'auto', paddingTop: '4px' }}>
                                       {(() => {
                                         const query = (row.name || '').trim().toLowerCase();
                                         const matching = products.filter(p => 
-                                          !query || p.name.toLowerCase().includes(query) || (p.brand && p.brand.toLowerCase().includes(query)) || (p.sku && p.sku.toLowerCase().includes(query)) || (p.hsn && p.hsn.toLowerCase().includes(query))
+                                          !query || 
+                                          (p.name && p.name.toLowerCase().includes(query)) || 
+                                          (p.brand && p.brand.toLowerCase().includes(query)) || 
+                                          (p.sku && p.sku.toLowerCase().includes(query)) || 
+                                          (p.hsn && p.hsn.toLowerCase().includes(query))
                                         );
 
                                         if (matching.length === 0) {
                                           return (
-                                            <div style={{ padding: '12px 10px', fontSize: '0.74rem', color: '#64748b', textAlign: 'center' }}>
-                                              No product found for "{row.name}"
+                                            <div style={{ padding: '14px 10px', fontSize: '0.74rem', color: '#64748b', textAlign: 'center' }}>
+                                              No product found matching "{row.name}"
                                             </div>
                                           );
                                         }
@@ -2451,7 +2542,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                               }}
                                               onMouseEnter={() => setHighlightedProductIndex(pIdx)}
                                               style={{
-                                                padding: '4px 8px',
+                                                padding: '5px 8px',
                                                 borderRadius: '5px',
                                                 display: 'flex',
                                                 alignItems: 'center',
@@ -2484,7 +2575,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                               <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                                                 <div style={{
                                                   fontWeight: '700',
-                                                  fontSize: '0.8rem',
+                                                  fontSize: '0.78rem',
                                                   whiteSpace: 'nowrap',
                                                   overflow: 'hidden',
                                                   textOverflow: 'ellipsis',
@@ -2493,7 +2584,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                                   {p.name}
                                                 </div>
                                                 <div style={{
-                                                  fontSize: '0.68rem',
+                                                  fontSize: '0.66rem',
                                                   display: 'flex',
                                                   alignItems: 'center',
                                                   gap: '4px',
@@ -2511,7 +2602,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                               <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
                                                 <div style={{
                                                   fontWeight: '700',
-                                                  fontSize: '0.82rem',
+                                                  fontSize: '0.80rem',
                                                   color: isHigh ? '#ffffff' : '#059669'
                                                 }}>
                                                   ₹{p.salePrice || p.mrp || 0}
@@ -2544,7 +2635,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px',
-                                        padding: '5px 8px',
+                                        padding: '6px 8px',
                                         cursor: 'pointer',
                                         color: '#2563eb',
                                         fontWeight: '600',
