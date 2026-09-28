@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   BUSINESS: 'distro_business_info',
   PRODUCTS: 'distro_products',
   PARTIES: 'distro_parties',
+  SUPPLIERS: 'distro_suppliers',
   INVOICES: 'distro_invoices',
   PURCHASES: 'distro_purchases',
   STOCK_LEDGER: 'distro_stock_ledger',
@@ -806,12 +807,22 @@ export const savePurchase = (purchaseData) => {
     setStorageData(STORAGE_KEYS.PRODUCTS, currentProducts);
   }
 
-  // Auto-record or update party GST if needed
+  // Auto-record or update purchase party (supplier) in distro_suppliers
   if (purchaseData.partyName) {
-    const parties = fetchParties();
-    const existingParty = parties.find(p => p.name.trim().toLowerCase() === purchaseData.partyName.trim().toLowerCase());
-    if (existingParty && purchaseData.partyGst && !existingParty.gstin) {
-      saveParty({ ...existingParty, gstin: purchaseData.partyGst });
+    const suppliers = fetchSuppliers();
+    const existingSupplier = suppliers.find(s => s.name.trim().toLowerCase() === purchaseData.partyName.trim().toLowerCase());
+    if (existingSupplier) {
+      if (purchaseData.partyGst && !existingSupplier.gstin) {
+        saveSupplier({ ...existingSupplier, gstin: purchaseData.partyGst.trim() });
+      }
+    } else {
+      saveSupplier({
+        name: purchaseData.partyName.trim(),
+        gstin: purchaseData.partyGst ? purchaseData.partyGst.trim() : '',
+        phone: purchaseData.partyPhone || '',
+        address: purchaseData.partyAddress || '',
+        city: purchaseData.partyCity || ''
+      });
     }
   }
 
@@ -828,7 +839,73 @@ export const savePurchase = (purchaseData) => {
   return { success: true, purchase: newPurchase };
 };
 
-// Operations: Parties
+// Operations: Suppliers / Purchase Parties (Vendors)
+export const fetchSuppliers = () => {
+  const delSet = new Set(getDeletedIds());
+  const suppliers = getStorageData(STORAGE_KEYS.SUPPLIERS, []).filter(s => s && !delSet.has(s.id));
+
+  // If no suppliers exist yet, check past purchases to auto-populate
+  if (suppliers.length === 0) {
+    const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []);
+    const seen = new Set();
+    const extracted = [];
+    purchases.forEach(p => {
+      if (p && p.partyName && !seen.has(p.partyName.trim().toLowerCase())) {
+        seen.add(p.partyName.trim().toLowerCase());
+        extracted.push({
+          id: 'supp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          name: p.partyName.trim(),
+          gstin: p.partyGst || '',
+          city: '',
+          phone: '',
+          address: ''
+        });
+      }
+    });
+    if (extracted.length > 0) {
+      setStorageData(STORAGE_KEYS.SUPPLIERS, extracted);
+      return extracted;
+    }
+  }
+  return suppliers;
+};
+
+export const saveSupplier = (supplier) => {
+  if (supplier.id) {
+    unrecordDeletedId(supplier.id);
+  }
+  const suppliers = fetchSuppliers();
+  let updated;
+  let targetSupplier;
+  if (supplier.id) {
+    targetSupplier = supplier;
+    updated = suppliers.map(s => s.id === supplier.id ? supplier : s);
+    logAuditAction('EDIT_SUPPLIER', 'Suppliers & Purchases', `Updated purchase party: ${supplier.name}`);
+  } else {
+    targetSupplier = {
+      ...supplier,
+      id: 'supp_' + Date.now()
+    };
+    updated = [targetSupplier, ...suppliers];
+    logAuditAction('ADD_SUPPLIER', 'Suppliers & Purchases', `Added purchase party: ${supplier.name} (${supplier.gstin || 'N/A'})`);
+  }
+  setStorageData(STORAGE_KEYS.SUPPLIERS, updated);
+  autoCloudSync();
+  return targetSupplier;
+};
+
+export const deleteSupplier = (id) => {
+  recordDeletedId(id);
+  const currentSuppliers = getStorageData(STORAGE_KEYS.SUPPLIERS, []);
+  const target = currentSuppliers.find(s => s && s.id === id);
+  const updated = currentSuppliers.filter(s => s && s.id !== id);
+  setStorageData(STORAGE_KEYS.SUPPLIERS, updated);
+  logAuditAction('DELETE_SUPPLIER', 'Suppliers & Purchases', `Deleted purchase party: ${target?.name || 'Supplier'}`);
+  autoCloudSync();
+  return updated;
+};
+
+// Operations: Parties (Customers / Retailers)
 export const fetchParties = () => {
   const delSet = new Set(getDeletedIds());
   return getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
@@ -1743,6 +1820,7 @@ export const exportBackupJSON = () => {
     business: getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS),
     products: fetchProducts(),
     parties: fetchParties(),
+    suppliers: fetchSuppliers(),
     invoices: fetchInvoices(),
     purchases: getStorageData(STORAGE_KEYS.PURCHASES, []),
     warehouses: fetchWarehouses(),
@@ -1763,6 +1841,7 @@ export const restoreBackupJSON = (jsonString) => {
     if (data.business) setStorageData(STORAGE_KEYS.BUSINESS, data.business);
     if (Array.isArray(data.products)) setStorageData(STORAGE_KEYS.PRODUCTS, data.products);
     if (Array.isArray(data.parties)) setStorageData(STORAGE_KEYS.PARTIES, data.parties);
+    if (Array.isArray(data.suppliers)) setStorageData(STORAGE_KEYS.SUPPLIERS, data.suppliers);
     if (Array.isArray(data.invoices)) setStorageData(STORAGE_KEYS.INVOICES, data.invoices);
     if (Array.isArray(data.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, data.purchases);
     if (Array.isArray(data.warehouses)) setStorageData(STORAGE_KEYS.WAREHOUSES, data.warehouses);

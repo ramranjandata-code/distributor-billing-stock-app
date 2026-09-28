@@ -5,7 +5,8 @@ import {
   updateProductStock, 
   formatCartonStock, 
   fetchWarehouses, 
-  fetchParties,
+  fetchSuppliers,
+  saveSupplier,
   savePurchase,
   transferStockBetweenWarehouses, 
   logAuditAction 
@@ -43,9 +44,11 @@ export default function Inventory({ products, refreshAllData }) {
   const [expiryFilter, setExpiryFilter] = useState('ALL'); // 'ALL', 'EXPIRING_SOON', 'EXPIRED'
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
-  // Warehouses & Parties
+  // Warehouses & Purchase Parties (Suppliers)
   const warehouses = fetchWarehouses();
-  const parties = fetchParties();
+  const [suppliers, setSuppliers] = useState(fetchSuppliers());
+  const [quickSupplierModalOpen, setQuickSupplierModalOpen] = useState(false);
+  const [newSupplierData, setNewSupplierData] = useState({ name: '', gstin: '', phone: '', city: '' });
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -278,6 +281,8 @@ export default function Inventory({ products, refreshAllData }) {
 
   // Add New Purchase Modal Handlers
   const handleOpenPurchaseModal = () => {
+    const latestSuppliers = fetchSuppliers();
+    setSuppliers(latestSuppliers);
     setPurchaseHeader({
       partyName: '',
       partyGst: '',
@@ -358,12 +363,36 @@ export default function Inventory({ products, refreshAllData }) {
   };
 
   const handlePartySelectOrChange = (value) => {
-    const matched = parties.find(p => p.name.toLowerCase() === value.trim().toLowerCase());
+    const currentSupps = fetchSuppliers();
+    const matched = currentSupps.find(s => s.name.toLowerCase() === value.trim().toLowerCase());
     setPurchaseHeader(prev => ({
       ...prev,
       partyName: value,
       partyGst: matched?.gstin ? matched.gstin : prev.partyGst
     }));
+  };
+
+  const handleQuickAddSupplier = (e) => {
+    e.preventDefault();
+    if (!newSupplierData.name.trim()) {
+      alert('Please enter Purchase Party / Supplier name.');
+      return;
+    }
+    const created = saveSupplier({
+      name: newSupplierData.name.trim(),
+      gstin: newSupplierData.gstin.trim().toUpperCase(),
+      phone: newSupplierData.phone.trim(),
+      city: newSupplierData.city.trim()
+    });
+    const updatedSupps = fetchSuppliers();
+    setSuppliers(updatedSupps);
+    setPurchaseHeader(prev => ({
+      ...prev,
+      partyName: created.name,
+      partyGst: created.gstin || ''
+    }));
+    setNewSupplierData({ name: '', gstin: '', phone: '', city: '' });
+    setQuickSupplierModalOpen(false);
   };
 
   const handleSavePurchaseBill = (e) => {
@@ -1431,21 +1460,38 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: '700' }}>Party / Supplier Name *</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ fontWeight: '700', margin: 0, color: '#047857' }}>
+                      Purchase Party / Supplier Name *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setQuickSupplierModalOpen(true)}
+                      style={{ fontSize: '0.74rem', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', cursor: 'pointer', fontWeight: '700', padding: '2px 8px', borderRadius: '6px' }}
+                      title="Add a new Purchase Party (Vendor)"
+                    >
+                      + New Purchase Party
+                    </button>
+                  </div>
                   <input 
                     type="text" 
                     className="input-field"
-                    placeholder="Type or choose supplier..."
+                    placeholder="Type or choose purchase party / supplier..."
                     list="supplier-options-list"
                     value={purchaseHeader.partyName}
                     onChange={e => handlePartySelectOrChange(e.target.value)}
                     required
                   />
                   <datalist id="supplier-options-list">
-                    {parties.map(p => (
-                      <option key={p.id} value={p.name}>{p.name} {p.gstin ? `(${p.gstin})` : ''}</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.name}>
+                        {s.name} {s.gstin ? `(${s.gstin})` : ''}
+                      </option>
                     ))}
                   </datalist>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Only Purchase Parties (Suppliers/Vendors) appear here
+                  </div>
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
@@ -1760,6 +1806,93 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Quick Add Purchase Party / Supplier */}
+      {quickSupplierModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '480px', padding: '24px' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#047857' }}>
+                <Building2 size={20} color="#059669" />
+                <span>Add Purchase Party (Supplier)</span>
+              </h3>
+              <button 
+                onClick={() => setQuickSupplierModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAddSupplier} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: '700' }}>Purchase Party / Company Name *</label>
+                <input 
+                  type="text" 
+                  className="input-field"
+                  placeholder="e.g. Beyond Snacks Pvt Ltd / Parle Agro"
+                  value={newSupplierData.name}
+                  onChange={e => setNewSupplierData({ ...newSupplierData, name: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">GSTIN / Tax ID</label>
+                <input 
+                  type="text" 
+                  className="input-field"
+                  placeholder="e.g. 07BAPPG4321A1Z2"
+                  value={newSupplierData.gstin}
+                  onChange={e => setNewSupplierData({ ...newSupplierData, gstin: e.target.value.toUpperCase() })}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Phone / Mobile</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. 9811002200"
+                    value={newSupplierData.phone}
+                    onChange={e => setNewSupplierData({ ...newSupplierData, phone: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">City / Location</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. Delhi / Mumbai"
+                    value={newSupplierData.city}
+                    onChange={e => setNewSupplierData({ ...newSupplierData, city: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setQuickSupplierModalOpen(false)}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{ background: '#059669', borderColor: '#059669', fontWeight: '700' }}
+                >
+                  Save Supplier
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

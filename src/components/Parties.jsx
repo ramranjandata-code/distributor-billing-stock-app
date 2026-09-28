@@ -1,8 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   saveParty, 
   updatePartyBalance, 
   deleteParty, 
+  fetchSuppliers,
+  saveSupplier,
+  deleteSupplier,
   fetchBusinessProfile, 
   fetchBankAccounts, 
   recordBankTransaction, 
@@ -36,9 +39,31 @@ import {
 } from 'lucide-react';
 
 export default function Parties({ parties, invoices, refreshAllData, setActiveTab }) {
+  const [partyDirectoryType, setPartyDirectoryType] = useState('SALE'); // 'SALE' or 'PURCHASE'
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('horizontal'); // 'horizontal' or 'grid'
   const [agingFilter, setAgingFilter] = useState('ALL'); // 'ALL', 'CURRENT', 'DUE_SOON', 'CRITICAL', 'ZERO', 'WITH_BALANCE'
+  
+  // Suppliers / Purchase Parties State
+  const [suppliers, setSuppliers] = useState(() => fetchSuppliers());
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState(null);
+  const initialSupplierForm = {
+    name: '',
+    contactPerson: '',
+    phone: '',
+    email: '',
+    gstin: '',
+    city: '',
+    address: '',
+    state: ''
+  };
+  const [supplierFormData, setSupplierFormData] = useState(initialSupplierForm);
+
+  useEffect(() => {
+    setSuppliers(fetchSuppliers());
+  }, [parties]);
   
   // Modals
   const [partyModalOpen, setPartyModalOpen] = useState(false);
@@ -286,9 +311,118 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
     }
   };
 
+  const handleOpenAddSupplier = () => {
+    setEditingSupplier(null);
+    setSupplierFormData(initialSupplierForm);
+    setSupplierModalOpen(true);
+  };
+
+  const handleOpenEditSupplier = (supp) => {
+    setEditingSupplier(supp);
+    setSupplierFormData({
+      name: supp.name || '',
+      contactPerson: supp.contactPerson || '',
+      phone: supp.phone || '',
+      email: supp.email || '',
+      gstin: supp.gstin || '',
+      city: supp.city || '',
+      address: supp.address || '',
+      state: supp.state || ''
+    });
+    setSupplierModalOpen(true);
+  };
+
+  const handleSaveSupplierForm = (e) => {
+    e.preventDefault();
+    if (!supplierFormData.name.trim()) {
+      alert('Please enter Purchase Party / Supplier name.');
+      return;
+    }
+    saveSupplier({
+      ...(editingSupplier || {}),
+      ...supplierFormData,
+      name: supplierFormData.name.trim(),
+      gstin: supplierFormData.gstin.trim().toUpperCase()
+    });
+    setSuppliers(fetchSuppliers());
+    setSupplierModalOpen(false);
+    refreshAllData();
+  };
+
+  const handleDeleteSupplierItem = (supp) => {
+    if (window.confirm(`Are you sure you want to delete purchase party "${supp.name}"?`)) {
+      deleteSupplier(supp.id);
+      setSuppliers(fetchSuppliers());
+      refreshAllData();
+    }
+  };
+
+  const filteredSuppliers = useMemo(() => {
+    if (!supplierSearchTerm.trim()) return suppliers;
+    const q = supplierSearchTerm.toLowerCase();
+    return suppliers.filter(s => 
+      (s.name || '').toLowerCase().includes(q) ||
+      (s.gstin || '').toLowerCase().includes(q) ||
+      (s.phone || '').toLowerCase().includes(q) ||
+      (s.city || '').toLowerCase().includes(q)
+    );
+  }, [suppliers, supplierSearchTerm]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
+      {/* Directory Type Tabs: Sale Parties vs Purchase Parties */}
+      <div style={{ display: 'flex', gap: '12px', borderBottom: '2px solid var(--border-color)', paddingBottom: '14px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={() => setPartyDirectoryType('SALE')}
+          style={{
+            padding: '10px 20px',
+            borderRadius: '10px',
+            border: partyDirectoryType === 'SALE' ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+            cursor: 'pointer',
+            fontSize: '0.94rem',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: partyDirectoryType === 'SALE' ? 'var(--primary)' : '#ffffff',
+            color: partyDirectoryType === 'SALE' ? '#ffffff' : 'var(--text-main)',
+            boxShadow: partyDirectoryType === 'SALE' ? '0 4px 12px rgba(37, 99, 235, 0.25)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Users size={18} />
+          <span>🛍️ Sale Parties / Retailers ({parties.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setPartyDirectoryType('PURCHASE')}
+          style={{
+            padding: '10px 20px',
+            borderRadius: '10px',
+            border: partyDirectoryType === 'PURCHASE' ? '2px solid #059669' : '1px solid var(--border-color)',
+            cursor: 'pointer',
+            fontSize: '0.94rem',
+            fontWeight: '700',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: partyDirectoryType === 'PURCHASE' ? '#059669' : '#ffffff',
+            color: partyDirectoryType === 'PURCHASE' ? '#ffffff' : 'var(--text-main)',
+            boxShadow: partyDirectoryType === 'PURCHASE' ? '0 4px 12px rgba(5, 150, 105, 0.25)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Building2 size={18} />
+          <span>🏭 Purchase Parties / Suppliers ({suppliers.length})</span>
+        </button>
+      </div>
+
+      {/* 🛍️ SALE PARTIES / RETAILERS VIEW */}
+      {partyDirectoryType === 'SALE' && (
+        <>
       {/* Top Header Card */}
       <div className="glass-card" style={{ padding: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
@@ -746,6 +880,176 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
           })}
         </div>
       )}
+      </>
+      )}
+
+      {/* 🏭 PURCHASE PARTIES / SUPPLIERS VIEW */}
+      {partyDirectoryType === 'PURCHASE' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          
+          {/* Header Card */}
+          <div className="glass-card" style={{ padding: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Building2 size={22} color="#059669" />
+                  <span>Purchase Parties / Suppliers (Vendors)</span>
+                </h3>
+                <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Suppliers & Manufacturers from whom stock and inventory are purchased ({filteredSuppliers.length} records)
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', width: '280px' }}>
+                  <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Search by name, GSTIN, city, phone..."
+                    style={{ paddingLeft: '38px' }}
+                    value={supplierSearchTerm}
+                    onChange={e => setSupplierSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleOpenAddSupplier}
+                  className="btn btn-primary"
+                  style={{ gap: '6px', background: '#059669', borderColor: '#059669' }}
+                >
+                  <Plus size={18} />
+                  <span>Add Purchase Party (+)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Suppliers List / Table */}
+          {filteredSuppliers.length === 0 ? (
+            <div className="glass-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <Building2 size={48} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+              <h4 style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '6px' }}>
+                No Purchase Parties Found
+              </h4>
+              <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto 16px' }}>
+                Add suppliers or manufacturers here to easily auto-fill their GST details when recording new stock purchases.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenAddSupplier}
+                className="btn btn-primary"
+                style={{ background: '#059669', borderColor: '#059669', margin: '0 auto' }}
+              >
+                <Plus size={16} />
+                <span>Add First Purchase Party</span>
+              </button>
+            </div>
+          ) : (
+            <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '14px 16px', fontWeight: '700' }}>PURCHASE PARTY / SUPPLIER</th>
+                      <th style={{ padding: '14px 16px', fontWeight: '700' }}>GSTIN</th>
+                      <th style={{ padding: '14px 16px', fontWeight: '700' }}>CONTACT PERSON</th>
+                      <th style={{ padding: '14px 16px', fontWeight: '700' }}>PHONE / WHATSAPP</th>
+                      <th style={{ padding: '14px 16px', fontWeight: '700' }}>CITY / ADDRESS</th>
+                      <th style={{ padding: '14px 16px', fontWeight: '700', textAlign: 'center' }}>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSuppliers.map((supp, idx) => (
+                      <tr key={supp.id || idx} style={{ borderBottom: '1px solid var(--border-color)', fontSize: '0.88rem' }}>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.94rem' }}>
+                            {supp.name}
+                          </div>
+                          {supp.email && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                              ✉️ {supp.email}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          {supp.gstin ? (
+                            <span style={{ 
+                              background: '#ecfdf5', 
+                              color: '#047857', 
+                              border: '1px solid #a7f3d0', 
+                              padding: '3px 8px', 
+                              borderRadius: '6px', 
+                              fontFamily: 'monospace', 
+                              fontWeight: '700',
+                              fontSize: '0.82rem'
+                            }}>
+                              {supp.gstin}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>Unregistered / N/A</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-main)' }}>
+                          {supp.contactPerson || '-'}
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          {supp.phone ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{supp.phone}</span>
+                              <a
+                                href={buildWhatsAppUrl(supp.phone, `Hello ${supp.name},`)}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ color: '#25D366', display: 'inline-flex' }}
+                                title="Chat on WhatsApp"
+                              >
+                                <Send size={14} />
+                              </a>
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>-</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '14px 16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                          <div>{supp.city ? <strong>{supp.city}</strong> : null}</div>
+                          {supp.address && <div>{supp.address}</div>}
+                          {!supp.city && !supp.address && <span>-</span>}
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditSupplier(supp)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '6px 10px' }}
+                              title="Edit Supplier"
+                            >
+                              <Edit3 size={14} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSupplierItem(supp)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '6px 10px', background: '#fff1f2', color: '#e11d48', borderColor: '#fecdd3' }}
+                              title="Delete Supplier"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
 
       {/* Add / Edit Retailer Modal */}
       {partyModalOpen && (
@@ -1076,6 +1380,138 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
                 <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
                   <CheckCircle2 size={16} />
                   <span>Record Payment (₹{receivedAmount || 0})</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🏭 Add / Edit Purchase Party (Supplier) Modal */}
+      {supplierModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '540px' }}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: '#047857', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Building2 size={20} color="#059669" />
+                <span>{editingSupplier ? '✏️ Edit Purchase Party' : '🏭 Add New Purchase Party (Supplier)'}</span>
+              </h3>
+              <button 
+                onClick={() => setSupplierModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSupplierForm}>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label" style={{ fontWeight: '700' }}>Purchase Party / Company Name *</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. Beyond Snacks Pvt Ltd / Parle Agro"
+                    value={supplierFormData.name}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, name: e.target.value })}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">GSTIN / Tax ID</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. 07BAPPG4321A1Z2"
+                    value={supplierFormData.gstin}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, gstin: e.target.value.toUpperCase() })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Contact Person</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. Rajesh Sharma"
+                    value={supplierFormData.contactPerson}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, contactPerson: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Phone / Mobile</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. 9811002200"
+                    value={supplierFormData.phone}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, phone: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Email ID</label>
+                  <input 
+                    type="email" 
+                    className="input-field"
+                    placeholder="e.g. billing@supplier.com"
+                    value={supplierFormData.email}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">City</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. Delhi / Mumbai"
+                    value={supplierFormData.city}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, city: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">State</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. Maharashtra"
+                    value={supplierFormData.state}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, state: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="form-label">Office / Warehouse Address</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="Plot / Street / Area"
+                    value={supplierFormData.address}
+                    onChange={e => setSupplierFormData({ ...supplierFormData, address: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setSupplierModalOpen(false)}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{ background: '#059669', borderColor: '#059669', fontWeight: '700' }}
+                >
+                  <Save size={16} />
+                  <span>Save Purchase Party</span>
                 </button>
               </div>
             </form>
