@@ -60,7 +60,13 @@ export default function Inventory({ products, refreshAllData }) {
   const [selectedSupplierObj, setSelectedSupplierObj] = useState(null);
   const supplierDropdownRef = useRef(null);
 
-  // Product Search Dropdown inside Purchase Table
+  // Top Product Search Bar inside Add Purchase Modal
+  const [purchaseProdSearchTerm, setPurchaseProdSearchTerm] = useState('');
+  const [showPurchaseProdSuggestions, setShowPurchaseProdSuggestions] = useState(false);
+  const [highlightedPurchaseProdIndex, setHighlightedPurchaseProdIndex] = useState(0);
+  const purchaseProdSearchRef = useRef(null);
+
+  // Product Search Dropdown inside Purchase Table Row
   const [activeProductRowId, setActiveProductRowId] = useState(null);
   const [highlightedProductIndex, setHighlightedProductIndex] = useState(0);
   const [quickProductModalOpen, setQuickProductModalOpen] = useState(false);
@@ -83,6 +89,9 @@ export default function Inventory({ products, refreshAllData }) {
     const handleClickOutside = (event) => {
       if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target)) {
         setShowSupplierSuggestions(false);
+      }
+      if (purchaseProdSearchRef.current && !purchaseProdSearchRef.current.contains(event.target)) {
+        setShowPurchaseProdSuggestions(false);
       }
       if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
         setActiveProductRowId(null);
@@ -335,6 +344,8 @@ export default function Inventory({ products, refreshAllData }) {
     setSupplierSearchTerm('');
     setSelectedSupplierObj(null);
     setShowSupplierSuggestions(false);
+    setPurchaseProdSearchTerm('');
+    setShowPurchaseProdSuggestions(false);
     setPurchaseRows([emptyPurchaseRow()]);
     setPurchaseModalOpen(true);
   };
@@ -383,6 +394,81 @@ export default function Inventory({ products, refreshAllData }) {
     setQuickSupplierModalOpen(true);
   };
 
+  // Top Product Search Filter for Add Purchase Modal
+  const filteredProductsForPurchase = useMemo(() => {
+    const term = (purchaseProdSearchTerm || '').trim().toLowerCase();
+    if (!term) return products;
+    return products.filter(p => 
+      (p.name && p.name.toLowerCase().includes(term)) ||
+      (p.sku && p.sku.toLowerCase().includes(term)) ||
+      (p.barcode && p.barcode.toLowerCase().includes(term)) ||
+      (p.hsn && p.hsn.toLowerCase().includes(term)) ||
+      (p.brand && p.brand.toLowerCase().includes(term)) ||
+      (p.category && p.category.toLowerCase().includes(term))
+    );
+  }, [products, purchaseProdSearchTerm]);
+
+  const handleSelectProductToPurchase = (prod) => {
+    if (!prod) return;
+    const exGst = Number(prod.purchasePrice) || 0;
+    const rate = Number(prod.gstRate) || 0;
+    const withGst = Number((exGst * (1 + rate / 100)).toFixed(2));
+
+    setPurchaseRows(prev => {
+      const emptyIdx = prev.findIndex(r => !r.name && !r.productId);
+      const newRowData = {
+        id: 'prow_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        productId: prod.id,
+        name: prod.name,
+        sku: prod.sku || '',
+        brand: prod.brand || '',
+        category: prod.category || '',
+        mrp: prod.mrp || '',
+        hsn: prod.hsn || '',
+        salePrice: prod.salePrice || '',
+        gstRate: rate,
+        purchasePrice: exGst || '',
+        purchasePriceWithGst: withGst || '',
+        qty: 1,
+        pcsPerCarton: prod.pcsPerCarton || 24
+      };
+
+      if (emptyIdx !== -1) {
+        const copy = [...prev];
+        copy[emptyIdx] = { ...copy[emptyIdx], ...newRowData };
+        return copy;
+      } else {
+        return [...prev, newRowData];
+      }
+    });
+
+    setPurchaseProdSearchTerm('');
+    setShowPurchaseProdSuggestions(false);
+  };
+
+  const handlePurchaseProdSearchKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filteredProductsForPurchase.length > 0) {
+        setHighlightedPurchaseProdIndex(prev => (prev + 1) % filteredProductsForPurchase.length);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (filteredProductsForPurchase.length > 0) {
+        setHighlightedPurchaseProdIndex(prev => (prev - 1 + filteredProductsForPurchase.length) % filteredProductsForPurchase.length);
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (showPurchaseProdSuggestions && filteredProductsForPurchase.length > 0 && filteredProductsForPurchase[highlightedPurchaseProdIndex]) {
+        handleSelectProductToPurchase(filteredProductsForPurchase[highlightedPurchaseProdIndex]);
+      } else if (purchaseProdSearchTerm && purchaseProdSearchTerm.trim()) {
+        handleOpenQuickProductModal(null, purchaseProdSearchTerm.trim());
+      }
+    } else if (e.key === 'Escape') {
+      setShowPurchaseProdSuggestions(false);
+    }
+  };
+
   const handleOpenQuickProductModal = (rowIndex, initialName = '') => {
     setTargetRowIndexForProduct(rowIndex);
     setQuickProductData({
@@ -390,6 +476,7 @@ export default function Inventory({ products, refreshAllData }) {
       name: (initialName || '').trim()
     });
     setActiveProductRowId(null);
+    setShowPurchaseProdSuggestions(false);
     setQuickProductModalOpen(true);
   };
 
@@ -423,10 +510,10 @@ export default function Inventory({ products, refreshAllData }) {
     const res = saveProduct(payload);
     refreshAllData();
     const savedProd = Array.isArray(res) ? res[0] : res;
+    const withGst = Number((pur * (1 + rate / 100)).toFixed(2));
 
     if (targetRowIndexForProduct !== null) {
       const idx = targetRowIndexForProduct;
-      const withGst = Number((pur * (1 + rate / 100)).toFixed(2));
       setPurchaseRows(prev => {
         const updated = [...prev];
         if (updated[idx]) {
@@ -449,6 +536,35 @@ export default function Inventory({ products, refreshAllData }) {
         }
         return updated;
       });
+    } else {
+      const newRowData = {
+        id: 'prow_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        productId: savedProd.id,
+        name: savedProd.name,
+        sku: savedProd.sku || '',
+        brand: savedProd.brand || '',
+        category: savedProd.category || '',
+        mrp: savedProd.mrp || '',
+        hsn: savedProd.hsn || '',
+        salePrice: savedProd.salePrice || '',
+        gstRate: rate,
+        purchasePrice: pur || '',
+        purchasePriceWithGst: withGst || '',
+        qty: 1,
+        pcsPerCarton: pcsPerCtn
+      };
+      setPurchaseRows(prev => {
+        const emptyIdx = prev.findIndex(r => !r.name && !r.productId);
+        if (emptyIdx !== -1) {
+          const copy = [...prev];
+          copy[emptyIdx] = { ...copy[emptyIdx], ...newRowData };
+          return copy;
+        } else {
+          return [...prev, newRowData];
+        }
+      });
+      setPurchaseProdSearchTerm('');
+      setShowPurchaseProdSuggestions(false);
     }
 
     setQuickProductModalOpen(false);
@@ -1952,6 +2068,244 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
               </div>
 
+              {/* Product Search & Add Bar matching exact Billing format */}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.74rem', fontWeight: '700', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <ShoppingBag size={14} color="#2563eb" />
+                    <span>Search & Add Product to Purchase</span>
+                  </label>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Type product name, SKU or brand to quickly add items</span>
+                </div>
+                <div ref={purchaseProdSearchRef} style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <Search 
+                      size={14} 
+                      color={showPurchaseProdSuggestions ? '#2563eb' : '#94a3b8'} 
+                      style={{ 
+                        position: 'absolute', 
+                        left: '10px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)', 
+                        pointerEvents: 'none',
+                        transition: 'color 0.15s ease'
+                      }} 
+                    />
+                    <input 
+                      type="text"
+                      className="input-field"
+                      placeholder="Search products..."
+                      style={{ 
+                        width: '100%',
+                        height: '32px',
+                        paddingLeft: '32px', 
+                        paddingRight: purchaseProdSearchTerm ? '30px' : '10px', 
+                        fontSize: '0.80rem',
+                        borderRadius: '6px',
+                        border: showPurchaseProdSuggestions ? '1.5px solid #2563eb' : '1px solid var(--border-color)',
+                        boxShadow: showPurchaseProdSuggestions ? '0 0 0 2px rgba(37, 99, 235, 0.12)' : 'none',
+                        background: 'var(--bg-input, #ffffff)',
+                        color: 'var(--text-main, #0f172a)',
+                        outline: 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                      value={purchaseProdSearchTerm}
+                      onClick={() => {
+                        setShowPurchaseProdSuggestions(true);
+                        setHighlightedPurchaseProdIndex(0);
+                      }}
+                      onFocus={() => {
+                        setShowPurchaseProdSuggestions(true);
+                        setHighlightedPurchaseProdIndex(0);
+                      }}
+                      onChange={e => {
+                        setPurchaseProdSearchTerm(e.target.value);
+                        setShowPurchaseProdSuggestions(true);
+                        setHighlightedPurchaseProdIndex(0);
+                      }}
+                      onKeyDown={handlePurchaseProdSearchKeyDown}
+                    />
+                    {purchaseProdSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPurchaseProdSearchTerm('');
+                          setShowPurchaseProdSuggestions(true);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: '#94a3b8',
+                          fontSize: '15px',
+                          fontWeight: 'bold',
+                          padding: '2px 6px',
+                          borderRadius: '50%',
+                          lineHeight: 1
+                        }}
+                        title="Clear Product Search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Popup matching exact Billing/Image format */}
+                  {showPurchaseProdSuggestions && (
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 1100,
+                        background: '#ffffff',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
+                        border: '1px solid #e2e8f0',
+                        padding: '6px',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Scrollable list of products */}
+                      <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                        {filteredProductsForPurchase.length === 0 ? (
+                          <div style={{ padding: '16px 12px', fontSize: '0.80rem', color: '#64748b', textAlign: 'center' }}>
+                            No product found for "{purchaseProdSearchTerm}"
+                          </div>
+                        ) : (
+                          filteredProductsForPurchase.map((p, idx) => {
+                            const isHighlighted = (highlightedPurchaseProdIndex === idx);
+                            const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'P';
+
+                            return (
+                              <div 
+                                key={p.id}
+                                onClick={() => handleSelectProductToPurchase(p)}
+                                onMouseEnter={() => setHighlightedPurchaseProdIndex(idx)}
+                                style={{
+                                  padding: '4px 8px',
+                                  borderRadius: '5px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  cursor: 'pointer',
+                                  background: isHighlighted ? '#2563eb' : 'transparent',
+                                  color: isHighlighted ? '#ffffff' : '#0f172a',
+                                  transition: 'background 0.1s ease, color 0.1s ease',
+                                  marginBottom: '2px'
+                                }}
+                              >
+                                {/* Round Avatar Circle with Initial */}
+                                <div style={{
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '50%',
+                                  background: isHighlighted ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
+                                  color: isHighlighted ? '#ffffff' : '#475569',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: '700',
+                                  fontSize: '0.72rem',
+                                  flexShrink: 0
+                                }}>
+                                  {initial}
+                                </div>
+
+                                {/* Product Details */}
+                                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                  <div style={{
+                                    fontWeight: '700',
+                                    fontSize: '0.8rem',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    color: isHighlighted ? '#ffffff' : '#0f172a'
+                                  }}>
+                                    {p.name}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '0.68rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    marginTop: '1px',
+                                    color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
+                                  }}>
+                                    <Tag size={11} style={{ flexShrink: 0 }} />
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {p.sku ? `SKU: ${p.sku}` : ''}{p.hsn ? ` • HSN: ${p.hsn}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Price & Stock status */}
+                                <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+                                  <div style={{
+                                    fontWeight: '700',
+                                    fontSize: '0.82rem',
+                                    color: isHighlighted ? '#ffffff' : '#059669'
+                                  }}>
+                                    ₹{p.salePrice || p.mrp || 0}
+                                  </div>
+                                  <div style={{
+                                    fontSize: '0.64rem',
+                                    fontWeight: '600',
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
+                                    background: isHighlighted 
+                                      ? 'rgba(255, 255, 255, 0.2)' 
+                                      : '#f1f5f9',
+                                    color: isHighlighted 
+                                      ? '#ffffff' 
+                                      : '#475569'
+                                  }}>
+                                    Stock: {p.currentStock || 0} {p.unit || 'Pcs'}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Bottom Row: + New Product */}
+                      <div 
+                        onClick={() => {
+                          handleOpenQuickProductModal(null, purchaseProdSearchTerm);
+                          setShowPurchaseProdSuggestions(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '5px 8px',
+                          cursor: 'pointer',
+                          color: '#2563eb',
+                          fontWeight: '600',
+                          fontSize: '0.76rem',
+                          borderTop: '1px solid #f1f5f9',
+                          borderRadius: '0 0 6px 6px',
+                          transition: 'background 0.15s ease',
+                          marginTop: '2px'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <PlusCircle size={14} color="#2563eb" />
+                        <span>New Product</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Items Table */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -2051,7 +2405,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                   required
                                 />
 
-                                {/* Custom Dropdown with + Add New Product option */}
+                                {/* Custom Dropdown with + Add New Product option matching exact Billing format */}
                                 {activeProductRowId === row.id && (
                                   <div 
                                     ref={productDropdownRef}
@@ -2059,27 +2413,27 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                       position: 'absolute',
                                       top: 'calc(100% + 2px)',
                                       left: 0,
-                                      width: '280px',
+                                      width: '380px',
                                       zIndex: 1100,
                                       background: '#ffffff',
-                                      borderRadius: '6px',
-                                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.16)',
+                                      borderRadius: '8px',
+                                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.08)',
                                       border: '1px solid #cbd5e1',
-                                      padding: '4px',
+                                      padding: '6px',
                                       overflow: 'hidden',
                                       textAlign: 'left'
                                     }}
                                   >
-                                    <div style={{ maxHeight: '170px', overflowY: 'auto' }}>
+                                    <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
                                       {(() => {
                                         const query = (row.name || '').trim().toLowerCase();
                                         const matching = products.filter(p => 
-                                          !query || p.name.toLowerCase().includes(query) || (p.brand && p.brand.toLowerCase().includes(query)) || (p.sku && p.sku.toLowerCase().includes(query))
+                                          !query || p.name.toLowerCase().includes(query) || (p.brand && p.brand.toLowerCase().includes(query)) || (p.sku && p.sku.toLowerCase().includes(query)) || (p.hsn && p.hsn.toLowerCase().includes(query))
                                         );
 
                                         if (matching.length === 0) {
                                           return (
-                                            <div style={{ padding: '8px 10px', fontSize: '0.72rem', color: '#64748b', textAlign: 'center' }}>
+                                            <div style={{ padding: '12px 10px', fontSize: '0.74rem', color: '#64748b', textAlign: 'center' }}>
                                               No product found for "{row.name}"
                                             </div>
                                           );
@@ -2087,6 +2441,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
                                         return matching.map((p, pIdx) => {
                                           const isHigh = (highlightedProductIndex === pIdx);
+                                          const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'P';
                                           return (
                                             <div
                                               key={p.id || pIdx}
@@ -2096,8 +2451,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                               }}
                                               onMouseEnter={() => setHighlightedProductIndex(pIdx)}
                                               style={{
-                                                padding: '5px 8px',
-                                                borderRadius: '4px',
+                                                padding: '4px 8px',
+                                                borderRadius: '5px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
                                                 cursor: 'pointer',
                                                 background: isHigh ? '#2563eb' : 'transparent',
                                                 color: isHigh ? '#ffffff' : '#0f172a',
@@ -2105,22 +2463,73 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                                 marginBottom: '2px'
                                               }}
                                             >
-                                              <div style={{ fontWeight: '700', fontSize: '0.74rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {p.name}
-                                              </div>
-                                              <div style={{ 
-                                                fontSize: '0.64rem', 
-                                                color: isHigh ? 'rgba(255, 255, 255, 0.9)' : '#64748b',
+                                              {/* Round Avatar Circle with Initial */}
+                                              <div style={{
+                                                width: '24px',
+                                                height: '24px',
+                                                borderRadius: '50%',
+                                                background: isHigh ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
+                                                color: isHigh ? '#ffffff' : '#475569',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '6px',
-                                                marginTop: '1px'
+                                                justifyContent: 'center',
+                                                fontWeight: '700',
+                                                fontSize: '0.72rem',
+                                                flexShrink: 0
                                               }}>
-                                                <span>Stock: <strong>{p.currentStock || 0}</strong></span>
-                                                <span>•</span>
-                                                <span>MRP: ₹{p.mrp || 0}</span>
-                                                <span>•</span>
-                                                <span>GST: {p.gstRate || 0}%</span>
+                                                {initial}
+                                              </div>
+
+                                              {/* Product Details */}
+                                              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                                <div style={{
+                                                  fontWeight: '700',
+                                                  fontSize: '0.8rem',
+                                                  whiteSpace: 'nowrap',
+                                                  overflow: 'hidden',
+                                                  textOverflow: 'ellipsis',
+                                                  color: isHigh ? '#ffffff' : '#0f172a'
+                                                }}>
+                                                  {p.name}
+                                                </div>
+                                                <div style={{
+                                                  fontSize: '0.68rem',
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: '4px',
+                                                  marginTop: '1px',
+                                                  color: isHigh ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
+                                                }}>
+                                                  <Tag size={11} style={{ flexShrink: 0 }} />
+                                                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {p.sku ? `SKU: ${p.sku}` : ''}{p.hsn ? ` • HSN: ${p.hsn}` : ''}{p.brand ? ` • ${p.brand}` : ''}{p.mrp ? ` • MRP: ₹${p.mrp}` : ''}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              {/* Price & Stock status */}
+                                              <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+                                                <div style={{
+                                                  fontWeight: '700',
+                                                  fontSize: '0.82rem',
+                                                  color: isHigh ? '#ffffff' : '#059669'
+                                                }}>
+                                                  ₹{p.salePrice || p.mrp || 0}
+                                                </div>
+                                                <div style={{
+                                                  fontSize: '0.64rem',
+                                                  fontWeight: '600',
+                                                  padding: '1px 5px',
+                                                  borderRadius: '3px',
+                                                  background: isHigh 
+                                                    ? 'rgba(255, 255, 255, 0.2)' 
+                                                    : '#f1f5f9',
+                                                  color: isHigh 
+                                                    ? '#ffffff' 
+                                                    : '#475569'
+                                                }}>
+                                                  Stock: {p.currentStock || 0} {p.unit || 'Pcs'}
+                                                </div>
                                               </div>
                                             </div>
                                           );
@@ -2135,13 +2544,13 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px',
-                                        padding: '6px 8px',
+                                        padding: '5px 8px',
                                         cursor: 'pointer',
                                         color: '#2563eb',
-                                        fontWeight: '700',
-                                        fontSize: '0.74rem',
+                                        fontWeight: '600',
+                                        fontSize: '0.76rem',
                                         borderTop: '1px solid #f1f5f9',
-                                        borderRadius: '0 0 4px 4px',
+                                        borderRadius: '0 0 6px 6px',
                                         transition: 'background 0.15s ease',
                                         marginTop: '2px'
                                       }}
@@ -2149,7 +2558,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                     >
                                       <PlusCircle size={14} color="#2563eb" />
-                                      <span>+ Add New Product</span>
+                                      <span>New Product</span>
                                     </div>
                                   </div>
                                 )}
