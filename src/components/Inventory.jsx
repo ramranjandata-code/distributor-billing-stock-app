@@ -1501,42 +1501,42 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
       {/* MODAL: Add New Purchase Bill */}
       {purchaseModalOpen && (
         <div className="modal-overlay" style={{ zIndex: 1000 }}>
-          <div className="modal-content" style={{ maxWidth: '1240px', width: '96vw', padding: '24px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="modal-content" style={{ maxWidth: '1240px', width: '96vw', padding: '16px 20px', maxHeight: '94vh', display: 'flex', flexDirection: 'column' }}>
             
             {/* Header */}
-            <div className="modal-header" style={{ paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="modal-header" style={{ paddingBottom: '10px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <ShoppingBag size={22} color="#059669" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <ShoppingBag size={18} color="#059669" />
                   <span>Add New Purchase (Inward Stock Entry)</span>
                 </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                   Record vendor purchase invoice, auto-calculate purchase price with GST, and increment inventory stock.
                 </p>
               </div>
               <button 
                 onClick={() => setPurchaseModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
               {/* Header Fields: Party, GST, Date, Bill No, Warehouse */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                 
                 <div className="form-group" style={{ margin: 0, position: 'relative' }} ref={supplierDropdownRef}>
-                  <label className="form-label" style={{ fontWeight: '700', marginBottom: '4px', color: '#047857' }}>
+                  <label className="form-label" style={{ fontWeight: '700', marginBottom: '3px', color: '#047857', fontSize: '0.74rem' }}>
                     Purchase Party / Supplier Name *
                   </label>
 
                   {/* Input Search Container matching user screenshot */}
                   <div
                     style={{
-                      height: '36px',
+                      height: '30px',
                       display: 'flex',
                       alignItems: 'center',
                       background: '#ffffff',
@@ -1553,9 +1553,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                       style={{ 
                         flex: 1,
                         height: '100%',
-                        paddingLeft: '10px', 
-                        paddingRight: '6px',
-                        fontSize: '0.84rem', 
+                        paddingLeft: '8px', 
+                        paddingRight: '4px',
+                        fontSize: '0.76rem', 
                         border: 'none',
                         outline: 'none',
                         background: 'transparent',
@@ -1623,9 +1623,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           border: 'none',
                           cursor: 'pointer',
                           color: '#94a3b8',
-                          fontSize: '14px',
+                          fontSize: '12px',
                           fontWeight: 'bold',
-                          padding: '4px 6px',
+                          padding: '2px 5px',
                           lineHeight: 1
                         }}
                         title="Clear Supplier"
@@ -1640,13 +1640,13 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        padding: '0 8px 0 2px',
+                        padding: '0 6px 0 2px',
                         cursor: 'pointer',
                         color: '#64748b'
                       }}
                       title="Open Supplier List"
                     >
-                      <ChevronDown size={16} color="#64748b" />
+                      <ChevronDown size={14} color="#64748b" />
                     </div>
                   </div>
 
@@ -1663,14 +1663,14 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                         borderRadius: '8px',
                         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
                         border: '1px solid #e2e8f0',
-                        padding: '6px',
+                        padding: '5px',
                         overflow: 'hidden'
                       }}
                     >
                       {/* Scrollable list of suppliers */}
-                      <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                         {filteredSuppliersForPurchase.length === 0 ? (
-                          <div style={{ padding: '14px 12px', fontSize: '0.84rem', color: '#64748b', textAlign: 'center' }}>
+                          <div style={{ padding: '10px', fontSize: '0.74rem', color: '#64748b', textAlign: 'center' }}>
                             No supplier found for "{supplierSearchTerm || purchaseHeader.partyName}"
                           </div>
                         ) : (
@@ -1687,22 +1687,22 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 }}
                                 onMouseEnter={() => setHighlightedSupplierIndex(idx)}
                                 style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
+                                  padding: '5px 8px',
+                                  borderRadius: '5px',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '10px',
+                                  gap: '8px',
                                   cursor: 'pointer',
                                   background: isHighlighted ? '#2563eb' : 'transparent',
                                   color: isHighlighted ? '#ffffff' : '#0f172a',
                                   transition: 'background 0.1s ease, color 0.1s ease',
-                                  marginBottom: '3px'
+                                  marginBottom: '2px'
                                 }}
                               >
                                 {/* Round Avatar Circle with Initial */}
                                 <div style={{
-                                  width: '26px',
-                                  height: '26px',
+                                  width: '22px',
+                                  height: '22px',
                                   borderRadius: '50%',
                                   background: isHighlighted ? 'rgba(255, 255, 255, 0.25)' : '#e2e8f0',
                                   color: isHighlighted ? '#ffffff' : '#475569',
@@ -1710,7 +1710,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   fontWeight: '800',
-                                  fontSize: '0.78rem',
+                                  fontSize: '0.72rem',
                                   flexShrink: 0
                                 }}>
                                   {initial}
@@ -1720,7 +1720,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                                   <div style={{
                                     fontWeight: '700',
-                                    fontSize: '0.84rem',
+                                    fontSize: '0.76rem',
                                     whiteSpace: 'nowrap',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
@@ -1729,14 +1729,14 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                     {s.name}
                                   </div>
                                   <div style={{
-                                    fontSize: '0.72rem',
+                                    fontSize: '0.66rem',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '4px',
                                     marginTop: '1px',
                                     color: isHighlighted ? 'rgba(255, 255, 255, 0.9)' : '#64748b'
                                   }}>
-                                    <FileText size={11} style={{ flexShrink: 0 }} />
+                                    <FileText size={10} style={{ flexShrink: 0 }} />
                                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                       {s.name} {s.gstin ? `• ${s.gstin}` : ''} {s.phone ? `• ${s.phone}` : ''} {s.city ? `• ${s.city}` : ''}
                                     </span>
@@ -1747,10 +1747,10 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 {s.gstin && (
                                   <div style={{
                                     flexShrink: 0,
-                                    fontSize: '0.68rem',
+                                    fontSize: '0.62rem',
                                     fontWeight: '700',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
                                     background: isHighlighted ? 'rgba(255, 255, 255, 0.2)' : '#ecfdf5',
                                     color: isHighlighted ? '#ffffff' : '#047857'
                                   }}>
@@ -1770,11 +1770,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px',
-                          padding: '7px 10px',
+                          padding: '6px 8px',
                           cursor: 'pointer',
                           color: '#2563eb',
                           fontWeight: '700',
-                          fontSize: '0.8rem',
+                          fontSize: '0.74rem',
                           borderTop: '1px solid #f1f5f9',
                           borderRadius: '0 0 6px 6px',
                           transition: 'background 0.15s ease',
@@ -1783,7 +1783,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                         onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
-                        <PlusCircle size={15} color="#2563eb" />
+                        <PlusCircle size={13} color="#2563eb" />
                         <span>New Customer</span>
                       </div>
                     </div>
@@ -1791,7 +1791,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
                   {/* Selected Supplier summary badge */}
                   {selectedSupplierObj && (
-                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '4px 8px', borderRadius: '6px', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '3px 6px', borderRadius: '5px', marginTop: '3px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.68rem' }}>
                       <span style={{ color: '#166534', fontWeight: '700' }}>
                         ✓ {selectedSupplierObj.name} {selectedSupplierObj.gstin ? `(${selectedSupplierObj.gstin})` : ''}
                       </span>
@@ -1807,10 +1807,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: '700' }}>Party GST Number</label>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.74rem', marginBottom: '3px' }}>Party GST Number</label>
                   <input 
                     type="text" 
-                    className="input-field"
+                    className="input-field" 
+                    style={{ fontSize: '0.76rem', padding: '4px 8px', height: '30px' }}
                     placeholder="e.g. 24AAAAA0000A1Z5"
                     value={purchaseHeader.partyGst}
                     onChange={e => setPurchaseHeader({ ...purchaseHeader, partyGst: e.target.value.toUpperCase() })}
@@ -1818,10 +1819,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: '700' }}>Purchase Date *</label>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '0.74rem', marginBottom: '3px' }}>Purchase Date *</label>
                   <input 
                     type="date" 
-                    className="input-field"
+                    className="input-field" 
+                    style={{ fontSize: '0.76rem', padding: '4px 8px', height: '30px' }}
                     value={purchaseHeader.date}
                     onChange={e => setPurchaseHeader({ ...purchaseHeader, date: e.target.value })}
                     required
@@ -1829,10 +1831,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Supplier Bill / Invoice No.</label>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>Supplier Bill / Invoice No.</label>
                   <input 
                     type="text" 
-                    className="input-field"
+                    className="input-field" 
+                    style={{ fontSize: '0.76rem', padding: '4px 8px', height: '30px' }}
                     placeholder="e.g. BILL-4091"
                     value={purchaseHeader.billNo}
                     onChange={e => setPurchaseHeader({ ...purchaseHeader, billNo: e.target.value })}
@@ -1840,9 +1843,10 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Receive In Warehouse</label>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>Receive In Warehouse</label>
                   <select 
-                    className="input-field select-field"
+                    className="input-field select-field" 
+                    style={{ fontSize: '0.76rem', padding: '4px 8px', height: '30px' }}
                     value={purchaseHeader.warehouseId}
                     onChange={e => setPurchaseHeader({ ...purchaseHeader, warehouseId: e.target.value })}
                   >
@@ -1856,36 +1860,36 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
               {/* Items Table */}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-main)' }}>
                     📦 Purchase Item Lines ({purchaseRows.length} {purchaseRows.length === 1 ? 'row' : 'rows'})
                   </span>
                   <button 
                     type="button" 
                     onClick={handleAddPurchaseRow}
                     className="btn btn-sm btn-secondary"
-                    style={{ gap: '6px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb', padding: '6px 12px' }}
+                    style={{ gap: '4px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb', padding: '3px 10px', fontSize: '0.72rem' }}
                   >
-                    <Plus size={15} />
+                    <Plus size={13} />
                     <span>+ Add Row</span>
                   </button>
                 </div>
 
-                <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                     <thead>
-                      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '10px 8px', width: '32px', textAlign: 'center' }}>#</th>
-                        <th style={{ padding: '10px 8px', minWidth: '220px' }}>PRODUCT *</th>
-                        <th style={{ padding: '10px 8px', width: '95px' }}>MRP (₹)</th>
-                        <th style={{ padding: '10px 8px', width: '90px' }}>HSN</th>
-                        <th style={{ padding: '10px 8px', width: '105px' }}>SELLING PRICE (₹)</th>
-                        <th style={{ padding: '10px 8px', width: '100px' }}>RATE OF GST</th>
-                        <th style={{ padding: '10px 8px', width: '130px' }}>PURCHASE PRICE W/O GST</th>
-                        <th style={{ padding: '10px 8px', width: '135px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
-                        <th style={{ padding: '10px 8px', width: '90px' }}>QUANTITY</th>
-                        <th style={{ padding: '10px 8px', width: '110px', textAlign: 'right' }}>LINE TOTAL</th>
-                        <th style={{ padding: '10px 8px', width: '40px', textAlign: 'center' }}></th>
+                      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.68rem', letterSpacing: '0.3px' }}>
+                        <th style={{ padding: '6px 4px', width: '28px', textAlign: 'center' }}>#</th>
+                        <th style={{ padding: '6px 5px', minWidth: '190px' }}>PRODUCT *</th>
+                        <th style={{ padding: '6px 5px', width: '80px' }}>MRP (₹)</th>
+                        <th style={{ padding: '6px 5px', width: '75px' }}>HSN</th>
+                        <th style={{ padding: '6px 5px', width: '90px' }}>SELLING PRICE (₹)</th>
+                        <th style={{ padding: '6px 5px', width: '75px' }}>RATE OF GST</th>
+                        <th style={{ padding: '6px 5px', width: '110px' }}>PURCHASE PRICE W/O GST</th>
+                        <th style={{ padding: '6px 5px', width: '115px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
+                        <th style={{ padding: '6px 5px', width: '70px' }}>QUANTITY</th>
+                        <th style={{ padding: '6px 6px', width: '90px', textAlign: 'right' }}>LINE TOTAL</th>
+                        <th style={{ padding: '6px 2px', width: '30px', textAlign: 'center' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1894,10 +1898,10 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
                         return (
                           <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                            <td style={{ padding: '8px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                            <td style={{ padding: '4px 4px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.70rem' }}>{idx + 1}</td>
                             
                             {/* Product */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="text" 
                                 className="input-field" 
@@ -1913,7 +1917,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                     handleRowFieldChange(idx, 'name', val);
                                   }
                                 }}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 6px', height: '27px' }}
                                 required
                               />
                               <datalist id={`prod-options-${row.id}`}>
@@ -1926,7 +1930,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                             </td>
 
                             {/* MRP */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="number" 
                                 step="0.01" 
@@ -1934,24 +1938,24 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 placeholder="0.00"
                                 value={row.mrp}
                                 onChange={e => handleRowFieldChange(idx, 'mrp', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
                               />
                             </td>
 
                             {/* HSN */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="text" 
                                 className="input-field" 
                                 placeholder="HSN"
                                 value={row.hsn}
                                 onChange={e => handleRowFieldChange(idx, 'hsn', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
                               />
                             </td>
 
                             {/* Selling Price */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="number" 
                                 step="0.01" 
@@ -1959,17 +1963,17 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 placeholder="0.00"
                                 value={row.salePrice}
                                 onChange={e => handleRowFieldChange(idx, 'salePrice', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
                               />
                             </td>
 
                             {/* Rate of GST */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <select 
                                 className="input-field select-field"
                                 value={row.gstRate}
                                 onChange={e => handleRowFieldChange(idx, 'gstRate', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 4px' }}
+                                style={{ fontSize: '0.72rem', padding: '2px 3px', height: '27px' }}
                               >
                                 <option value={0}>0%</option>
                                 <option value={5}>5%</option>
@@ -1980,7 +1984,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                             </td>
 
                             {/* Purchase Price Without GST */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="number" 
                                 step="0.01" 
@@ -1988,13 +1992,13 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 placeholder="0.00"
                                 value={row.purchasePrice}
                                 onChange={e => handleRowFieldChange(idx, 'purchasePrice', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
                                 required
                               />
                             </td>
 
                             {/* Purchase Price With GST */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="number" 
                                 step="0.01" 
@@ -2002,12 +2006,12 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 placeholder="0.00"
                                 value={row.purchasePriceWithGst}
                                 onChange={e => handleRowFieldChange(idx, 'purchasePriceWithGst', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px', background: '#f0fdf4', color: '#047857', fontWeight: '700', borderColor: '#86efac' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px', background: '#f0fdf4', color: '#047857', fontWeight: '700', borderColor: '#86efac' }}
                               />
                             </td>
 
                             {/* Quantity */}
-                            <td style={{ padding: '8px 6px' }}>
+                            <td style={{ padding: '4px 3px' }}>
                               <input 
                                 type="number" 
                                 min="1" 
@@ -2015,25 +2019,25 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 placeholder="Qty"
                                 value={row.qty}
                                 onChange={e => handleRowFieldChange(idx, 'qty', e.target.value)}
-                                style={{ fontSize: '0.82rem', padding: '6px 8px', fontWeight: '700' }}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px', fontWeight: '700' }}
                                 required
                               />
                             </td>
 
                             {/* Line Total */}
-                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)' }}>
+                            <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.74rem' }}>
                               ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
 
                             {/* Delete Action */}
-                            <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                            <td style={{ padding: '4px 2px', textAlign: 'center' }}>
                               <button 
                                 type="button"
                                 onClick={() => handleRemovePurchaseRow(idx)}
-                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
                                 title="Remove row"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={13} />
                               </button>
                             </td>
 
@@ -2044,14 +2048,14 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   </table>
                 </div>
 
-                <div style={{ marginTop: '10px' }}>
+                <div style={{ marginTop: '8px' }}>
                   <button 
                     type="button" 
                     onClick={handleAddPurchaseRow}
                     className="btn btn-sm btn-secondary"
-                    style={{ gap: '6px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb' }}
+                    style={{ gap: '4px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb', padding: '3px 10px', fontSize: '0.72rem' }}
                   >
-                    <Plus size={15} />
+                    <Plus size={13} />
                     <span>+ Add Row</span>
                   </button>
                 </div>
@@ -2066,30 +2070,30 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 const totalQtyPcs = purchaseRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
 
                 return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '14px' }}>
-                    <div style={{ display: 'flex', gap: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '16px' }}>
                       <div>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL ITEMS</span>
-                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{purchaseRows.filter(r => r.name).length} Products</strong>
+                        <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL ITEMS</span>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>{purchaseRows.filter(r => r.name).length} Products</strong>
                       </div>
                       <div>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL QUANTITY</span>
-                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{totalQtyPcs} Pcs</strong>
+                        <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL QUANTITY</span>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>{totalQtyPcs} Pcs</strong>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <div>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL (EX-GST)</span>
-                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>₹{totalEx.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL (EX-GST)</span>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>₹{totalEx.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       </div>
                       <div>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL GST</span>
-                        <strong style={{ fontSize: '1rem', color: '#0284c7' }}>₹{totalGstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL GST</span>
+                        <strong style={{ fontSize: '0.84rem', color: '#0284c7' }}>₹{totalGstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       </div>
-                      <div style={{ paddingLeft: '16px', borderLeft: '2px solid #cbd5e1' }}>
-                        <span style={{ fontSize: '0.74rem', color: '#047857', display: 'block', fontWeight: '700' }}>GRAND TOTAL (WITH GST)</span>
-                        <strong style={{ fontSize: '1.3rem', color: '#059669', fontWeight: '800' }}>₹{totalWith.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                      <div style={{ paddingLeft: '12px', borderLeft: '2px solid #cbd5e1' }}>
+                        <span style={{ fontSize: '0.66rem', color: '#047857', display: 'block', fontWeight: '700' }}>GRAND TOTAL (WITH GST)</span>
+                        <strong style={{ fontSize: '0.98rem', color: '#059669', fontWeight: '800' }}>₹{totalWith.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       </div>
                     </div>
                   </div>
@@ -2099,11 +2103,12 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
             </div>
 
             {/* Modal Footer */}
-            <div className="modal-footer" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div className="modal-footer" style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button 
                 type="button" 
                 onClick={() => setPurchaseModalOpen(false)}
                 className="btn btn-secondary"
+                style={{ padding: '5px 14px', fontSize: '0.76rem' }}
               >
                 Cancel
               </button>
@@ -2111,9 +2116,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 type="button" 
                 onClick={handleSavePurchaseBill}
                 className="btn btn-primary"
-                style={{ padding: '8px 24px', fontWeight: '800', background: 'linear-gradient(135deg, #059669, #10b981)', borderColor: '#059669', gap: '8px' }}
+                style={{ padding: '5px 18px', fontWeight: '800', background: 'linear-gradient(135deg, #059669, #10b981)', borderColor: '#059669', gap: '6px', fontSize: '0.76rem' }}
               >
-                <CheckCircle size={18} />
+                <CheckCircle size={15} />
                 <span>Save Purchase & Update Stock</span>
               </button>
             </div>
