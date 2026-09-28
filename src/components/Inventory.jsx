@@ -5,6 +5,8 @@ import {
   updateProductStock, 
   formatCartonStock, 
   fetchWarehouses, 
+  fetchParties,
+  savePurchase,
   transferStockBetweenWarehouses, 
   logAuditAction 
 } from '../utils/storage';
@@ -30,7 +32,8 @@ import {
   UploadCloud,
   CheckCircle,
   Sparkles,
-  Layers
+  Layers,
+  ShoppingBag
 } from 'lucide-react';
 
 export default function Inventory({ products, refreshAllData }) {
@@ -40,8 +43,9 @@ export default function Inventory({ products, refreshAllData }) {
   const [expiryFilter, setExpiryFilter] = useState('ALL'); // 'ALL', 'EXPIRING_SOON', 'EXPIRED'
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
-  // Warehouses
+  // Warehouses & Parties
   const warehouses = fetchWarehouses();
+  const parties = fetchParties();
 
   // Modals
   const [productModalOpen, setProductModalOpen] = useState(false);
@@ -52,6 +56,31 @@ export default function Inventory({ products, refreshAllData }) {
   const [stockInCartons, setStockInCartons] = useState('');
   const [stockInLoosePcs, setStockInLoosePcs] = useState('');
   const [stockInReason, setStockInReason] = useState('Purchase Receipt');
+
+  // Add New Purchase Modal State
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [purchaseHeader, setPurchaseHeader] = useState({
+    partyName: '',
+    partyGst: '',
+    date: new Date().toISOString().split('T')[0],
+    billNo: '',
+    warehouseId: warehouses[0]?.id || 'wh_main'
+  });
+
+  const emptyPurchaseRow = () => ({
+    id: 'prow_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    productId: '',
+    name: '',
+    mrp: '',
+    hsn: '',
+    salePrice: '',
+    gstRate: 5,
+    purchasePrice: '', // without GST
+    purchasePriceWithGst: '', // with GST
+    qty: 1
+  });
+
+  const [purchaseRows, setPurchaseRows] = useState([emptyPurchaseRow()]);
 
   // Inter-Warehouse Transfer Modal State
   const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -247,6 +276,135 @@ export default function Inventory({ products, refreshAllData }) {
     }
   };
 
+  // Add New Purchase Modal Handlers
+  const handleOpenPurchaseModal = () => {
+    setPurchaseHeader({
+      partyName: '',
+      partyGst: '',
+      date: new Date().toISOString().split('T')[0],
+      billNo: '',
+      warehouseId: warehouses[0]?.id || 'wh_main'
+    });
+    setPurchaseRows([emptyPurchaseRow()]);
+    setPurchaseModalOpen(true);
+  };
+
+  const handleAddPurchaseRow = () => {
+    setPurchaseRows(prev => [...prev, emptyPurchaseRow()]);
+  };
+
+  const handleRemovePurchaseRow = (index) => {
+    if (purchaseRows.length <= 1) {
+      setPurchaseRows([emptyPurchaseRow()]);
+    } else {
+      setPurchaseRows(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleProductSelect = (index, productId) => {
+    const prod = products.find(p => p.id === productId);
+    if (!prod) return;
+
+    const exGst = Number(prod.purchasePrice) || 0;
+    const rate = Number(prod.gstRate) || 0;
+    const withGst = Number((exGst * (1 + rate / 100)).toFixed(2));
+
+    setPurchaseRows(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        productId: prod.id,
+        name: prod.name,
+        sku: prod.sku,
+        brand: prod.brand,
+        category: prod.category,
+        mrp: prod.mrp || '',
+        hsn: prod.hsn || '',
+        salePrice: prod.salePrice || '',
+        gstRate: rate,
+        purchasePrice: exGst || '',
+        purchasePriceWithGst: withGst || '',
+        qty: updated[index].qty || 1,
+        pcsPerCarton: prod.pcsPerCarton || 24
+      };
+      return updated;
+    });
+  };
+
+  const handleRowFieldChange = (index, field, value) => {
+    setPurchaseRows(prev => {
+      const updated = [...prev];
+      const row = { ...updated[index], [field]: value };
+
+      if (field === 'purchasePrice') {
+        const exGst = parseFloat(value);
+        const rate = Number(row.gstRate) || 0;
+        row.purchasePriceWithGst = (value === '' || isNaN(exGst)) ? '' : Number((exGst * (1 + rate / 100)).toFixed(2));
+      } else if (field === 'purchasePriceWithGst') {
+        const withGst = parseFloat(value);
+        const rate = Number(row.gstRate) || 0;
+        row.purchasePrice = (value === '' || isNaN(withGst)) ? '' : Number((withGst / (1 + rate / 100)).toFixed(2));
+      } else if (field === 'gstRate') {
+        const rate = Number(value) || 0;
+        const exGst = parseFloat(row.purchasePrice);
+        if (!isNaN(exGst) && row.purchasePrice !== '') {
+          row.purchasePriceWithGst = Number((exGst * (1 + rate / 100)).toFixed(2));
+        }
+      }
+
+      updated[index] = row;
+      return updated;
+    });
+  };
+
+  const handlePartySelectOrChange = (value) => {
+    const matched = parties.find(p => p.name.toLowerCase() === value.trim().toLowerCase());
+    setPurchaseHeader(prev => ({
+      ...prev,
+      partyName: value,
+      partyGst: matched?.gstin ? matched.gstin : prev.partyGst
+    }));
+  };
+
+  const handleSavePurchaseBill = (e) => {
+    if (e) e.preventDefault();
+    if (!purchaseHeader.partyName.trim()) {
+      alert('Please enter Party / Supplier name.');
+      return;
+    }
+    if (!purchaseHeader.date) {
+      alert('Please select purchase date.');
+      return;
+    }
+
+    const validItems = purchaseRows.filter(r => r.name && r.name.trim() && (Number(r.qty) > 0));
+    if (validItems.length === 0) {
+      alert('Please add at least one product with name and quantity > 0.');
+      return;
+    }
+
+    const totalExGst = validItems.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePrice) || 0)), 0);
+    const totalWithGst = validItems.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePriceWithGst) || 0)), 0);
+    const totalGst = Math.max(0, totalWithGst - totalExGst);
+
+    const purchasePayload = {
+      partyName: purchaseHeader.partyName.trim(),
+      partyGst: purchaseHeader.partyGst.trim(),
+      date: purchaseHeader.date,
+      billNo: purchaseHeader.billNo.trim(),
+      warehouseId: purchaseHeader.warehouseId,
+      items: validItems,
+      totalAmountExGst: Number(totalExGst.toFixed(2)),
+      totalGst: Number(totalGst.toFixed(2)),
+      grandTotal: Number(totalWithGst.toFixed(2))
+    };
+
+    savePurchase(purchasePayload);
+    refreshAllData();
+    alert(`✅ Purchase bill recorded successfully! Stock inventory updated for ${validItems.length} products.`);
+    setPurchaseModalOpen(false);
+  };
+
   // Photo-to-Purchase & Excel/CSV Parsing Handler
   const handleParseImport = () => {
     if (!importRawText.trim()) {
@@ -425,8 +583,17 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
             </button>
 
             <button 
-              onClick={handleOpenAddModal}
+              onClick={handleOpenPurchaseModal}
               className="btn btn-primary"
+              style={{ gap: '6px', fontWeight: '700', background: 'linear-gradient(135deg, #059669, #10b981)', borderColor: '#059669' }}
+            >
+              <ShoppingBag size={18} />
+              <span>+ Add New Purchase</span>
+            </button>
+
+            <button 
+              onClick={handleOpenAddModal}
+              className="btn btn-secondary"
               style={{ gap: '6px', fontWeight: '700' }}
             >
               <Plus size={18} />
@@ -1229,6 +1396,370 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Add New Purchase Bill */}
+      {purchaseModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1000 }}>
+          <div className="modal-content" style={{ maxWidth: '1240px', width: '96vw', padding: '24px', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* Header */}
+            <div className="modal-header" style={{ paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <ShoppingBag size={22} color="#059669" />
+                  <span>Add New Purchase (Inward Stock Entry)</span>
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                  Record vendor purchase invoice, auto-calculate purchase price with GST, and increment inventory stock.
+                </p>
+              </div>
+              <button 
+                onClick={() => setPurchaseModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px', marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Header Fields: Party, GST, Date, Bill No, Warehouse */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700' }}>Party / Supplier Name *</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="Type or choose supplier..."
+                    list="supplier-options-list"
+                    value={purchaseHeader.partyName}
+                    onChange={e => handlePartySelectOrChange(e.target.value)}
+                    required
+                  />
+                  <datalist id="supplier-options-list">
+                    {parties.map(p => (
+                      <option key={p.id} value={p.name}>{p.name} {p.gstin ? `(${p.gstin})` : ''}</option>
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700' }}>Party GST Number</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. 24AAAAA0000A1Z5"
+                    value={purchaseHeader.partyGst}
+                    onChange={e => setPurchaseHeader({ ...purchaseHeader, partyGst: e.target.value.toUpperCase() })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700' }}>Purchase Date *</label>
+                  <input 
+                    type="date" 
+                    className="input-field"
+                    value={purchaseHeader.date}
+                    onChange={e => setPurchaseHeader({ ...purchaseHeader, date: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Supplier Bill / Invoice No.</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    placeholder="e.g. BILL-4091"
+                    value={purchaseHeader.billNo}
+                    onChange={e => setPurchaseHeader({ ...purchaseHeader, billNo: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Receive In Warehouse</label>
+                  <select 
+                    className="input-field select-field"
+                    value={purchaseHeader.warehouseId}
+                    onChange={e => setPurchaseHeader({ ...purchaseHeader, warehouseId: e.target.value })}
+                  >
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name} ({w.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+              </div>
+
+              {/* Items Table */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                    📦 Purchase Item Lines ({purchaseRows.length} {purchaseRows.length === 1 ? 'row' : 'rows'})
+                  </span>
+                  <button 
+                    type="button" 
+                    onClick={handleAddPurchaseRow}
+                    className="btn btn-sm btn-secondary"
+                    style={{ gap: '6px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb', padding: '6px 12px' }}
+                  >
+                    <Plus size={15} />
+                    <span>+ Add Row</span>
+                  </button>
+                </div>
+
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '10px 8px', width: '32px', textAlign: 'center' }}>#</th>
+                        <th style={{ padding: '10px 8px', minWidth: '220px' }}>PRODUCT *</th>
+                        <th style={{ padding: '10px 8px', width: '95px' }}>MRP (₹)</th>
+                        <th style={{ padding: '10px 8px', width: '90px' }}>HSN</th>
+                        <th style={{ padding: '10px 8px', width: '105px' }}>SELLING PRICE (₹)</th>
+                        <th style={{ padding: '10px 8px', width: '100px' }}>RATE OF GST</th>
+                        <th style={{ padding: '10px 8px', width: '130px' }}>PURCHASE PRICE W/O GST</th>
+                        <th style={{ padding: '10px 8px', width: '135px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
+                        <th style={{ padding: '10px 8px', width: '90px' }}>QUANTITY</th>
+                        <th style={{ padding: '10px 8px', width: '110px', textAlign: 'right' }}>LINE TOTAL</th>
+                        <th style={{ padding: '10px 8px', width: '40px', textAlign: 'center' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchaseRows.map((row, idx) => {
+                        const lineTotal = (Number(row.qty) || 0) * (Number(row.purchasePriceWithGst) || 0);
+
+                        return (
+                          <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                            <td style={{ padding: '8px 6px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                            
+                            {/* Product */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="text" 
+                                className="input-field" 
+                                list={`prod-options-${row.id}`}
+                                placeholder="Choose or type product..."
+                                value={row.name}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  const matched = products.find(p => p.name.toLowerCase() === val.toLowerCase());
+                                  if (matched) {
+                                    handleProductSelect(idx, matched.id);
+                                  } else {
+                                    handleRowFieldChange(idx, 'name', val);
+                                  }
+                                }}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                required
+                              />
+                              <datalist id={`prod-options-${row.id}`}>
+                                {products.map(p => (
+                                  <option key={p.id} value={p.name}>
+                                    {p.name} (Stock: {p.currentStock})
+                                  </option>
+                                ))}
+                              </datalist>
+                            </td>
+
+                            {/* MRP */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.mrp}
+                                onChange={e => handleRowFieldChange(idx, 'mrp', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                              />
+                            </td>
+
+                            {/* HSN */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="text" 
+                                className="input-field" 
+                                placeholder="HSN"
+                                value={row.hsn}
+                                onChange={e => handleRowFieldChange(idx, 'hsn', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                              />
+                            </td>
+
+                            {/* Selling Price */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.salePrice}
+                                onChange={e => handleRowFieldChange(idx, 'salePrice', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                              />
+                            </td>
+
+                            {/* Rate of GST */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <select 
+                                className="input-field select-field"
+                                value={row.gstRate}
+                                onChange={e => handleRowFieldChange(idx, 'gstRate', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 4px' }}
+                              >
+                                <option value={0}>0%</option>
+                                <option value={5}>5%</option>
+                                <option value={12}>12%</option>
+                                <option value={18}>18%</option>
+                                <option value={28}>28%</option>
+                              </select>
+                            </td>
+
+                            {/* Purchase Price Without GST */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.purchasePrice}
+                                onChange={e => handleRowFieldChange(idx, 'purchasePrice', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px' }}
+                                required
+                              />
+                            </td>
+
+                            {/* Purchase Price With GST */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.purchasePriceWithGst}
+                                onChange={e => handleRowFieldChange(idx, 'purchasePriceWithGst', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px', background: '#f0fdf4', color: '#047857', fontWeight: '700', borderColor: '#86efac' }}
+                              />
+                            </td>
+
+                            {/* Quantity */}
+                            <td style={{ padding: '8px 6px' }}>
+                              <input 
+                                type="number" 
+                                min="1" 
+                                className="input-field" 
+                                placeholder="Qty"
+                                value={row.qty}
+                                onChange={e => handleRowFieldChange(idx, 'qty', e.target.value)}
+                                style={{ fontSize: '0.82rem', padding: '6px 8px', fontWeight: '700' }}
+                                required
+                              />
+                            </td>
+
+                            {/* Line Total */}
+                            <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)' }}>
+                              ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+
+                            {/* Delete Action */}
+                            <td style={{ padding: '8px 4px', textAlign: 'center' }}>
+                              <button 
+                                type="button"
+                                onClick={() => handleRemovePurchaseRow(idx)}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                                title="Remove row"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                  <button 
+                    type="button" 
+                    onClick={handleAddPurchaseRow}
+                    className="btn btn-sm btn-secondary"
+                    style={{ gap: '6px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb' }}
+                  >
+                    <Plus size={15} />
+                    <span>+ Add Row</span>
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Bottom Totals Summary Card */}
+              {(() => {
+                const totalEx = purchaseRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePrice) || 0)), 0);
+                const totalWith = purchaseRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePriceWithGst) || 0)), 0);
+                const totalGstAmt = Math.max(0, totalWith - totalEx);
+                const totalQtyPcs = purchaseRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '14px' }}>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <div>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL ITEMS</span>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{purchaseRows.filter(r => r.name).length} Products</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL QUANTITY</span>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{totalQtyPcs} Pcs</strong>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL (EX-GST)</span>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>₹{totalEx.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL GST</span>
+                        <strong style={{ fontSize: '1rem', color: '#0284c7' }}>₹{totalGstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                      </div>
+                      <div style={{ paddingLeft: '16px', borderLeft: '2px solid #cbd5e1' }}>
+                        <span style={{ fontSize: '0.74rem', color: '#047857', display: 'block', fontWeight: '700' }}>GRAND TOTAL (WITH GST)</span>
+                        <strong style={{ fontSize: '1.3rem', color: '#059669', fontWeight: '800' }}>₹{totalWith.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="modal-footer" style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                type="button" 
+                onClick={() => setPurchaseModalOpen(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleSavePurchaseBill}
+                className="btn btn-primary"
+                style={{ padding: '8px 24px', fontWeight: '800', background: 'linear-gradient(135deg, #059669, #10b981)', borderColor: '#059669', gap: '8px' }}
+              >
+                <CheckCircle size={18} />
+                <span>Save Purchase & Update Stock</span>
+              </button>
+            </div>
+
           </div>
         </div>
       )}

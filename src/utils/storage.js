@@ -734,6 +734,100 @@ export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') =>
   return updated;
 };
 
+// Operations: Purchases & Inward Stock
+export const fetchPurchases = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
+};
+
+export const savePurchase = (purchaseData) => {
+  const purchases = fetchPurchases();
+  const products = fetchProducts();
+
+  const id = purchaseData.id || 'purch_' + Date.now();
+  const newPurchase = {
+    ...purchaseData,
+    id,
+    createdAt: new Date().toISOString()
+  };
+
+  // Update or add products and increment stock
+  if (purchaseData.items && Array.isArray(purchaseData.items)) {
+    let currentProducts = [...products];
+
+    purchaseData.items.forEach(item => {
+      const qtyToAdd = Number(item.qty) || 0;
+      if (qtyToAdd <= 0 && !item.name) return;
+
+      const existingIndex = currentProducts.findIndex(p => 
+        (item.productId && p.id === item.productId) || 
+        (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+      );
+
+      const mrp = Number(item.mrp) || 0;
+      const salePrice = Number(item.salePrice) || 0;
+      const purchasePrice = Number(item.purchasePrice) || 0;
+      const gstRate = Number(item.gstRate) || 0;
+      const hsn = item.hsn || '';
+
+      if (existingIndex >= 0) {
+        const existing = currentProducts[existingIndex];
+        currentProducts[existingIndex] = {
+          ...existing,
+          currentStock: (Number(existing.currentStock) || 0) + qtyToAdd,
+          mrp: mrp > 0 ? mrp : existing.mrp,
+          salePrice: salePrice > 0 ? salePrice : existing.salePrice,
+          purchasePrice: purchasePrice > 0 ? purchasePrice : existing.purchasePrice,
+          gstRate: gstRate >= 0 ? gstRate : existing.gstRate,
+          hsn: hsn || existing.hsn,
+          warehouseId: purchaseData.warehouseId || existing.warehouseId || 'wh_main'
+        };
+      } else {
+        // Create new product
+        const newProd = {
+          id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          name: item.name || 'New Item',
+          sku: item.sku || `SKU-${Date.now().toString().slice(-6)}`,
+          brand: item.brand || 'Standard',
+          category: item.category || 'General FMCG',
+          mrp,
+          salePrice,
+          purchasePrice,
+          gstRate,
+          hsn,
+          currentStock: qtyToAdd,
+          pcsPerCarton: Number(item.pcsPerCarton) || 24,
+          warehouseId: purchaseData.warehouseId || 'wh_main'
+        };
+        currentProducts = [newProd, ...currentProducts];
+      }
+    });
+
+    setStorageData(STORAGE_KEYS.PRODUCTS, currentProducts);
+  }
+
+  // Auto-record or update party GST if needed
+  if (purchaseData.partyName) {
+    const parties = fetchParties();
+    const existingParty = parties.find(p => p.name.trim().toLowerCase() === purchaseData.partyName.trim().toLowerCase());
+    if (existingParty && purchaseData.partyGst && !existingParty.gstin) {
+      saveParty({ ...existingParty, gstin: purchaseData.partyGst });
+    }
+  }
+
+  const updatedPurchases = [newPurchase, ...purchases];
+  setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
+
+  logAuditAction(
+    'RECORD_PURCHASE',
+    'Inventory & Stock',
+    `Purchase bill recorded from ${purchaseData.partyName || 'Supplier'} (${purchaseData.items?.length || 0} items, Total: ₹${Number(purchaseData.grandTotal || 0).toLocaleString('en-IN')})`
+  );
+
+  autoCloudSync();
+  return { success: true, purchase: newPurchase };
+};
+
 // Operations: Parties
 export const fetchParties = () => {
   const delSet = new Set(getDeletedIds());
