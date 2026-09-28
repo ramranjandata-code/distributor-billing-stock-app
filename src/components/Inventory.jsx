@@ -60,10 +60,32 @@ export default function Inventory({ products, refreshAllData }) {
   const [selectedSupplierObj, setSelectedSupplierObj] = useState(null);
   const supplierDropdownRef = useRef(null);
 
+  // Product Search Dropdown inside Purchase Table
+  const [activeProductRowId, setActiveProductRowId] = useState(null);
+  const [highlightedProductIndex, setHighlightedProductIndex] = useState(0);
+  const [quickProductModalOpen, setQuickProductModalOpen] = useState(false);
+  const [targetRowIndexForProduct, setTargetRowIndexForProduct] = useState(null);
+  const initialQuickProductState = {
+    name: '',
+    brand: '',
+    category: 'General',
+    hsn: '1905',
+    mrp: '',
+    salePrice: '',
+    purchasePrice: '',
+    gstRate: 5,
+    pcsPerCarton: 24
+  };
+  const [quickProductData, setQuickProductData] = useState(initialQuickProductState);
+  const productDropdownRef = useRef(null);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target)) {
         setShowSupplierSuggestions(false);
+      }
+      if (productDropdownRef.current && !productDropdownRef.current.contains(event.target)) {
+        setActiveProductRowId(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -359,6 +381,78 @@ export default function Inventory({ products, refreshAllData }) {
     });
     setShowSupplierSuggestions(false);
     setQuickSupplierModalOpen(true);
+  };
+
+  const handleOpenQuickProductModal = (rowIndex, initialName = '') => {
+    setTargetRowIndexForProduct(rowIndex);
+    setQuickProductData({
+      ...initialQuickProductState,
+      name: (initialName || '').trim()
+    });
+    setActiveProductRowId(null);
+    setQuickProductModalOpen(true);
+  };
+
+  const handleSaveQuickProduct = (e) => {
+    e.preventDefault();
+    if (!quickProductData.name.trim()) {
+      alert('Please enter product name.');
+      return;
+    }
+    const mrp = Number(quickProductData.mrp) || 0;
+    const sale = Number(quickProductData.salePrice) || mrp;
+    const pur = Number(quickProductData.purchasePrice) || 0;
+    const rate = Number(quickProductData.gstRate) || 0;
+    const pcsPerCtn = Number(quickProductData.pcsPerCarton) || 24;
+
+    const payload = {
+      name: quickProductData.name.trim(),
+      brand: quickProductData.brand ? quickProductData.brand.trim() : 'General',
+      category: quickProductData.category || 'General',
+      hsn: (quickProductData.hsn || '').trim() || '1905',
+      mrp: mrp,
+      salePrice: sale,
+      purchasePrice: pur,
+      gstRate: rate,
+      pcsPerCarton: pcsPerCtn,
+      currentStock: 0,
+      unit: 'Pcs',
+      minStockLimit: 10
+    };
+
+    const res = saveProduct(payload);
+    refreshAllData();
+    const savedProd = Array.isArray(res) ? res[0] : res;
+
+    if (targetRowIndexForProduct !== null) {
+      const idx = targetRowIndexForProduct;
+      const withGst = Number((pur * (1 + rate / 100)).toFixed(2));
+      setPurchaseRows(prev => {
+        const updated = [...prev];
+        if (updated[idx]) {
+          updated[idx] = {
+            ...updated[idx],
+            productId: savedProd.id,
+            name: savedProd.name,
+            sku: savedProd.sku || '',
+            brand: savedProd.brand || '',
+            category: savedProd.category || '',
+            mrp: savedProd.mrp || '',
+            hsn: savedProd.hsn || '',
+            salePrice: savedProd.salePrice || '',
+            gstRate: rate,
+            purchasePrice: pur || '',
+            purchasePriceWithGst: withGst || '',
+            qty: updated[idx].qty || 1,
+            pcsPerCarton: pcsPerCtn
+          };
+        }
+        return updated;
+      });
+    }
+
+    setQuickProductModalOpen(false);
+    setQuickProductData(initialQuickProductState);
   };
 
   const handleAddPurchaseRow = () => {
@@ -1901,32 +1995,165 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                             <td style={{ padding: '4px 4px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.70rem' }}>{idx + 1}</td>
                             
                             {/* Product */}
-                            <td style={{ padding: '4px 3px' }}>
-                              <input 
-                                type="text" 
-                                className="input-field" 
-                                list={`prod-options-${row.id}`}
-                                placeholder="Choose or type product..."
-                                value={row.name}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  const matched = products.find(p => p.name.toLowerCase() === val.toLowerCase());
-                                  if (matched) {
-                                    handleProductSelect(idx, matched.id);
-                                  } else {
+                            <td style={{ padding: '4px 3px', position: 'relative' }}>
+                              <div style={{ position: 'relative' }}>
+                                <input 
+                                  type="text" 
+                                  className="input-field" 
+                                  placeholder="Choose or type product..."
+                                  value={row.name}
+                                  onClick={() => {
+                                    setActiveProductRowId(row.id);
+                                    setHighlightedProductIndex(0);
+                                  }}
+                                  onFocus={() => {
+                                    setActiveProductRowId(row.id);
+                                    setHighlightedProductIndex(0);
+                                  }}
+                                  onChange={e => {
+                                    const val = e.target.value;
                                     handleRowFieldChange(idx, 'name', val);
-                                  }
-                                }}
-                                style={{ fontSize: '0.72rem', padding: '3px 6px', height: '27px' }}
-                                required
-                              />
-                              <datalist id={`prod-options-${row.id}`}>
-                                {products.map(p => (
-                                  <option key={p.id} value={p.name}>
-                                    {p.name} (Stock: {p.currentStock})
-                                  </option>
-                                ))}
-                              </datalist>
+                                    const matched = products.find(p => p.name.toLowerCase() === val.toLowerCase());
+                                    if (matched) {
+                                      handleProductSelect(idx, matched.id);
+                                    }
+                                    setActiveProductRowId(row.id);
+                                    setHighlightedProductIndex(0);
+                                  }}
+                                  onKeyDown={e => {
+                                    const query = (row.name || '').trim().toLowerCase();
+                                    const matching = products.filter(p => 
+                                      !query || p.name.toLowerCase().includes(query) || (p.brand && p.brand.toLowerCase().includes(query)) || (p.sku && p.sku.toLowerCase().includes(query))
+                                    );
+                                    if (e.key === 'ArrowDown') {
+                                      e.preventDefault();
+                                      if (matching.length > 0) {
+                                        setHighlightedProductIndex(prev => (prev + 1) % matching.length);
+                                      }
+                                    } else if (e.key === 'ArrowUp') {
+                                      e.preventDefault();
+                                      if (matching.length > 0) {
+                                        setHighlightedProductIndex(prev => (prev - 1 + matching.length) % matching.length);
+                                      }
+                                    } else if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      if (matching.length > 0 && matching[highlightedProductIndex]) {
+                                        handleProductSelect(idx, matching[highlightedProductIndex].id);
+                                        setActiveProductRowId(null);
+                                      } else if (row.name && row.name.trim()) {
+                                        handleOpenQuickProductModal(idx, row.name);
+                                      }
+                                    } else if (e.key === 'Escape') {
+                                      setActiveProductRowId(null);
+                                    }
+                                  }}
+                                  style={{ fontSize: '0.72rem', padding: '3px 6px', height: '27px', width: '100%' }}
+                                  required
+                                />
+
+                                {/* Custom Dropdown with + Add New Product option */}
+                                {activeProductRowId === row.id && (
+                                  <div 
+                                    ref={productDropdownRef}
+                                    style={{
+                                      position: 'absolute',
+                                      top: 'calc(100% + 2px)',
+                                      left: 0,
+                                      width: '280px',
+                                      zIndex: 1100,
+                                      background: '#ffffff',
+                                      borderRadius: '6px',
+                                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.16)',
+                                      border: '1px solid #cbd5e1',
+                                      padding: '4px',
+                                      overflow: 'hidden',
+                                      textAlign: 'left'
+                                    }}
+                                  >
+                                    <div style={{ maxHeight: '170px', overflowY: 'auto' }}>
+                                      {(() => {
+                                        const query = (row.name || '').trim().toLowerCase();
+                                        const matching = products.filter(p => 
+                                          !query || p.name.toLowerCase().includes(query) || (p.brand && p.brand.toLowerCase().includes(query)) || (p.sku && p.sku.toLowerCase().includes(query))
+                                        );
+
+                                        if (matching.length === 0) {
+                                          return (
+                                            <div style={{ padding: '8px 10px', fontSize: '0.72rem', color: '#64748b', textAlign: 'center' }}>
+                                              No product found for "{row.name}"
+                                            </div>
+                                          );
+                                        }
+
+                                        return matching.map((p, pIdx) => {
+                                          const isHigh = (highlightedProductIndex === pIdx);
+                                          return (
+                                            <div
+                                              key={p.id || pIdx}
+                                              onClick={() => {
+                                                handleProductSelect(idx, p.id);
+                                                setActiveProductRowId(null);
+                                              }}
+                                              onMouseEnter={() => setHighlightedProductIndex(pIdx)}
+                                              style={{
+                                                padding: '5px 8px',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                background: isHigh ? '#2563eb' : 'transparent',
+                                                color: isHigh ? '#ffffff' : '#0f172a',
+                                                transition: 'all 0.1s ease',
+                                                marginBottom: '2px'
+                                              }}
+                                            >
+                                              <div style={{ fontWeight: '700', fontSize: '0.74rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {p.name}
+                                              </div>
+                                              <div style={{ 
+                                                fontSize: '0.64rem', 
+                                                color: isHigh ? 'rgba(255, 255, 255, 0.9)' : '#64748b',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                marginTop: '1px'
+                                              }}>
+                                                <span>Stock: <strong>{p.currentStock || 0}</strong></span>
+                                                <span>•</span>
+                                                <span>MRP: ₹{p.mrp || 0}</span>
+                                                <span>•</span>
+                                                <span>GST: {p.gstRate || 0}%</span>
+                                              </div>
+                                            </div>
+                                          );
+                                        });
+                                      })()}
+                                    </div>
+
+                                    {/* ⊕ Add New Product button at bottom */}
+                                    <div
+                                      onClick={() => handleOpenQuickProductModal(idx, row.name)}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 8px',
+                                        cursor: 'pointer',
+                                        color: '#2563eb',
+                                        fontWeight: '700',
+                                        fontSize: '0.74rem',
+                                        borderTop: '1px solid #f1f5f9',
+                                        borderRadius: '0 0 4px 4px',
+                                        transition: 'background 0.15s ease',
+                                        marginTop: '2px'
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.background = '#eff6ff'}
+                                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <PlusCircle size={14} color="#2563eb" />
+                                      <span>+ Add New Product</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             {/* MRP */}
@@ -2207,6 +2434,146 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   style={{ background: '#059669', borderColor: '#059669', fontWeight: '700' }}
                 >
                   Save Supplier
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Quick Add Product from Purchase Table */}
+      {quickProductModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '480px', padding: '20px' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: '#059669' }}>
+                <Package size={18} color="#059669" />
+                <span>Add New Product to Inventory</span>
+              </h3>
+              <button 
+                onClick={() => setQuickProductModalOpen(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickProduct} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '0.74rem', marginBottom: '3px' }}>Product Name *</label>
+                <input 
+                  type="text" 
+                  className="input-field"
+                  style={{ fontSize: '0.78rem', height: '30px', padding: '4px 8px' }}
+                  placeholder="e.g. Parle-G Gold 100g / Fortune Refined Oil 1L"
+                  value={quickProductData.name}
+                  onChange={e => setQuickProductData({ ...quickProductData, name: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>MRP (₹) *</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    className="input-field"
+                    style={{ fontSize: '0.78rem', height: '30px', padding: '4px 8px' }}
+                    placeholder="0.00"
+                    value={quickProductData.mrp}
+                    onChange={e => setQuickProductData({ ...quickProductData, mrp: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>HSN Code</label>
+                  <input 
+                    type="text" 
+                    className="input-field"
+                    style={{ fontSize: '0.78rem', height: '30px', padding: '4px 8px' }}
+                    placeholder="e.g. 1905"
+                    value={quickProductData.hsn}
+                    onChange={e => setQuickProductData({ ...quickProductData, hsn: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>Selling Price (₹)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    className="input-field"
+                    style={{ fontSize: '0.78rem', height: '30px', padding: '4px 8px' }}
+                    placeholder="0.00"
+                    value={quickProductData.salePrice}
+                    onChange={e => setQuickProductData({ ...quickProductData, salePrice: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>GST Rate (%)</label>
+                  <select 
+                    className="input-field select-field"
+                    style={{ fontSize: '0.78rem', height: '30px', padding: '2px 6px' }}
+                    value={quickProductData.gstRate}
+                    onChange={e => setQuickProductData({ ...quickProductData, gstRate: Number(e.target.value) })}
+                  >
+                    <option value={0}>0%</option>
+                    <option value={5}>5%</option>
+                    <option value={12}>12%</option>
+                    <option value={18}>18%</option>
+                    <option value={28}>28%</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>Purchase Price (Ex-GST)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    className="input-field"
+                    style={{ fontSize: '0.78rem', height: '30px', padding: '4px 8px' }}
+                    placeholder="0.00"
+                    value={quickProductData.purchasePrice}
+                    onChange={e => setQuickProductData({ ...quickProductData, purchasePrice: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.74rem', marginBottom: '3px' }}>Pcs Per Carton</label>
+                  <input 
+                    type="number" 
+                    className="input-field"
+                    style={{ fontSize: '0.78rem', height: '30px', padding: '4px 8px' }}
+                    placeholder="24"
+                    value={quickProductData.pcsPerCarton}
+                    onChange={e => setQuickProductData({ ...quickProductData, pcsPerCarton: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ marginTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setQuickProductModalOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '5px 14px', fontSize: '0.76rem' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary"
+                  style={{ background: '#059669', borderColor: '#059669', fontWeight: '700', padding: '5px 16px', fontSize: '0.76rem' }}
+                >
+                  Save & Add to Bill
                 </button>
               </div>
             </form>
