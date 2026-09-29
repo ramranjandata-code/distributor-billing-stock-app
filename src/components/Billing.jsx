@@ -2426,14 +2426,41 @@ export default function Billing({ products, parties, business, refreshAllData, h
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">SKU / Item Code</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ margin: 0 }}>SKU / Item Code <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(Optional)</span></label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const randomCode = Math.floor(1000 + Math.random() * 9000);
+                        const cleanName = (newProductData.name || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                        const prefix = cleanName.length >= 3 ? cleanName.substring(0, 3) : 'SKU';
+                        setNewProductData(prev => ({ ...prev, sku: `${prefix}-${randomCode}` }));
+                      }}
+                      style={{
+                        background: 'rgba(5, 150, 105, 0.08)',
+                        border: '1px solid rgba(5, 150, 105, 0.25)',
+                        borderRadius: '4px',
+                        color: 'var(--primary)',
+                        fontSize: '0.70rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        padding: '2px 8px'
+                      }}
+                      title="Click to automatically generate a unique SKU"
+                    >
+                      ✨ Auto Generate
+                    </button>
+                  </div>
                   <input 
                     type="text" 
                     className="input-field" 
-                    placeholder="e.g. SKU-5042"
-                    value={newProductData.sku}
+                    placeholder="e.g. SKU-5042 (Leave empty to auto-generate)"
+                    value={newProductData.sku || ''}
                     onChange={e => setNewProductData({...newProductData, sku: e.target.value})}
                   />
+                  <div style={{ fontSize: '0.70rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Optional &bull; System will automatically generate one if left blank
+                  </div>
                 </div>
 
                 <div className="form-group">

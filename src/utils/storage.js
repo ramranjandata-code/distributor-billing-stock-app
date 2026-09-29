@@ -709,13 +709,27 @@ export const saveProduct = (product) => {
   const products = fetchProducts();
   let updated;
   let targetProd;
+
+  // Ensure SKU is auto-generated if missing or empty
+  let cleanSku = (product.sku || '').trim();
+  if (!cleanSku) {
+    const cleanName = (product.name || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const prefix = cleanName.length >= 3 ? cleanName.substring(0, 3) : 'SKU';
+    cleanSku = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
+  const normalizedProduct = {
+    ...product,
+    sku: cleanSku
+  };
+
   if (product.id) {
-    targetProd = product;
-    updated = products.map(p => p.id === product.id ? product : p);
-    logAuditAction('EDIT_PRODUCT', 'Inventory & Stock', `Updated item: ${product.name} (SKU: ${product.sku || 'N/A'}, MRP: ₹${product.mrp || 0})`);
+    targetProd = normalizedProduct;
+    updated = products.map(p => p.id === product.id ? normalizedProduct : p);
+    logAuditAction('EDIT_PRODUCT', 'Inventory & Stock', `Updated item: ${product.name} (SKU: ${cleanSku}, MRP: ₹${product.mrp || 0})`);
   } else {
     targetProd = {
-      ...product,
+      ...normalizedProduct,
       id: 'prod_' + Date.now()
     };
     updated = [targetProd, ...products];

@@ -222,9 +222,9 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
 
   // Filtering
   const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          p.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          ((p.sku || '').toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          ((p.brand || '').toLowerCase().includes(searchTerm.toLowerCase())) ||
                           (p.batchNo && p.batchNo.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
     const matchesWarehouse = warehouseFilter === 'ALL' || (p.warehouseId || 'wh_main') === warehouseFilter;
@@ -273,8 +273,17 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     const loose = Number(formData.loosePcsStock) || 0;
     const calculatedTotalStock = (ctn * pcsPerCtn) + loose;
 
+    // Auto-generate SKU if empty or missing
+    let finalSku = (formData.sku || '').trim();
+    if (!finalSku) {
+      const cleanName = (formData.name || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const prefix = cleanName.length >= 3 ? cleanName.substring(0, 3) : 'SKU';
+      finalSku = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
     const payload = {
       ...formData,
+      sku: finalSku,
       mrp: Number(formData.mrp) || 0,
       salePrice: Number(formData.salePrice) || 0,
       purchasePrice: Number(formData.purchasePrice) || 0,
@@ -1692,15 +1701,47 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">SKU / Barcode *</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ margin: 0 }}>
+                      SKU / Barcode <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(Optional)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const randomCode = Math.floor(1000 + Math.random() * 9000);
+                        const cleanName = (formData.name || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                        const prefix = cleanName.length >= 3 ? cleanName.substring(0, 3) : 'SKU';
+                        setFormData(prev => ({ ...prev, sku: `${prefix}-${randomCode}` }));
+                      }}
+                      style={{
+                        background: 'rgba(5, 150, 105, 0.08)',
+                        border: '1px solid rgba(5, 150, 105, 0.25)',
+                        borderRadius: '4px',
+                        color: 'var(--primary)',
+                        fontSize: '0.70rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        padding: '2px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="Click to automatically generate a unique SKU"
+                    >
+                      <Sparkles size={11} />
+                      <span>Auto Generate</span>
+                    </button>
+                  </div>
                   <input 
                     type="text" 
                     className="input-field"
-                    required
-                    placeholder="e.g. PRL-G-100G"
-                    value={formData.sku}
+                    placeholder="e.g. PRL-G-100G (Leave empty to auto-generate)"
+                    value={formData.sku || ''}
                     onChange={e => setFormData({...formData, sku: e.target.value})}
                   />
+                  <div style={{ fontSize: '0.70rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Optional &bull; System will automatically generate one if left blank
+                  </div>
                 </div>
 
                 <div className="form-group">
