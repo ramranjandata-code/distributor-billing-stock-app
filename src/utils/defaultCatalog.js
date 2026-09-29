@@ -255,7 +255,7 @@ export const INITIAL_PRODUCTS = [
     "salePrice": 40,
     "mrp": 50,
     "purchasePrice": 38,
-    "gstRate": 18,
+    "gstRate": 5,
     "currentStock": 100,
     "id": "prod_1790482273963"
   },
@@ -728,7 +728,7 @@ export const INITIAL_PRODUCTS = [
     "salePrice": 77,
     "mrp": 100,
     "purchasePrice": 72,
-    "gstRate": 18,
+    "gstRate": 5,
     "currentStock": 100,
     "id": "prod_1790478439065"
   },

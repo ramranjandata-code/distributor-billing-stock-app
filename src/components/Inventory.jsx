@@ -755,6 +755,63 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     });
   };
 
+  // Quick Action: Apply a uniform GST rate to all rows in the purchase bill
+  const handleApplyGstRateToAllRows = (targetRate) => {
+    const rate = Number(targetRate);
+    setPurchaseRows(prev => prev.map(row => {
+      const exGst = parseFloat(row.purchasePrice);
+      const newWithGst = (!isNaN(exGst) && row.purchasePrice !== '') 
+        ? Number((exGst * (1 + rate / 100)).toFixed(2)) 
+        : row.purchasePriceWithGst;
+      return {
+        ...row,
+        gstRate: rate,
+        purchasePriceWithGst: newWithGst
+      };
+    }));
+  };
+
+  // Standard Slab-wise GST Calculation conforming to Indian Tax Invoicing (GSTR-1 / GSTR-2B)
+  const computePurchaseBillTotals = (rows) => {
+    const slabs = {};
+    let totalExGst = 0;
+
+    rows.forEach(r => {
+      const qty = Number(r.qty) || 0;
+      const ex = Number(r.purchasePrice) || 0;
+      const rate = Number(r.gstRate !== undefined ? r.gstRate : 5);
+      const taxable = qty * ex;
+      totalExGst += taxable;
+
+      if (!slabs[rate]) slabs[rate] = { taxable: 0, gst: 0, count: 0 };
+      slabs[rate].taxable += taxable;
+      if (qty > 0 && r.name) slabs[rate].count += 1;
+    });
+
+    let totalGst = 0;
+    Object.keys(slabs).forEach(rateKey => {
+      const rate = Number(rateKey);
+      const slabGst = Number((slabs[rateKey].taxable * rate / 100).toFixed(2));
+      slabs[rateKey].gst = slabGst;
+      totalGst += slabGst;
+    });
+
+    totalExGst = Number(totalExGst.toFixed(2));
+    totalGst = Number(totalGst.toFixed(2));
+    const grandTotal = Number((totalExGst + totalGst).toFixed(2));
+    const totalQty = rows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+    const totalItems = rows.filter(r => r.name && r.name.trim()).length;
+
+    return {
+      totalExGst,
+      totalGst,
+      grandTotal,
+      totalQty,
+      totalItems,
+      slabs
+    };
+  };
+
   const handlePartySelectOrChange = (value) => {
     const currentSupps = fetchSuppliers();
     const matched = currentSupps.find(s => s.name.toLowerCase() === value.trim().toLowerCase());
@@ -807,9 +864,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
       return;
     }
 
-    const totalExGst = validItems.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePrice) || 0)), 0);
-    const totalWithGst = validItems.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePriceWithGst) || 0)), 0);
-    const totalGst = Math.max(0, totalWithGst - totalExGst);
+    const billTotals = computePurchaseBillTotals(validItems);
 
     const purchasePayload = {
       id: editingPurchaseId || undefined,
@@ -819,9 +874,9 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
       billNo: purchaseHeader.billNo.trim(),
       warehouseId: purchaseHeader.warehouseId,
       items: validItems,
-      totalAmountExGst: Number(totalExGst.toFixed(2)),
-      totalGst: Number(totalGst.toFixed(2)),
-      grandTotal: Number(totalWithGst.toFixed(2))
+      totalAmountExGst: billTotals.totalExGst,
+      totalGst: billTotals.totalGst,
+      grandTotal: billTotals.grandTotal
     };
 
     savePurchase(purchasePayload);
@@ -3187,19 +3242,54 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
               {/* Items Table */}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '8px' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-main)' }}>
                     📦 Purchase Item Lines ({purchaseRows.length} {purchaseRows.length === 1 ? 'row' : 'rows'})
                   </span>
-                  <button 
-                    type="button" 
-                    onClick={handleAddPurchaseRow}
-                    className="btn btn-sm btn-secondary"
-                    style={{ gap: '4px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb', padding: '3px 10px', fontSize: '0.72rem' }}
-                  >
-                    <Plus size={13} />
-                    <span>+ Add Row</span>
-                  </button>
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Quick Bill GST Setter */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#ecfdf5', padding: '2px 8px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                      <span style={{ fontSize: '0.68rem', color: '#047857', fontWeight: '700' }}>Bill GST:</span>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyGstRateToAllRows(5)}
+                        className="btn btn-sm"
+                        style={{ padding: '2px 8px', fontSize: '0.68rem', color: '#ffffff', background: '#059669', borderColor: '#059669', fontWeight: '800', cursor: 'pointer', borderRadius: '4px' }}
+                        title="Apply 5% GST to all rows in this bill"
+                      >
+                        Set All to 5% GST
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyGstRateToAllRows(12)}
+                        className="btn btn-sm btn-secondary"
+                        style={{ padding: '2px 6px', fontSize: '0.68rem', color: '#475569', fontWeight: '600' }}
+                        title="Apply 12% GST to all rows in this bill"
+                      >
+                        12%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyGstRateToAllRows(18)}
+                        className="btn btn-sm btn-secondary"
+                        style={{ padding: '2px 6px', fontSize: '0.68rem', color: '#475569', fontWeight: '600' }}
+                        title="Apply 18% GST to all rows in this bill"
+                      >
+                        18%
+                      </button>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={handleAddPurchaseRow}
+                      className="btn btn-sm btn-secondary"
+                      style={{ gap: '4px', fontWeight: '700', borderColor: '#2563eb', color: '#2563eb', padding: '3px 10px', fontSize: '0.72rem' }}
+                    >
+                      <Plus size={13} />
+                      <span>+ Add Row</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ 
@@ -3229,7 +3319,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     </thead>
                     <tbody>
                       {purchaseRows.map((row, idx) => {
-                        const lineTotal = (Number(row.qty) || 0) * (Number(row.purchasePriceWithGst) || 0);
+                        const lineEx = (Number(row.qty) || 0) * (Number(row.purchasePrice) || 0);
+                        const lineGst = lineEx * ((Number(row.gstRate) || 0) / 100);
+                        const lineTotal = lineEx + lineGst;
 
                         return (
                           <tr 
@@ -3514,7 +3606,16 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 className="input-field select-field"
                                 value={row.gstRate}
                                 onChange={e => handleRowFieldChange(idx, 'gstRate', e.target.value)}
-                                style={{ fontSize: '0.72rem', padding: '2px 3px', height: '27px' }}
+                                style={{ 
+                                  fontSize: '0.72rem', 
+                                  padding: '2px 3px', 
+                                  height: '27px',
+                                  borderColor: Number(row.gstRate) !== 5 ? '#f59e0b' : undefined,
+                                  background: Number(row.gstRate) !== 5 ? '#fffbeb' : undefined,
+                                  fontWeight: Number(row.gstRate) !== 5 ? '800' : 'normal',
+                                  color: Number(row.gstRate) !== 5 ? '#b45309' : undefined
+                                }}
+                                title={Number(row.gstRate) !== 5 ? `Non-standard ${row.gstRate}% GST rate on this item` : '5% GST'}
                               >
                                 <option value={0}>0%</option>
                                 <option value={5}>5%</option>
@@ -3605,36 +3706,52 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
               {/* Bottom Totals Summary Card */}
               {(() => {
-                const totalEx = purchaseRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePrice) || 0)), 0);
-                const totalWith = purchaseRows.reduce((sum, r) => sum + ((Number(r.qty) || 0) * (Number(r.purchasePriceWithGst) || 0)), 0);
-                const totalGstAmt = Math.max(0, totalWith - totalEx);
-                const totalQtyPcs = purchaseRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
+                const totals = computePurchaseBillTotals(purchaseRows);
+                const distinctRates = Object.keys(totals.slabs).filter(k => totals.slabs[k].taxable > 0);
+                const hasMultipleRates = distinctRates.length > 1;
 
                 return (
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
-                    <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <div>
                         <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL ITEMS</span>
-                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>{purchaseRows.filter(r => r.name).length} Products</strong>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>{totals.totalItems} Products</strong>
                       </div>
                       <div>
                         <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL QUANTITY</span>
-                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>{totalQtyPcs} Pcs</strong>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>{totals.totalQty} Pcs</strong>
                       </div>
+                      {hasMultipleRates && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fffbeb', border: '1px solid #fde68a', padding: '3px 8px', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: '700' }}>
+                            ⚠️ Multiple GST Rates: {distinctRates.map(r => `${r}% (₹${totals.slabs[r].gst.toFixed(2)})`).join(', ')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleApplyGstRateToAllRows(5)}
+                            style={{ background: '#059669', border: 'none', color: '#ffffff', borderRadius: '4px', fontSize: '0.64rem', padding: '2px 8px', fontWeight: '800', cursor: 'pointer' }}
+                            title="Make all items 5% GST to fix rate discrepancy"
+                          >
+                            Set All to 5% GST
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', gap: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <div>
                         <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL (EX-GST)</span>
-                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>₹{totalEx.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        <strong style={{ fontSize: '0.84rem', color: 'var(--text-main)' }}>₹{totals.totalExGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       </div>
                       <div>
-                        <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>TOTAL GST</span>
-                        <strong style={{ fontSize: '0.84rem', color: '#0284c7' }}>₹{totalGstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)', display: 'block' }}>
+                          TOTAL GST {distinctRates.length === 1 ? `(${distinctRates[0]}%)` : ''}
+                        </span>
+                        <strong style={{ fontSize: '0.84rem', color: '#0284c7' }}>₹{totals.totalGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       </div>
                       <div style={{ paddingLeft: '12px', borderLeft: '2px solid #cbd5e1' }}>
                         <span style={{ fontSize: '0.66rem', color: '#047857', display: 'block', fontWeight: '700' }}>GRAND TOTAL (WITH GST)</span>
-                        <strong style={{ fontSize: '0.98rem', color: '#059669', fontWeight: '800' }}>₹{totalWith.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                        <strong style={{ fontSize: '0.98rem', color: '#059669', fontWeight: '800' }}>₹{totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                       </div>
                     </div>
                   </div>

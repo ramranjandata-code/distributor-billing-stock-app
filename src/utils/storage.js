@@ -243,9 +243,14 @@ export const initDataStorage = () => {
 
     localStorage.setItem('distro_catalog_initialized', 'true');
   } else {
-    // Already initialized! NEVER re-merge INITIAL_PRODUCTS, INITIAL_PARTIES, or INITIAL_INVOICES on reload!
-    // Strip any deleted or sample items
-    const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
+    const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, [])
+      .filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id))
+      .map(p => {
+        if (p && (p.name === 'KHATTA MEETHA MIXTURE - MRP-50/-' || p.name === 'AKHA CHANA - MRP-10/-') && Number(p.gstRate) === 18) {
+          return { ...p, gstRate: 5 };
+        }
+        return p;
+      });
     setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
 
     const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
