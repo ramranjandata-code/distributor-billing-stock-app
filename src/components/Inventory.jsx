@@ -15,6 +15,7 @@ import {
   fetchStockLots,
   isPurchaseBillEditable,
   getPurchaseBillRemainingEditTime,
+  recalculateAndNormalizeAllPurchaseBills,
   logAuditAction 
 } from '../utils/storage';
 import { 
@@ -1012,6 +1013,18 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
     }
   };
 
+  const handleRecalculateAllBills = () => {
+    const res = recalculateAndNormalizeAllPurchaseBills();
+    const updated = fetchPurchases();
+    setPurchases(updated);
+    refreshAllData();
+    if (res.updated) {
+      alert(`✅ Successfully recalculated & normalized ${res.recalculatedCount} purchase bill(s) to standard 5% GST! All totals, line items, and stock valuations have been updated.`);
+    } else {
+      alert(`✅ All ${res.totalBills} purchase bills are already fully verified and accurate with standard GST!`);
+    }
+  };
+
   const handlePrintPurchaseBill = (bill) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -1636,7 +1649,18 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleRecalculateAllBills}
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#047857', borderColor: '#86efac', background: '#ecfdf5', fontWeight: '700', fontSize: '0.84rem' }}
+                  title="Recalculate and normalize all old purchase bills to standard 5% GST"
+                >
+                  <Sparkles size={16} color="#059669" />
+                  <span>Recalculate Old Bills</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handleOpenPurchaseModal}

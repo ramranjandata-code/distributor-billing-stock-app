@@ -263,6 +263,13 @@ export const initDataStorage = () => {
   const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
   setStorageData(STORAGE_KEYS.PURCHASES, existingPurchases);
 
+  // Automatically recalculate and normalize all historical purchase bills to standard 5% GST
+  try {
+    recalculateAndNormalizeAllPurchaseBills();
+  } catch (err) {
+    console.warn('Auto purchase bill normalization error:', err);
+  }
+
   // Clean dummy expenses and purge any deleted expense IDs
   const existingExpenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => 
     e &&
@@ -1338,6 +1345,148 @@ export const deletePurchase = (purchaseId) => {
   logAuditAction('DELETE_PURCHASE', 'Suppliers & Purchases', `Deleted purchase bill #${target?.billNo || purchaseId} from ${target?.partyName || 'Supplier'}`);
   autoCloudSync();
   return updated;
+};
+
+/**
+ * Normalizes all historical purchase bills and their associated inward stock lots:
+ * 1. Checks each line item in each purchase bill.
+ * 2. Normalizes any FMCG items that erroneously had 18% GST to 5% GST.
+ * 3. Re-computes accurate purchasePriceWithGst = purchasePrice * (1 + gstRate / 100).
+ * 4. Recalculates totalAmountExGst, totalGst, and grandTotal using standard slab-wise GST calculation.
+ * 5. Synchronizes distro_stock_lots with updated rates and lot valuations.
+ */
+export const recalculateAndNormalizeAllPurchaseBills = () => {
+  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []);
+  let allLots = getStorageData(STORAGE_KEYS.STOCK_LOTS, null);
+  let hasPurchasesUpdated = false;
+  let hasLotsUpdated = false;
+  let totalRecalculatedBills = 0;
+
+  const updatedPurchases = purchases.map(bill => {
+    if (!bill || !Array.isArray(bill.items) || bill.items.length === 0) return bill;
+
+    let billItemsChanged = false;
+    const updatedItems = bill.items.map(item => {
+      let rate = Number(item.gstRate !== undefined ? item.gstRate : 5);
+      const name = (item.name || '').trim().toUpperCase();
+
+      // Normalize any snack/namkeen item that had 18% or undefined to 5%
+      if (
+        rate === 18 && 
+        (name.includes('KHATTA MEETHA') || name.includes('AKHA CHANA') || name.includes('MIXTURE') || name.includes('MRP-5') || name.includes('MRP-10') || name.includes('CLAP') || name.includes('PAPDI'))
+      ) {
+        rate = 5;
+        billItemsChanged = true;
+      }
+
+      const pEx = Number(item.purchasePrice) || 0;
+      const expectedWithGst = Number((pEx * (1 + rate / 100)).toFixed(2));
+      const currentWithGst = Number(item.purchasePriceWithGst);
+
+      if (Math.abs(expectedWithGst - currentWithGst) > 0.009 || item.gstRate !== rate) {
+        billItemsChanged = true;
+      }
+
+      return {
+        ...item,
+        gstRate: rate,
+        purchasePriceWithGst: expectedWithGst
+      };
+    });
+
+    // Standard slab-wise GST calculation
+    const slabs = {};
+    let totalExGst = 0;
+    updatedItems.forEach(it => {
+      const q = Number(it.qty) || 0;
+      const ex = Number(it.purchasePrice) || 0;
+      const r = Number(it.gstRate !== undefined ? it.gstRate : 5);
+      const taxVal = q * ex;
+      totalExGst += taxVal;
+      if (!slabs[r]) slabs[r] = 0;
+      slabs[r] += taxVal;
+    });
+
+    let totalGst = 0;
+    Object.keys(slabs).forEach(rKey => {
+      const r = Number(rKey);
+      totalGst += Number((slabs[rKey] * r / 100).toFixed(2));
+    });
+
+    totalExGst = Number(totalExGst.toFixed(2));
+    totalGst = Number(totalGst.toFixed(2));
+    const grandTotal = Number((totalExGst + totalGst).toFixed(2));
+
+    const oldTotalEx = Number(bill.totalAmountExGst) || 0;
+    const oldTotalGst = Number(bill.totalGst) || 0;
+    const oldGrandTotal = Number(bill.grandTotal) || 0;
+
+    if (
+      billItemsChanged || 
+      Math.abs(oldTotalEx - totalExGst) > 0.01 ||
+      Math.abs(oldTotalGst - totalGst) > 0.01 ||
+      Math.abs(oldGrandTotal - grandTotal) > 0.01
+    ) {
+      hasPurchasesUpdated = true;
+      totalRecalculatedBills++;
+      return {
+        ...bill,
+        items: updatedItems,
+        totalAmountExGst: totalExGst,
+        totalGst: totalGst,
+        grandTotal: grandTotal,
+        recalculatedAt: new Date().toISOString()
+      };
+    }
+
+    return bill;
+  });
+
+  if (hasPurchasesUpdated) {
+    setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
+
+    // Also synchronize stock lots if they exist
+    if (Array.isArray(allLots) && allLots.length > 0) {
+      allLots = allLots.map(lot => {
+        const matchingBill = updatedPurchases.find(b => b.id === lot.billId);
+        if (!matchingBill || !Array.isArray(matchingBill.items)) return lot;
+
+        const matchingItem = matchingBill.items.find(it => 
+          (it.productId && lot.productId === it.productId) ||
+          (it.name && lot.productName && it.name.trim().toLowerCase() === lot.productName.trim().toLowerCase())
+        );
+
+        if (matchingItem) {
+          const rate = Number(matchingItem.gstRate || 5);
+          const pEx = Number(lot.purchasePrice) || Number(matchingItem.purchasePrice) || 0;
+          const newWithGst = Number((pEx * (1 + rate / 100)).toFixed(2));
+
+          if (lot.gstRate !== rate || Math.abs((lot.purchasePriceWithGst || 0) - newWithGst) > 0.009) {
+            hasLotsUpdated = true;
+            return {
+              ...lot,
+              gstRate: rate,
+              purchasePriceWithGst: newWithGst
+            };
+          }
+        }
+        return lot;
+      });
+
+      if (hasLotsUpdated) {
+        setStorageData(STORAGE_KEYS.STOCK_LOTS, allLots);
+      }
+    }
+
+    logAuditAction('NORMALIZE_PURCHASE_BILLS', 'Inventory & Stock', `Recalculated and normalized GST on ${totalRecalculatedBills} historical purchase bills to standard slab calculation.`);
+  }
+
+  return {
+    updated: hasPurchasesUpdated,
+    recalculatedCount: totalRecalculatedBills,
+    totalBills: updatedPurchases.length,
+    purchases: updatedPurchases
+  };
 };
 
 // Operations: Suppliers / Purchase Parties (Vendors)
