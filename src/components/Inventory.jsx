@@ -13,6 +13,8 @@ import {
   transferStockBetweenWarehouses, 
   getProductStockValuation,
   fetchStockLots,
+  isPurchaseBillEditable,
+  getPurchaseBillRemainingEditTime,
   logAuditAction 
 } from '../utils/storage';
 import { 
@@ -124,6 +126,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
 
   // Add New Purchase Modal State
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [editingPurchaseId, setEditingPurchaseId] = useState(null);
   const [purchaseHeader, setPurchaseHeader] = useState({
     partyName: '',
     partyGst: '',
@@ -407,6 +410,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
   const handleOpenPurchaseModal = () => {
     const latestSuppliers = fetchSuppliers();
     setSuppliers(latestSuppliers);
+    setEditingPurchaseId(null);
     setPurchaseHeader({
       partyName: '',
       partyGst: '',
@@ -420,6 +424,45 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     setPurchaseProdSearchTerm('');
     setShowPurchaseProdSuggestions(false);
     setPurchaseRows([emptyPurchaseRow()]);
+    setPurchaseModalOpen(true);
+  };
+
+  const handleOpenEditPurchase = (bill) => {
+    if (!bill) return;
+    const latestSuppliers = fetchSuppliers();
+    setSuppliers(latestSuppliers);
+    setEditingPurchaseId(bill.id);
+    setPurchaseHeader({
+      partyName: bill.partyName || '',
+      partyGst: bill.partyGst || '',
+      date: bill.date || new Date().toISOString().split('T')[0],
+      billNo: bill.billNo || '',
+      warehouseId: bill.warehouseId || warehouses[0]?.id || 'wh_main'
+    });
+    setSupplierSearchTerm(bill.partyName || '');
+    const matchedSupp = latestSuppliers.find(s => s.name?.toLowerCase() === (bill.partyName || '').toLowerCase());
+    setSelectedSupplierObj(matchedSupp || null);
+    setShowSupplierSuggestions(false);
+    setPurchaseProdSearchTerm('');
+    setShowPurchaseProdSuggestions(false);
+
+    const rows = (bill.items || []).map((it, idx) => ({
+      id: 'prow_' + Date.now() + '_' + idx,
+      productId: it.productId || '',
+      name: it.name || '',
+      mrp: it.mrp !== undefined && it.mrp !== null ? it.mrp : '',
+      hsn: it.hsn || '',
+      salePrice: it.salePrice !== undefined && it.salePrice !== null ? it.salePrice : '',
+      gstRate: it.gstRate !== undefined && it.gstRate !== null ? Number(it.gstRate) : 5,
+      purchasePrice: it.purchasePrice !== undefined && it.purchasePrice !== null ? it.purchasePrice : '',
+      purchasePriceWithGst: it.purchasePriceWithGst !== undefined && it.purchasePriceWithGst !== null ? it.purchasePriceWithGst : '',
+      qty: it.qty || 1,
+      pcsPerCarton: it.pcsPerCarton || 24,
+      batchNo: it.batchNo || '',
+      expiryDate: it.expiryDate || ''
+    }));
+
+    setPurchaseRows(rows.length > 0 ? rows : [emptyPurchaseRow()]);
     setPurchaseModalOpen(true);
   };
 
@@ -769,6 +812,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     const totalGst = Math.max(0, totalWithGst - totalExGst);
 
     const purchasePayload = {
+      id: editingPurchaseId || undefined,
       partyName: purchaseHeader.partyName.trim(),
       partyGst: purchaseHeader.partyGst.trim(),
       date: purchaseHeader.date,
@@ -783,7 +827,11 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     savePurchase(purchasePayload);
     setPurchases(fetchPurchases());
     refreshAllData();
-    alert(`✅ Purchase bill recorded successfully! Stock inventory updated for ${validItems.length} products.`);
+    alert(editingPurchaseId 
+      ? `✅ Purchase bill #${purchaseHeader.billNo || ''} updated successfully! Stock and inward lots reconciled.`
+      : `✅ Purchase bill recorded successfully! Stock inventory updated for ${validItems.length} products.`
+    );
+    setEditingPurchaseId(null);
     setPurchaseModalOpen(false);
     setInventorySubTab('purchases');
   };
@@ -1109,7 +1157,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
         <button
           type="button"
-          onClick={() => setPurchaseModalOpen(true)}
+          onClick={handleOpenPurchaseModal}
           className="btn btn-primary"
           style={{
             display: 'flex',
@@ -1536,7 +1584,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
-                  onClick={() => setPurchaseModalOpen(true)}
+                  onClick={handleOpenPurchaseModal}
                   className="btn btn-primary"
                   style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#059669', borderColor: '#059669' }}
                 >
@@ -1580,7 +1628,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           {purchases.length === 0 ? (
                             <button
                               type="button"
-                              onClick={() => setPurchaseModalOpen(true)}
+                              onClick={handleOpenPurchaseModal}
                               className="btn btn-primary"
                               style={{ marginTop: '8px', background: '#059669', borderColor: '#059669' }}
                             >
@@ -1688,6 +1736,18 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                               >
                                 <Eye size={15} color="var(--primary)" />
                               </button>
+
+                              {isPurchaseBillEditable(bill) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditPurchase(bill)}
+                                  className="btn btn-secondary btn-sm"
+                                  title={`Edit Bill (${getPurchaseBillRemainingEditTime(bill)})`}
+                                  style={{ padding: '5px 8px', color: '#2563eb', borderColor: '#bfdbfe', background: '#eff6ff' }}
+                                >
+                                  <Edit3 size={15} />
+                                </button>
+                              )}
 
                               <button
                                 type="button"
@@ -2596,10 +2656,17 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               <div>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                   <ShoppingBag size={18} color="#059669" />
-                  <span>Add New Purchase (Inward Stock Entry)</span>
+                  <span>{editingPurchaseId ? `Edit Purchase Inward Bill #${purchaseHeader.billNo || ''}` : 'Add New Purchase (Inward Stock Entry)'}</span>
+                  {editingPurchaseId && (
+                    <span className="badge badge-warning" style={{ fontSize: '0.68rem', padding: '2px 8px' }}>
+                      24h Edit Window Active
+                    </span>
+                  )}
                 </h3>
                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-                  Record vendor purchase invoice, auto-calculate purchase price with GST, and increment inventory stock.
+                  {editingPurchaseId 
+                    ? 'Update bill details, quantities, or purchase rates. Changes will automatically reconcile inventory stock and inward lots.' 
+                    : 'Record vendor purchase invoice, auto-calculate purchase price with GST, and increment inventory stock.'}
                 </p>
               </div>
               <button 
@@ -3593,7 +3660,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 style={{ padding: '5px 18px', fontWeight: '800', background: 'linear-gradient(135deg, #059669, #10b981)', borderColor: '#059669', gap: '6px', fontSize: '0.76rem' }}
               >
                 <CheckCircle size={15} />
-                <span>Save Purchase & Update Stock</span>
+                <span>{editingPurchaseId ? 'Update Purchase & Sync Stock' : 'Save Purchase & Update Stock'}</span>
               </button>
             </div>
 
@@ -4064,15 +4131,44 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               alignItems: 'center',
               flexShrink: 0
             }}>
-              <button
-                type="button"
-                onClick={() => handlePrintPurchaseBill(viewingPurchaseBill)}
-                className="btn btn-secondary btn-sm"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', padding: '6px 14px' }}
-              >
-                <Printer size={15} />
-                <span>Print Bill</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => handlePrintPurchaseBill(viewingPurchaseBill)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', padding: '6px 14px' }}
+                >
+                  <Printer size={15} />
+                  <span>Print Bill</span>
+                </button>
+
+                {isPurchaseBillEditable(viewingPurchaseBill) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const b = viewingPurchaseBill;
+                      setViewingPurchaseBill(null);
+                      handleOpenEditPurchase(b);
+                    }}
+                    className="btn btn-secondary btn-sm"
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      fontSize: '0.76rem', 
+                      padding: '6px 14px', 
+                      color: '#2563eb', 
+                      borderColor: '#bfdbfe', 
+                      background: '#eff6ff', 
+                      fontWeight: '700' 
+                    }}
+                    title={getPurchaseBillRemainingEditTime(viewingPurchaseBill)}
+                  >
+                    <Edit3 size={15} />
+                    <span>Edit Bill ({getPurchaseBillRemainingEditTime(viewingPurchaseBill)})</span>
+                  </button>
+                )}
+              </div>
 
               <button
                 type="button"

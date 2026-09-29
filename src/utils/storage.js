@@ -1085,27 +1085,94 @@ export const consumeStockLotsFIFO = (productId, qtyToConsume) => {
   };
 };
 
+export const isPurchaseBillEditable = (bill) => {
+  if (!bill) return false;
+  let createdTime = null;
+  if (bill.createdAt) {
+    createdTime = new Date(bill.createdAt).getTime();
+  } else if (bill.id && typeof bill.id === 'string' && bill.id.startsWith('purch_')) {
+    const match = bill.id.match(/^purch_(\d+)/);
+    if (match) createdTime = parseInt(match[1], 10);
+  }
+  if (!createdTime && bill.date) {
+    createdTime = new Date(bill.date).getTime();
+  }
+  if (!createdTime || isNaN(createdTime)) return false;
+  const ageInMs = Date.now() - createdTime;
+  const maxAgeMs = 24 * 60 * 60 * 1000; // 24 hours
+  return ageInMs >= 0 && ageInMs <= maxAgeMs;
+};
+
+export const getPurchaseBillRemainingEditTime = (bill) => {
+  if (!bill) return null;
+  let createdTime = null;
+  if (bill.createdAt) {
+    createdTime = new Date(bill.createdAt).getTime();
+  } else if (bill.id && typeof bill.id === 'string' && bill.id.startsWith('purch_')) {
+    const match = bill.id.match(/^purch_(\d+)/);
+    if (match) createdTime = parseInt(match[1], 10);
+  }
+  if (!createdTime && bill.date) {
+    createdTime = new Date(bill.date).getTime();
+  }
+  if (!createdTime || isNaN(createdTime)) return null;
+  const elapsedMs = Date.now() - createdTime;
+  const remainingMs = (24 * 60 * 60 * 1000) - elapsedMs;
+  if (remainingMs <= 0) return null;
+  const hours = Math.floor(remainingMs / (60 * 60 * 1000));
+  const minutes = Math.floor((remainingMs % (60 * 60 * 1000)) / (60 * 1000));
+  if (hours > 0) return `${hours}h ${minutes}m left to edit`;
+  return `${minutes}m left to edit`;
+};
+
 export const savePurchase = (purchaseData) => {
   const purchases = fetchPurchases();
   const products = fetchProducts();
-  const allLots = fetchStockLots();
+  let allLots = fetchStockLots();
+
+  const existingIndex = purchaseData.id ? purchases.findIndex(p => p.id === purchaseData.id) : -1;
+  const isEditing = existingIndex >= 0;
+  const existingPurchase = isEditing ? purchases[existingIndex] : null;
 
   const id = purchaseData.id || 'purch_' + Date.now();
   const newPurchase = {
     ...purchaseData,
     id,
-    createdAt: new Date().toISOString()
+    createdAt: existingPurchase?.createdAt || purchaseData.createdAt || new Date().toISOString(),
+    updatedAt: isEditing ? new Date().toISOString() : undefined
   };
+
+  let currentProducts = [...products];
+
+  // If editing an existing bill, reverse previous quantities and lots first
+  if (isEditing && existingPurchase && Array.isArray(existingPurchase.items)) {
+    existingPurchase.items.forEach(oldItem => {
+      const oldQty = Number(oldItem.qty) || 0;
+      if (oldQty <= 0) return;
+      const pIdx = currentProducts.findIndex(p => 
+        (oldItem.productId && p.id === oldItem.productId) || 
+        (p.name && oldItem.name && p.name.trim().toLowerCase() === oldItem.name.trim().toLowerCase())
+      );
+      if (pIdx >= 0) {
+        const prod = currentProducts[pIdx];
+        currentProducts[pIdx] = {
+          ...prod,
+          currentStock: Math.max(0, (Number(prod.currentStock) || 0) - oldQty)
+        };
+      }
+    });
+
+    // Remove old lots created by this bill
+    allLots = allLots.filter(l => l.billId !== id);
+  }
 
   // Update or add products, increment stock, and record exact inward stock lots
   if (purchaseData.items && Array.isArray(purchaseData.items)) {
-    let currentProducts = [...products];
-
     purchaseData.items.forEach((item, idx) => {
       const qtyToAdd = Number(item.qty) || 0;
       if (qtyToAdd <= 0 && !item.name) return;
 
-      const existingIndex = currentProducts.findIndex(p => 
+      const existingProdIndex = currentProducts.findIndex(p => 
         (item.productId && p.id === item.productId) || 
         (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase())
       );
@@ -1119,10 +1186,10 @@ export const savePurchase = (purchaseData) => {
 
       let resolvedProductId;
 
-      if (existingIndex >= 0) {
-        const existing = currentProducts[existingIndex];
+      if (existingProdIndex >= 0) {
+        const existing = currentProducts[existingProdIndex];
         resolvedProductId = existing.id;
-        currentProducts[existingIndex] = {
+        currentProducts[existingProdIndex] = {
           ...existing,
           currentStock: (Number(existing.currentStock) || 0) + qtyToAdd,
           mrp: mrp > 0 ? mrp : existing.mrp,
@@ -1213,13 +1280,18 @@ export const savePurchase = (purchaseData) => {
     }
   }
 
-  const updatedPurchases = [newPurchase, ...purchases];
+  let updatedPurchases;
+  if (isEditing) {
+    updatedPurchases = purchases.map(p => p.id === id ? newPurchase : p);
+  } else {
+    updatedPurchases = [newPurchase, ...purchases];
+  }
   setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
 
   logAuditAction(
-    'RECORD_PURCHASE',
+    isEditing ? 'EDIT_PURCHASE' : 'RECORD_PURCHASE',
     'Inventory & Stock',
-    `Purchase bill recorded from ${purchaseData.partyName || 'Supplier'} (${purchaseData.items?.length || 0} items, Total: ₹${Number(purchaseData.grandTotal || 0).toLocaleString('en-IN')})`
+    `${isEditing ? 'Updated purchase bill' : 'Purchase bill recorded'} #${newPurchase.billNo || id} from ${purchaseData.partyName || 'Supplier'} (${purchaseData.items?.length || 0} items, Total: ₹${Number(purchaseData.grandTotal || 0).toLocaleString('en-IN')})`
   );
 
   autoCloudSync();
