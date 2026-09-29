@@ -26,7 +26,8 @@ const STORAGE_KEYS = {
   PROPRIETOR_CAPITAL: 'distro_proprietor_capital',
   DELETED_IDS: 'distro_deleted_ids',
   RETURNS: 'distro_sales_returns',
-  INVOICE_HISTORY: 'distro_invoice_history_logs'
+  INVOICE_HISTORY: 'distro_invoice_history_logs',
+  STOCK_LOTS: 'distro_stock_lots'
 };
 
 const DEFAULT_BUSINESS = REAL_DEFAULT_BUSINESS;
@@ -786,15 +787,308 @@ export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') =>
   return updated;
 };
 
-// Operations: Purchases & Inward Stock
+// Operations: Purchases, Stock Lots & Inward Costing Engine
 export const fetchPurchases = () => {
   const delSet = new Set(getDeletedIds());
   return getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
 };
 
+// --- BATCH-WISE / LOT-WISE PURCHASE COSTING ENGINE ---
+
+export const fetchStockLots = (productId = null) => {
+  let lots = getStorageData(STORAGE_KEYS.STOCK_LOTS, null);
+
+  // If lots table has never been initialized, synthesize from existing purchases and products
+  if (!lots) {
+    lots = [];
+    const purchases = fetchPurchases();
+    const products = fetchProducts();
+
+    // 1. Create lots from all recorded purchase bills
+    purchases.forEach(p => {
+      (p.items || []).forEach((item, idx) => {
+        const qty = Number(item.qty) || 0;
+        if (qty <= 0) return;
+        const matchingProd = products.find(prod => 
+          (item.productId && prod.id === item.productId) || 
+          (prod.name && item.name && prod.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+        );
+        const resolvedId = matchingProd ? matchingProd.id : (item.productId || `prod_${item.name}`);
+        const pPrice = Number(item.purchasePrice) || 0;
+        const gstRate = Number(item.gstRate !== undefined ? item.gstRate : (matchingProd?.gstRate || 0));
+        const pPriceWithGst = Number(item.purchasePriceWithGst) || (pPrice * (1 + gstRate / 100));
+
+        lots.push({
+          id: `lot_purch_${p.id || Date.now()}_${idx}`,
+          productId: resolvedId,
+          productName: item.name || matchingProd?.name || 'Item',
+          billId: p.id,
+          billNo: p.billNo || 'INWARD',
+          supplierName: p.partyName || 'Supplier',
+          date: p.date || (p.createdAt ? p.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
+          batchNo: item.batchNo || p.billNo || 'LOT-INWARD',
+          expiryDate: item.expiryDate || matchingProd?.expiryDate || '',
+          purchasePrice: pPrice,
+          purchasePriceWithGst: pPriceWithGst,
+          gstRate,
+          qtyReceived: qty,
+          qtyRemaining: qty,
+          warehouseId: p.warehouseId || matchingProd?.warehouseId || 'wh_main'
+        });
+      });
+    });
+
+    // 2. For products that have stock not covered by purchase bills, create an opening stock lot
+    products.forEach(prod => {
+      const prodLots = lots.filter(l => l.productId === prod.id);
+      const totalPurchasedQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
+      const currentStock = Number(prod.currentStock) || 0;
+      
+      // If current stock exceeds recorded purchases (or no purchases exist for this product)
+      if (currentStock > totalPurchasedQty) {
+        const diffQty = currentStock - totalPurchasedQty;
+        const pPrice = Number(prod.purchasePrice) || 0;
+        const gstRate = Number(prod.gstRate) || 0;
+        lots.push({
+          id: `lot_init_${prod.id}`,
+          productId: prod.id,
+          productName: prod.name,
+          billId: 'opening',
+          billNo: 'OPENING-STOCK',
+          supplierName: 'Opening Balance',
+          date: '2026-01-01',
+          batchNo: prod.batchNo || 'LOT-OPENING',
+          expiryDate: prod.expiryDate || '',
+          purchasePrice: pPrice,
+          purchasePriceWithGst: pPrice * (1 + gstRate / 100),
+          gstRate,
+          qtyReceived: diffQty,
+          qtyRemaining: diffQty,
+          warehouseId: prod.warehouseId || 'wh_main'
+        });
+      }
+    });
+
+    // 3. Reconcile remaining lot quantities against existing stock (FIFO)
+    products.forEach(prod => {
+      const prodLots = lots.filter(l => l.productId === prod.id).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+      let targetStock = Number(prod.currentStock) || 0;
+      
+      const totalLotQty = prodLots.reduce((sum, l) => sum + l.qtyReceived, 0);
+      let qtyToConsume = Math.max(0, totalLotQty - targetStock);
+      
+      for (const lot of prodLots) {
+        if (qtyToConsume <= 0) break;
+        const take = Math.min(qtyToConsume, lot.qtyRemaining);
+        lot.qtyRemaining = Math.max(0, lot.qtyRemaining - take);
+        qtyToConsume -= take;
+      }
+    });
+
+    setStorageData(STORAGE_KEYS.STOCK_LOTS, lots);
+  }
+
+  if (productId) {
+    return lots.filter(l => l.productId === productId);
+  }
+  return lots;
+};
+
+export const saveStockLot = (lotData) => {
+  const allLots = fetchStockLots();
+  const existingIdx = allLots.findIndex(l => l.id === lotData.id);
+  let updatedLots;
+  if (existingIdx >= 0) {
+    updatedLots = [...allLots];
+    updatedLots[existingIdx] = { ...updatedLots[existingIdx], ...lotData };
+  } else {
+    updatedLots = [lotData, ...allLots];
+  }
+  setStorageData(STORAGE_KEYS.STOCK_LOTS, updatedLots);
+  return updatedLots;
+};
+
+export const calculateProductWeightedAvgCost = (productId) => {
+  const lots = fetchStockLots(productId);
+  const activeLots = lots.filter(l => Number(l.qtyRemaining) > 0);
+  
+  if (activeLots.length === 0) {
+    const products = fetchProducts();
+    const prod = products.find(p => p.id === productId);
+    return Number(prod?.purchasePrice) || 0;
+  }
+
+  const totalValue = activeLots.reduce((sum, l) => sum + ((Number(l.qtyRemaining) || 0) * (Number(l.purchasePrice) || 0)), 0);
+  const totalQty = activeLots.reduce((sum, l) => sum + (Number(l.qtyRemaining) || 0), 0);
+
+  return totalQty > 0 ? Number((totalValue / totalQty).toFixed(2)) : 0;
+};
+
+export const getProductStockValuation = (productId = null) => {
+  const lots = fetchStockLots();
+  const products = fetchProducts();
+
+  if (productId) {
+    const prod = products.find(p => p.id === productId);
+    const targetLots = lots.filter(l => l.productId === productId && Number(l.qtyRemaining) > 0);
+    const totalRemainingQty = targetLots.reduce((sum, l) => sum + (Number(l.qtyRemaining) || 0), 0);
+    
+    let totalExGst = targetLots.reduce((sum, l) => sum + ((Number(l.qtyRemaining) || 0) * (Number(l.purchasePrice) || 0)), 0);
+    let totalWithGst = targetLots.reduce((sum, l) => {
+      const rateWithGst = Number(l.purchasePriceWithGst) || ((Number(l.purchasePrice) || 0) * (1 + (Number(l.gstRate) || 0) / 100));
+      return sum + ((Number(l.qtyRemaining) || 0) * rateWithGst);
+    }, 0);
+
+    // If currentStock in product exceeds remaining lots (e.g. initial setup without bills), account for difference
+    const stockOnHand = Number(prod?.currentStock) || 0;
+    if (stockOnHand > totalRemainingQty) {
+      const diff = stockOnHand - totalRemainingQty;
+      const pPrice = Number(prod?.purchasePrice) || 0;
+      const gRate = Number(prod?.gstRate) || 0;
+      totalExGst += diff * pPrice;
+      totalWithGst += diff * (pPrice * (1 + gRate / 100));
+    }
+
+    const effectiveQty = Math.max(stockOnHand, totalRemainingQty);
+    const avgExGst = effectiveQty > 0 ? Number((totalExGst / effectiveQty).toFixed(2)) : (Number(prod?.purchasePrice) || 0);
+    const avgWithGst = effectiveQty > 0 ? Number((totalWithGst / effectiveQty).toFixed(2)) : ((Number(prod?.purchasePrice) || 0) * (1 + (Number(prod?.gstRate) || 0) / 100));
+
+    // Distinct purchase rates in active lots
+    const distinctRates = Array.from(new Set(targetLots.map(l => Number(l.purchasePrice) || 0)));
+
+    return {
+      totalExGst: Number(totalExGst.toFixed(2)),
+      totalWithGst: Number(totalWithGst.toFixed(2)),
+      totalRemainingQty: effectiveQty,
+      avgUnitCostExGst: avgExGst,
+      avgUnitCostWithGst: avgWithGst,
+      activeLotsCount: targetLots.length,
+      distinctRatesCount: distinctRates.length,
+      distinctRates,
+      lots: targetLots
+    };
+  }
+
+  // Entire catalog valuation across all products
+  let grandTotalExGst = 0;
+  let grandTotalWithGst = 0;
+  let totalActiveLots = 0;
+
+  products.forEach(p => {
+    const val = getProductStockValuation(p.id);
+    grandTotalExGst += val.totalExGst;
+    grandTotalWithGst += val.totalWithGst;
+    totalActiveLots += val.activeLotsCount;
+  });
+
+  return {
+    totalExGst: Number(grandTotalExGst.toFixed(2)),
+    totalWithGst: Number(grandTotalWithGst.toFixed(2)),
+    activeLotsCount: totalActiveLots
+  };
+};
+
+export const restoreStockLotsFromConsumed = (items) => {
+  if (!items || !Array.isArray(items)) return;
+  const allLots = fetchStockLots();
+  let changed = false;
+
+  items.forEach(item => {
+    if (item.consumedLots && Array.isArray(item.consumedLots)) {
+      item.consumedLots.forEach(consumed => {
+        if (!consumed.lotId || consumed.lotId === 'fallback_buffer') return;
+        const targetLot = allLots.find(l => l.id === consumed.lotId);
+        if (targetLot) {
+          targetLot.qtyRemaining = Math.min(
+            Number(targetLot.qtyReceived) || 0,
+            (Number(targetLot.qtyRemaining) || 0) + (Number(consumed.qty) || 0)
+          );
+          changed = true;
+        }
+      });
+    }
+  });
+
+  if (changed) {
+    setStorageData(STORAGE_KEYS.STOCK_LOTS, allLots);
+  }
+};
+
+
+export const consumeStockLotsFIFO = (productId, qtyToConsume) => {
+  const allLots = fetchStockLots();
+  let remainingNeeded = Number(qtyToConsume) || 0;
+  
+  if (remainingNeeded <= 0) {
+    return { unitCost: 0, totalCost: 0, consumedLots: [] };
+  }
+
+  // Get active lots for this product, sorted chronologically (oldest first - FIFO)
+  const productLots = allLots
+    .filter(l => l.productId === productId && (Number(l.qtyRemaining) > 0))
+    .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+
+  const consumedLots = [];
+  let totalCost = 0;
+
+  for (const lot of productLots) {
+    if (remainingNeeded <= 0) break;
+    const available = Number(lot.qtyRemaining) || 0;
+    const take = Math.min(remainingNeeded, available);
+    
+    lot.qtyRemaining -= take;
+    const lotCost = take * (Number(lot.purchasePrice) || 0);
+    totalCost += lotCost;
+
+    consumedLots.push({
+      lotId: lot.id,
+      billNo: lot.billNo,
+      supplierName: lot.supplierName,
+      date: lot.date,
+      purchasePrice: Number(lot.purchasePrice) || 0,
+      purchasePriceWithGst: Number(lot.purchasePriceWithGst) || 0,
+      qty: take,
+      cost: Number(lotCost.toFixed(2))
+    });
+
+    remainingNeeded -= take;
+  }
+
+  // If quantity exceeded available lots (e.g. negative/buffer stock), fallback for the remainder
+  if (remainingNeeded > 0) {
+    const products = fetchProducts();
+    const prod = products.find(p => p.id === productId);
+    const fallbackRate = Number(prod?.purchasePrice) || 0;
+    const fallbackCost = remainingNeeded * fallbackRate;
+    totalCost += fallbackCost;
+
+    consumedLots.push({
+      lotId: 'fallback_buffer',
+      billNo: 'DIRECT-STOCK',
+      supplierName: 'Standard Cost',
+      date: new Date().toISOString().split('T')[0],
+      purchasePrice: fallbackRate,
+      purchasePriceWithGst: fallbackRate * (1 + (Number(prod?.gstRate || 0) / 100)),
+      qty: remainingNeeded,
+      cost: Number(fallbackCost.toFixed(2))
+    });
+  }
+
+  // Save updated lots back to storage
+  setStorageData(STORAGE_KEYS.STOCK_LOTS, allLots);
+
+  const unitCost = qtyToConsume > 0 ? Number((totalCost / qtyToConsume).toFixed(2)) : 0;
+  return {
+    unitCost,
+    totalCost: Number(totalCost.toFixed(2)),
+    consumedLots
+  };
+};
+
 export const savePurchase = (purchaseData) => {
   const purchases = fetchPurchases();
   const products = fetchProducts();
+  const allLots = fetchStockLots();
 
   const id = purchaseData.id || 'purch_' + Date.now();
   const newPurchase = {
@@ -803,11 +1097,11 @@ export const savePurchase = (purchaseData) => {
     createdAt: new Date().toISOString()
   };
 
-  // Update or add products and increment stock
+  // Update or add products, increment stock, and record exact inward stock lots
   if (purchaseData.items && Array.isArray(purchaseData.items)) {
     let currentProducts = [...products];
 
-    purchaseData.items.forEach(item => {
+    purchaseData.items.forEach((item, idx) => {
       const qtyToAdd = Number(item.qty) || 0;
       if (qtyToAdd <= 0 && !item.name) return;
 
@@ -819,25 +1113,30 @@ export const savePurchase = (purchaseData) => {
       const mrp = Number(item.mrp) || 0;
       const salePrice = Number(item.salePrice) || 0;
       const purchasePrice = Number(item.purchasePrice) || 0;
-      const gstRate = Number(item.gstRate) || 0;
+      const gstRate = Number(item.gstRate !== undefined ? item.gstRate : 0);
       const hsn = item.hsn || '';
+      const purchasePriceWithGst = Number(item.purchasePriceWithGst) || (purchasePrice * (1 + gstRate / 100));
+
+      let resolvedProductId;
 
       if (existingIndex >= 0) {
         const existing = currentProducts[existingIndex];
+        resolvedProductId = existing.id;
         currentProducts[existingIndex] = {
           ...existing,
           currentStock: (Number(existing.currentStock) || 0) + qtyToAdd,
           mrp: mrp > 0 ? mrp : existing.mrp,
           salePrice: salePrice > 0 ? salePrice : existing.salePrice,
-          purchasePrice: purchasePrice > 0 ? purchasePrice : existing.purchasePrice,
+          latestPurchasePrice: purchasePrice > 0 ? purchasePrice : (existing.latestPurchasePrice || existing.purchasePrice),
           gstRate: gstRate >= 0 ? gstRate : existing.gstRate,
           hsn: hsn || existing.hsn,
           warehouseId: purchaseData.warehouseId || existing.warehouseId || 'wh_main'
         };
       } else {
         // Create new product
+        resolvedProductId = 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
         const newProd = {
-          id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          id: resolvedProductId,
           name: item.name || 'New Item',
           sku: item.sku || `SKU-${Date.now().toString().slice(-6)}`,
           brand: item.brand || 'Standard',
@@ -845,6 +1144,7 @@ export const savePurchase = (purchaseData) => {
           mrp,
           salePrice,
           purchasePrice,
+          latestPurchasePrice: purchasePrice,
           gstRate,
           hsn,
           currentStock: qtyToAdd,
@@ -852,6 +1152,42 @@ export const savePurchase = (purchaseData) => {
           warehouseId: purchaseData.warehouseId || 'wh_main'
         };
         currentProducts = [newProd, ...currentProducts];
+      }
+
+      // Record distinct Inward Stock Lot preserving the exact bill rate!
+      const newLot = {
+        id: `lot_purch_${id}_${idx}_${Date.now()}`,
+        productId: resolvedProductId,
+        productName: item.name || 'Item',
+        billId: id,
+        billNo: purchaseData.billNo || 'INWARD-BILL',
+        supplierName: purchaseData.partyName || 'Supplier',
+        date: purchaseData.date || new Date().toISOString().split('T')[0],
+        batchNo: item.batchNo || purchaseData.billNo || 'LOT-' + Date.now().toString().slice(-4),
+        expiryDate: item.expiryDate || '',
+        purchasePrice,
+        purchasePriceWithGst,
+        gstRate,
+        qtyReceived: qtyToAdd,
+        qtyRemaining: qtyToAdd,
+        warehouseId: purchaseData.warehouseId || 'wh_main'
+      };
+      allLots.push(newLot);
+    });
+
+    setStorageData(STORAGE_KEYS.STOCK_LOTS, allLots);
+
+    // Recompute weighted average cost for affected products
+    purchaseData.items.forEach(item => {
+      const matchingProd = currentProducts.find(p => 
+        (item.productId && p.id === item.productId) || 
+        (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+      );
+      if (matchingProd) {
+        const wac = calculateProductWeightedAvgCost(matchingProd.id);
+        if (wac > 0) {
+          matchingProd.purchasePrice = wac;
+        }
       }
     });
 
@@ -896,6 +1232,32 @@ export const deletePurchase = (purchaseId) => {
   const target = purchases.find(p => p.id === purchaseId);
   const updated = purchases.filter(p => p.id !== purchaseId);
   setStorageData(STORAGE_KEYS.PURCHASES, updated);
+
+  // Remove corresponding lots and adjust product stock
+  const allLots = fetchStockLots();
+  const lotsToRemove = allLots.filter(l => l.billId === purchaseId);
+  const remainingLots = allLots.filter(l => l.billId !== purchaseId);
+  setStorageData(STORAGE_KEYS.STOCK_LOTS, remainingLots);
+
+  if (lotsToRemove.length > 0) {
+    const products = fetchProducts();
+    const updatedProducts = products.map(prod => {
+      const removedForProd = lotsToRemove.filter(l => l.productId === prod.id);
+      if (removedForProd.length > 0) {
+        const qtyToReduce = removedForProd.reduce((sum, l) => sum + (Number(l.qtyRemaining) || 0), 0);
+        const newStock = Math.max(0, (Number(prod.currentStock) || 0) - qtyToReduce);
+        const newWac = calculateProductWeightedAvgCost(prod.id);
+        return {
+          ...prod,
+          currentStock: newStock,
+          purchasePrice: newWac > 0 ? newWac : prod.purchasePrice
+        };
+      }
+      return prod;
+    });
+    setStorageData(STORAGE_KEYS.PRODUCTS, updatedProducts);
+  }
+
   logAuditAction('DELETE_PURCHASE', 'Suppliers & Purchases', `Deleted purchase bill #${target?.billNo || purchaseId} from ${target?.partyName || 'Supplier'}`);
   autoCloudSync();
   return updated;
@@ -1231,20 +1593,40 @@ export const saveInvoice = (invoiceData) => {
     chatter: initialChatter
   };
 
-  // If NOT draft, commit inventory and party ledger
+  // If NOT draft, commit inventory, FIFO lot consumption, and party ledger
   if (!isDraft) {
-    // 1. Deduct Stock for billed items
+    // 1. Consume FIFO stock lots and attach original purchase cost breakdown per item
+    const enrichedItems = (invoiceData.items || []).map(item => {
+      if (!item.isSection && !item.isNote && item.productId) {
+        const fifoResult = consumeStockLotsFIFO(item.productId, Number(item.qty) || 0);
+        return {
+          ...item,
+          costPrice: fifoResult.unitCost,
+          totalCost: fifoResult.totalCost,
+          consumedLots: fifoResult.consumedLots
+        };
+      }
+      return item;
+    });
+    newInvoice.items = enrichedItems;
+
+    // 2. Deduct Stock for billed items and recompute weighted average cost
     const updatedProducts = products.map(p => {
-      const billedItem = invoiceData.items.find(item => item.productId === p.id);
+      const billedItem = enrichedItems.find(item => item.productId === p.id);
       if (billedItem && !billedItem.isSection && !billedItem.isNote) {
         const remainingStock = Math.max(0, Number(p.currentStock) - Number(billedItem.qty));
-        return { ...p, currentStock: remainingStock };
+        const newWac = calculateProductWeightedAvgCost(p.id);
+        return { 
+          ...p, 
+          currentStock: remainingStock,
+          purchasePrice: newWac > 0 ? newWac : p.purchasePrice
+        };
       }
       return p;
     });
     setStorageData(STORAGE_KEYS.PRODUCTS, updatedProducts);
 
-    // 2. If bill has open balance, add balance to Party Ledger
+    // 3. If bill has open balance, add balance to Party Ledger
     if (invoiceData.partyId && amountDue > 0) {
       updatePartyBalance(invoiceData.partyId, amountDue);
     }
@@ -1286,12 +1668,19 @@ export const saveInvoice = (invoiceData) => {
 export const updateInvoice = (originalInvoice, updatedData) => {
   const products = fetchProducts();
 
-  // 1. Reverse old stock deduction
+  // 1. Reverse old stock deduction and restore stock lots
   if (originalInvoice.items && Array.isArray(originalInvoice.items)) {
+    restoreStockLotsFromConsumed(originalInvoice.items);
     const restoredProducts = products.map(p => {
       const old = originalInvoice.items.find(item => item.productId === p.id);
       if (old && !old.isSection && !old.isNote) {
-        return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(old.qty) || 0) };
+        const restoredStock = (Number(p.currentStock) || 0) + (Number(old.qty) || 0);
+        const restoredWac = calculateProductWeightedAvgCost(p.id);
+        return { 
+          ...p, 
+          currentStock: restoredStock,
+          purchasePrice: restoredWac > 0 ? restoredWac : p.purchasePrice
+        };
       }
       return p;
     });
@@ -1334,13 +1723,32 @@ export const postInvoice = (invoiceId) => {
   const nextNumber = invoices.filter(i => i.state !== 'draft').length + 1001;
   const officialInvoiceNo = `${business.invoicePrefix || 'INV/'}${nextNumber}`;
 
-  // Deduct inventory stock
+  // Deduct inventory stock & consume FIFO stock lots
+  let enrichedItems = target.items || [];
   if (target.items && Array.isArray(target.items)) {
+    enrichedItems = target.items.map(item => {
+      if (!item.isSection && !item.isNote && item.productId) {
+        const fifoResult = consumeStockLotsFIFO(item.productId, Number(item.qty) || 0);
+        return {
+          ...item,
+          costPrice: fifoResult.unitCost,
+          totalCost: fifoResult.totalCost,
+          consumedLots: fifoResult.consumedLots
+        };
+      }
+      return item;
+    });
+
     const updatedProducts = products.map(p => {
-      const billedItem = target.items.find(item => item.productId === p.id);
+      const billedItem = enrichedItems.find(item => item.productId === p.id);
       if (billedItem && !billedItem.isSection && !billedItem.isNote) {
         const remainingStock = Math.max(0, Number(p.currentStock) - Number(billedItem.qty));
-        return { ...p, currentStock: remainingStock };
+        const newWac = calculateProductWeightedAvgCost(p.id);
+        return { 
+          ...p, 
+          currentStock: remainingStock,
+          purchasePrice: newWac > 0 ? newWac : p.purchasePrice
+        };
       }
       return p;
     });
@@ -1360,6 +1768,7 @@ export const postInvoice = (invoiceId) => {
 
   const updatedInvoice = {
     ...target,
+    items: enrichedItems,
     invoiceNo: officialInvoiceNo,
     state: newState,
     amountDue,
@@ -1476,12 +1885,19 @@ export const createCreditNote = (invoiceId, reason = 'Customer Return / Pricing 
   const products = fetchProducts();
   const creditNoteNo = `RINV/${new Date().getFullYear()}/${invoices.length + 1001}`;
 
-  // 1. Restore Stock back to warehouse
+  // 1. Restore Stock and stock lots back to warehouse
   if (target.items && Array.isArray(target.items)) {
+    restoreStockLotsFromConsumed(target.items);
     const restoredProducts = products.map(p => {
       const item = target.items.find(i => i.productId === p.id);
       if (item && !item.isSection && !item.isNote) {
-        return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(item.qty) || 0) };
+        const restoredStock = (Number(p.currentStock) || 0) + (Number(item.qty) || 0);
+        const restoredWac = calculateProductWeightedAvgCost(p.id);
+        return { 
+          ...p, 
+          currentStock: restoredStock,
+          purchasePrice: restoredWac > 0 ? restoredWac : p.purchasePrice
+        };
       }
       return p;
     });
@@ -1557,12 +1973,19 @@ export const resetInvoiceToDraft = (invoiceId) => {
   const currentOp = getCurrentOperator();
   const products = fetchProducts();
 
-  // 1. Restore Stock if previously posted
+  // 1. Restore Stock & stock lots if previously posted
   if (target.items && Array.isArray(target.items)) {
+    restoreStockLotsFromConsumed(target.items);
     const restoredProducts = products.map(p => {
       const item = target.items.find(i => i.productId === p.id);
       if (item && !item.isSection && !item.isNote) {
-        return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(item.qty) || 0) };
+        const restoredStock = (Number(p.currentStock) || 0) + (Number(item.qty) || 0);
+        const restoredWac = calculateProductWeightedAvgCost(p.id);
+        return { 
+          ...p, 
+          currentStock: restoredStock,
+          purchasePrice: restoredWac > 0 ? restoredWac : p.purchasePrice
+        };
       }
       return p;
     });
@@ -1613,13 +2036,20 @@ export const cancelInvoice = (invoiceId) => {
   const currentOp = getCurrentOperator();
   const products = fetchProducts();
 
-  // If posted, restore stock and reverse ledger
+  // If posted, restore stock, stock lots, and reverse ledger
   if (target.state !== 'draft') {
     if (target.items && Array.isArray(target.items)) {
+      restoreStockLotsFromConsumed(target.items);
       const restoredProducts = products.map(p => {
         const item = target.items.find(i => i.productId === p.id);
         if (item && !item.isSection && !item.isNote) {
-          return { ...p, currentStock: (Number(p.currentStock) || 0) + (Number(item.qty) || 0) };
+          const restoredStock = (Number(p.currentStock) || 0) + (Number(item.qty) || 0);
+          const restoredWac = calculateProductWeightedAvgCost(p.id);
+          return { 
+            ...p, 
+            currentStock: restoredStock,
+            purchasePrice: restoredWac > 0 ? restoredWac : p.purchasePrice
+          };
         }
         return p;
       });
@@ -1661,19 +2091,25 @@ export const cancelInvoice = (invoiceId) => {
 };
 
 export const deleteInvoice = (invoiceId) => {
-  recordDeletedId(invoiceId);
   const invoices = fetchInvoices();
   const targetInv = invoices.find(i => i.id === invoiceId);
+  recordDeletedId(invoiceId);
   if (!targetInv) return invoices;
 
-  // 1. Restore Stock for billed items
+  // 1. Restore Stock and stock lots for billed items
   if (targetInv.items && Array.isArray(targetInv.items)) {
+    restoreStockLotsFromConsumed(targetInv.items);
     const products = fetchProducts();
     const restoredProducts = products.map(p => {
       const billedItem = targetInv.items.find(item => item.productId === p.id);
       if (billedItem) {
         const newStock = (Number(p.currentStock) || 0) + (Number(billedItem.qty) || 0);
-        return { ...p, currentStock: newStock };
+        const restoredWac = calculateProductWeightedAvgCost(p.id);
+        return { 
+          ...p, 
+          currentStock: newStock,
+          purchasePrice: restoredWac > 0 ? restoredWac : p.purchasePrice
+        };
       }
       return p;
     });

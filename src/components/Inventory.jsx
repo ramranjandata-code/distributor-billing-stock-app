@@ -11,6 +11,8 @@ import {
   fetchPurchases,
   deletePurchase,
   transferStockBetweenWarehouses, 
+  getProductStockValuation,
+  fetchStockLots,
   logAuditAction 
 } from '../utils/storage';
 import { 
@@ -51,6 +53,10 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
   const [warehouseFilter, setWarehouseFilter] = useState('ALL');
   const [expiryFilter, setExpiryFilter] = useState('ALL'); // 'ALL', 'EXPIRING_SOON', 'EXPIRED'
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [selectedLotProduct, setSelectedLotProduct] = useState(null);
+
+  // Dynamic Multi-rate Stock Valuation
+  const totalCatalogValuation = useMemo(() => getProductStockValuation(), [products]);
 
   // Warehouses & Purchase Parties (Suppliers)
   const warehouses = fetchWarehouses();
@@ -1237,10 +1243,10 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Total Stock Valuation (Cost Ex-GST): <strong style={{ color: 'var(--text-main)' }}>₹{filteredProducts.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * (Number(p.purchasePrice) || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+              Total Stock Valuation (Cost Ex-GST): <strong style={{ color: 'var(--text-main)' }}>₹{totalCatalogValuation.totalExGst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
             </span>
             <span style={{ fontSize: '0.78rem', color: '#059669', fontWeight: '700' }}>
-              Valuation (With GST): ₹{filteredProducts.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * ((Number(p.purchasePrice) || 0) * (1 + (Number(p.gstRate) || 0) / 100))), 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Valuation (With GST): ₹{totalCatalogValuation.totalWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
@@ -1254,7 +1260,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 <th style={{ padding: '12px 10px' }}>Warehouse</th>
                 <th style={{ padding: '12px 10px' }}>MRP</th>
                 <th style={{ padding: '12px 10px' }}>Sale Price</th>
-                <th style={{ padding: '12px 10px' }}>Cost Price</th>
+                <th style={{ padding: '12px 10px' }}>Cost Price (WAC)</th>
                 <th style={{ padding: '12px 10px' }}>GST %</th>
                 <th style={{ padding: '12px 10px', color: '#047857', fontWeight: '700' }}>Purchase Price (w/ GST)</th>
                 <th style={{ padding: '12px 10px' }}>Current Stock</th>
@@ -1273,9 +1279,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   const isLow = prod.currentStock <= (prod.minStockLimit || 10);
                   const expInfo = getExpiryStatus(prod.expiryDate);
                   const whObj = warehouses.find(w => w.id === prod.warehouseId) || warehouses[0];
-                  const pPrice = Number(prod.purchasePrice) || 0;
+                  
+                  const prodVal = getProductStockValuation(prod.id);
+                  const pPrice = prodVal.avgUnitCostExGst > 0 ? prodVal.avgUnitCostExGst : (Number(prod.purchasePrice) || 0);
                   const gRate = Number(prod.gstRate) || 0;
-                  const purchaseWithGst = pPrice * (1 + gRate / 100);
+                  const purchaseWithGst = prodVal.avgUnitCostWithGst > 0 ? prodVal.avgUnitCostWithGst : (pPrice * (1 + gRate / 100));
 
                   return (
                     <tr key={prod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -1305,14 +1313,40 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                       <td style={{ padding: '12px 10px', fontWeight: '600' }}>₹{prod.mrp}</td>
                       <td style={{ padding: '12px 10px', fontWeight: '700', color: 'var(--primary)' }}>₹{prod.salePrice}</td>
                       <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>
-                        <div>₹{prod.purchasePrice}</div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Ex-GST</div>
+                        <div style={{ fontWeight: '700', color: 'var(--text-main)' }}>₹{pPrice.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.7rem' }}>
+                          {prodVal.lots.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLotProduct(prod)}
+                              style={{ 
+                                background: '#fef3c7', 
+                                color: '#b45309', 
+                                border: '1px solid #fde68a',
+                                borderRadius: '4px',
+                                padding: '1px 5px',
+                                fontSize: '0.67rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                marginTop: '2px'
+                              }}
+                              title="Click to view inward lots with varying purchase rates"
+                            >
+                              ⚡ {prodVal.lots.length} Lots (WAC)
+                            </button>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>Ex-GST</span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '12px 10px' }}>{prod.gstRate}%</td>
                       <td style={{ padding: '12px 10px', fontWeight: '700', color: '#047857' }}>
                         <div>₹{purchaseWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                         <div style={{ fontSize: '0.69rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>
-                          +₹{((pPrice * gRate) / 100).toFixed(2)} tax
+                          Val: ₹{prodVal.totalWithGst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </div>
                       </td>
                       <td style={{ padding: '12px 10px' }}>
@@ -1328,6 +1362,17 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                       </td>
                       <td style={{ padding: '12px 10px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button 
+                            type="button"
+                            onClick={() => setSelectedLotProduct(prod)}
+                            className="btn btn-secondary btn-sm"
+                            title="View Inward Lots & Purchase Rates"
+                            style={{ background: '#f8fafc', color: '#4f46e5', borderColor: '#e0e7ff', fontWeight: '700' }}
+                          >
+                            <Layers size={14} />
+                            <span>Lots</span>
+                          </button>
+
                           <button 
                             onClick={() => handleOpenStockIn(prod)}
                             className="btn btn-secondary btn-sm"
@@ -4041,6 +4086,172 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
           </div>
         </div>
       )}
+
+      {/* Inward Stock Lots & Multi-Purchase Rates Modal */}
+      {selectedLotProduct && (() => {
+        const prodVal = getProductStockValuation(selectedLotProduct.id);
+        const allLots = prodVal.lots || [];
+
+        return (
+          <div className="modal-overlay" style={{ zIndex: 1150, padding: '16px', alignItems: 'center', justifyContent: 'center' }}>
+            <div 
+              className="modal-content" 
+              style={{ 
+                maxWidth: '860px', 
+                width: '100%', 
+                maxHeight: '90vh', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+              }}
+            >
+              {/* Header */}
+              <div style={{ 
+                padding: '16px 20px', 
+                borderBottom: '1px solid var(--border-color)', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)' 
+              }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Layers size={20} color="#4f46e5" />
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                      Inward Stock Lots & Original Purchase Rates
+                    </h3>
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Item: <strong style={{ color: 'var(--text-main)' }}>{selectedLotProduct.name}</strong> • SKU: <span style={{ color: '#4f46e5', fontWeight: '700' }}>{selectedLotProduct.sku}</span> • Total Stock: <strong>{selectedLotProduct.currentStock} {selectedLotProduct.unit || 'Pcs'}</strong>
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setSelectedLotProduct(null)} 
+                  className="btn btn-secondary btn-sm"
+                  style={{ borderRadius: '50%', width: '32px', height: '32px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* KPI Bar */}
+              <div style={{ padding: '14px 20px', background: '#ffffff', borderBottom: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', fontWeight: '600' }}>WEIGHTED AVG COST (EX-GST)</span>
+                  <strong style={{ fontSize: '1.15rem', color: '#1e293b' }}>₹{prodVal.avgUnitCostExGst.toFixed(2)}</strong>
+                </div>
+                <div style={{ background: '#ecfdf5', padding: '10px 12px', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#047857', display: 'block', fontWeight: '600' }}>WAC COST (WITH GST)</span>
+                  <strong style={{ fontSize: '1.15rem', color: '#065f46' }}>₹{prodVal.avgUnitCostWithGst.toFixed(2)}</strong>
+                </div>
+                <div style={{ background: '#eff6ff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#1d4ed8', display: 'block', fontWeight: '600' }}>TOTAL STOCK VALUATION</span>
+                  <strong style={{ fontSize: '1.15rem', color: '#1e40af' }}>₹{prodVal.totalExGst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+                </div>
+                <div style={{ background: '#fef3c7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#b45309', display: 'block', fontWeight: '600' }}>ACTIVE INWARD LOTS</span>
+                  <strong style={{ fontSize: '1.15rem', color: '#92400e' }}>{allLots.length} Inward Bills</strong>
+                </div>
+              </div>
+
+              {/* Table Body */}
+              <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                    Detailed Inward Batches & FIFO Consumption Queue
+                  </h4>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                    * Oldest lots are consumed first during sales (FIFO)
+                  </span>
+                </div>
+
+                {allLots.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '8px' }}>
+                    No specific purchase bill lots recorded yet for this product. Valuing from catalog standard purchase price.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                          <th style={{ padding: '10px 12px' }}>Date</th>
+                          <th style={{ padding: '10px 12px' }}>Bill # / Ref</th>
+                          <th style={{ padding: '10px 12px' }}>Supplier / Inward</th>
+                          <th style={{ padding: '10px 12px' }}>Batch No</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Orig. Cost (Ex-GST)</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Cost (w/ GST)</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Inward Qty</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Remaining Qty</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'right' }}>Lot Valuation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allLots.map((lot, idx) => {
+                          const lotVal = (Number(lot.qtyRemaining) || 0) * (Number(lot.purchasePrice) || 0);
+                          const isExhausted = Number(lot.qtyRemaining) <= 0;
+
+                          return (
+                            <tr key={lot.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx === 0 ? 'rgba(79, 70, 229, 0.03)' : '#ffffff' }}>
+                              <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontWeight: '600' }}>{lot.date || 'N/A'}</div>
+                                {idx === 0 && <span className="badge badge-primary" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Next in Line (FIFO)</span>}
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: '700', color: 'var(--primary)' }}>
+                                {lot.billNo || 'INWARD'}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <div>{lot.supplierName || 'Opening Stock'}</div>
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                                {lot.batchNo || 'N/A'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
+                                ₹{Number(lot.purchasePrice || 0).toFixed(2)}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', color: '#059669', fontWeight: '600' }}>
+                                ₹{Number(lot.purchasePriceWithGst || 0).toFixed(2)}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                                {lot.qtyReceived}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: isExhausted ? '#94a3b8' : '#2563eb' }}>
+                                {lot.qtyRemaining} {selectedLotProduct.unit || 'Pcs'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>
+                                ₹{lotVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div style={{ marginTop: '14px', padding: '10px 14px', background: '#eff6ff', borderRadius: '8px', border: '1px solid #dbeafe', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#1e40af' }}>
+                  <ShieldAlert size={16} style={{ flexShrink: 0 }} />
+                  <span>
+                    <strong>Exact Purchase Cost Rule:</strong> Whenever a sale is generated, stock is consumed from these lots in chronological order (FIFO). If a product was bought at ₹100 in Bill #1 and ₹120 in Bill #2, your Profit & Loss, Balance Sheet, and Gross Margin are computed directly from these original purchase rates!
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-color)', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => setSelectedLotProduct(null)} 
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '6px 20px', fontWeight: '700' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

@@ -341,6 +341,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
           mrp: product.mrp,
           gstRate: product.gstRate,
           maxStock: product.currentStock,
+          costPrice: product.purchasePrice || 0,
           itemDiscountType: 'AMOUNT', // 'AMOUNT' (₹ per item) or 'PERCENT' (%)
           itemDiscountVal: 0
         }

@@ -44,7 +44,8 @@ import {
   deleteExpense, 
   fetchProprietorCapital, 
   saveProprietorCapital, 
-  fetchBankAccounts 
+  fetchBankAccounts,
+  getProductStockValuation 
 } from '../utils/storage';
 
 export default function Reports({ invoices = [], products = [], parties = [], business, refreshAllData, t }) {
@@ -264,7 +265,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       totalDiscounts += Number(inv.discount) || 0;
       (inv.items || []).forEach(item => {
         const p = products.find(prod => prod.id === item.productId);
-        const purchaseCost = p ? Number(p.purchasePrice || 0) : (Number(item.price || 0) * 0.75);
+        // Use exact lot-consumed original purchase rate, or fallback to current catalog rate
+        const purchaseCost = (item.costPrice !== undefined && Number(item.costPrice) > 0)
+          ? Number(item.costPrice)
+          : (p ? Number(p.purchasePrice || 0) : (Number(item.price || 0) * 0.75));
         totalCogsItems += purchaseCost * (Number(item.qty) || 0);
       });
     });
@@ -308,8 +312,8 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
   // Balance Sheet Calculations (Sole Proprietor Equity & Balance Check)
   const balanceSheetData = useMemo(() => {
-    // 1. Stock Valuation @ Purchase Cost
-    const totalClosingStockVal = products.reduce((sum, p) => sum + ((Number(p.currentStock) || 0) * (Number(p.purchasePrice) || 0)), 0);
+    // 1. Stock Valuation @ Original Purchase Cost across all lots
+    const totalClosingStockVal = getProductStockValuation().totalExGst;
 
     // 2. Sundry Debtors (Receivables / Market Udhar from Retailers)
     const sundryDebtors = parties.reduce((sum, p) => sum + Math.max(0, Number(p.balance) || 0), 0);
@@ -520,9 +524,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
     const list = filteredProducts.map(p => {
       const stock = Number(p.currentStock) || 0;
-      const pPrice = Number(p.purchasePrice) || 0;
-      const sPrice = Number(p.price) || 0;
-      const costVal = stock * pPrice;
+      const prodVal = getProductStockValuation(p.id);
+      const pPrice = prodVal.avgUnitCostExGst > 0 ? prodVal.avgUnitCostExGst : (Number(p.purchasePrice) || 0);
+      const sPrice = Number(p.salePrice || p.price || 0);
+      const costVal = prodVal.totalExGst > 0 ? prodVal.totalExGst : (stock * pPrice);
       const saleVal = stock * sPrice;
       const potentialProfit = saleVal - costVal;
       const marginPct = saleVal > 0 ? ((potentialProfit / saleVal) * 100).toFixed(1) : '0.0';
@@ -534,10 +539,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       return {
         ...p,
         stock,
+        purchasePrice: pPrice,
         costVal,
         saleVal,
         potentialProfit,
-        marginPct
+        marginPct,
+        activeLotsCount: prodVal.activeLotsCount
       };
     });
 

@@ -28,6 +28,7 @@ import {
   Percent,
   LayoutGrid
 } from 'lucide-react';
+import { getProductStockValuation } from '../utils/storage';
 
 export default function Dashboard({ products = [], parties = [], invoices = [], business, setActiveTab, handlePrintInvoice, t = (k) => k }) {
   const [timeRange, setTimeRange] = useState('7d'); // 'today', '7d', '30d', 'all'
@@ -63,14 +64,17 @@ export default function Dashboard({ products = [], parties = [], invoices = [], 
   const rangeInvoicesCount = filteredInvoices.length;
   const averageOrderValue = rangeInvoicesCount > 0 ? (rangeTurnover / rangeInvoicesCount) : 0;
 
-  // Estimated COGS & Profit for filtered range
+  // Estimated COGS & Profit for filtered range using exact original purchase cost
   const rangeCost = useMemo(() => {
     return filteredInvoices.reduce((sum, inv) => {
       if (!Array.isArray(inv.items)) return sum;
       return sum + inv.items.reduce((iSum, itm) => {
         const p = products.find(prod => prod.id === itm.productId || prod.name === itm.name);
-        const buyCost = p?.purchasePrice || (itm.rate * 0.75); // fallback cost estimate
-        return iSum + (buyCost * (itm.quantity || 1));
+        const buyCost = (itm.costPrice !== undefined && Number(itm.costPrice) > 0)
+          ? Number(itm.costPrice)
+          : (p?.purchasePrice || (Number(itm.rate || itm.price || 0) * 0.75));
+        const itemQty = Number(itm.quantity || itm.qty || 1);
+        return iSum + (buyCost * itemQty);
       }, 0);
     }, 0);
   }, [filteredInvoices, products]);
@@ -78,8 +82,8 @@ export default function Dashboard({ products = [], parties = [], invoices = [], 
   const estimatedGrossProfit = Math.max(0, rangeTurnover - rangeCost);
   const grossMarginPercent = rangeTurnover > 0 ? ((estimatedGrossProfit / rangeTurnover) * 100) : 0;
 
-  // Inventory & Stock stats
-  const totalStockValue = useMemo(() => products.reduce((sum, p) => sum + ((p.currentStock || 0) * (p.purchasePrice || 0)), 0), [products]);
+  // Inventory & Stock stats from actual inward lots
+  const totalStockValue = useMemo(() => getProductStockValuation().totalExGst, [products]);
   const totalStockItems = useMemo(() => products.reduce((sum, p) => sum + (p.currentStock || 0), 0), [products]);
   const lowStockProducts = useMemo(() => products.filter(p => p.currentStock <= (p.minStockLimit || 10)), [products]);
 
