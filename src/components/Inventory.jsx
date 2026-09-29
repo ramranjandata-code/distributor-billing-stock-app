@@ -144,9 +144,11 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     hsn: '',
     salePrice: '',
     gstRate: 5,
-    purchasePrice: '', // without GST
-    purchasePriceWithGst: '', // with GST
-    qty: 1
+    qty: 1,
+    purchasePrice: '', // per-unit without GST
+    totalExGst: '', // total without GST
+    purchasePriceWithGst: '', // per-unit with GST
+    totalWithGst: '' // total with GST
   });
 
   const [purchaseRows, setPurchaseRows] = useState([emptyPurchaseRow()]);
@@ -447,21 +449,32 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     setPurchaseProdSearchTerm('');
     setShowPurchaseProdSuggestions(false);
 
-    const rows = (bill.items || []).map((it, idx) => ({
-      id: 'prow_' + Date.now() + '_' + idx,
-      productId: it.productId || '',
-      name: it.name || '',
-      mrp: it.mrp !== undefined && it.mrp !== null ? it.mrp : '',
-      hsn: it.hsn || '',
-      salePrice: it.salePrice !== undefined && it.salePrice !== null ? it.salePrice : '',
-      gstRate: it.gstRate !== undefined && it.gstRate !== null ? Number(it.gstRate) : 5,
-      purchasePrice: it.purchasePrice !== undefined && it.purchasePrice !== null ? it.purchasePrice : '',
-      purchasePriceWithGst: it.purchasePriceWithGst !== undefined && it.purchasePriceWithGst !== null ? it.purchasePriceWithGst : '',
-      qty: it.qty || 1,
-      pcsPerCarton: it.pcsPerCarton || 24,
-      batchNo: it.batchNo || '',
-      expiryDate: it.expiryDate || ''
-    }));
+    const rows = (bill.items || []).map((it, idx) => {
+      const q = it.qty || 1;
+      const rate = it.gstRate !== undefined && it.gstRate !== null ? Number(it.gstRate) : 5;
+      const pEx = it.purchasePrice !== undefined && it.purchasePrice !== null ? it.purchasePrice : '';
+      const pWith = it.purchasePriceWithGst !== undefined && it.purchasePriceWithGst !== null ? it.purchasePriceWithGst : '';
+      const tEx = (pEx !== '' && !isNaN(pEx)) ? Number((Number(q) * Number(pEx)).toFixed(2)) : (it.totalExGst || '');
+      const tWith = (tEx !== '' && !isNaN(tEx)) ? Number((Number(tEx) * (1 + rate / 100)).toFixed(2)) : (it.totalWithGst || '');
+
+      return {
+        id: 'prow_' + Date.now() + '_' + idx,
+        productId: it.productId || '',
+        name: it.name || '',
+        mrp: it.mrp !== undefined && it.mrp !== null ? it.mrp : '',
+        hsn: it.hsn || '',
+        salePrice: it.salePrice !== undefined && it.salePrice !== null ? it.salePrice : '',
+        gstRate: rate,
+        qty: q,
+        purchasePrice: pEx,
+        totalExGst: tEx,
+        purchasePriceWithGst: pWith,
+        totalWithGst: tWith,
+        pcsPerCarton: it.pcsPerCarton || 24,
+        batchNo: it.batchNo || '',
+        expiryDate: it.expiryDate || ''
+      };
+    });
 
     setPurchaseRows(rows.length > 0 ? rows : [emptyPurchaseRow()]);
     setPurchaseModalOpen(true);
@@ -705,8 +718,11 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     if (!prod) return;
 
     const exGst = Number(prod.purchasePrice) || 0;
-    const rate = Number(prod.gstRate) || 0;
+    const rate = Number(prod.gstRate !== undefined ? prod.gstRate : 5);
     const withGst = Number((exGst * (1 + rate / 100)).toFixed(2));
+    const currentQty = Number(purchaseRows[index]?.qty) || 1;
+    const totEx = Number((currentQty * exGst).toFixed(2));
+    const totWith = Number((totEx * (1 + rate / 100)).toFixed(2));
 
     setPurchaseRows(prev => {
       const updated = [...prev];
@@ -721,9 +737,11 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
         hsn: prod.hsn || '',
         salePrice: prod.salePrice || '',
         gstRate: rate,
+        qty: currentQty,
         purchasePrice: exGst || '',
+        totalExGst: totEx || '',
         purchasePriceWithGst: withGst || '',
-        qty: updated[index].qty || 1,
+        totalWithGst: totWith || '',
         pcsPerCarton: prod.pcsPerCarton || 24
       };
       return updated;
@@ -734,20 +752,78 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     setPurchaseRows(prev => {
       const updated = [...prev];
       const row = { ...updated[index], [field]: value };
+      const qty = parseFloat(row.qty) || 0;
+      const rate = Number(row.gstRate !== undefined ? row.gstRate : 5);
 
       if (field === 'purchasePrice') {
         const exGst = parseFloat(value);
-        const rate = Number(row.gstRate) || 0;
-        row.purchasePriceWithGst = (value === '' || isNaN(exGst)) ? '' : Number((exGst * (1 + rate / 100)).toFixed(2));
+        if (value === '' || isNaN(exGst)) {
+          row.purchasePriceWithGst = '';
+          row.totalExGst = '';
+          row.totalWithGst = '';
+        } else {
+          row.purchasePriceWithGst = Number((exGst * (1 + rate / 100)).toFixed(2));
+          if (qty > 0) {
+            row.totalExGst = Number((qty * exGst).toFixed(2));
+            row.totalWithGst = Number((row.totalExGst * (1 + rate / 100)).toFixed(2));
+          }
+        }
+      } else if (field === 'totalExGst') {
+        // User entered Total Without GST (Taxable Amount)
+        const totEx = parseFloat(value);
+        if (value === '' || isNaN(totEx)) {
+          row.totalWithGst = '';
+        } else {
+          row.totalWithGst = Number((totEx * (1 + rate / 100)).toFixed(2));
+          if (qty > 0) {
+            row.purchasePrice = Number((totEx / qty).toFixed(2));
+            row.purchasePriceWithGst = Number((row.purchasePrice * (1 + rate / 100)).toFixed(2));
+          }
+        }
       } else if (field === 'purchasePriceWithGst') {
         const withGst = parseFloat(value);
-        const rate = Number(row.gstRate) || 0;
-        row.purchasePrice = (value === '' || isNaN(withGst)) ? '' : Number((withGst / (1 + rate / 100)).toFixed(2));
-      } else if (field === 'gstRate') {
-        const rate = Number(value) || 0;
+        if (value === '' || isNaN(withGst)) {
+          row.purchasePrice = '';
+          row.totalExGst = '';
+          row.totalWithGst = '';
+        } else {
+          row.purchasePrice = Number((withGst / (1 + rate / 100)).toFixed(2));
+          if (qty > 0) {
+            row.totalExGst = Number((qty * row.purchasePrice).toFixed(2));
+            row.totalWithGst = Number((qty * withGst).toFixed(2));
+          }
+        }
+      } else if (field === 'totalWithGst') {
+        // User entered Total With GST (Gross Line Total)
+        const totWith = parseFloat(value);
+        if (value === '' || isNaN(totWith)) {
+          row.totalExGst = '';
+        } else {
+          row.totalExGst = Number((totWith / (1 + rate / 100)).toFixed(2));
+          if (qty > 0) {
+            row.purchasePriceWithGst = Number((totWith / qty).toFixed(2));
+            row.purchasePrice = Number((row.totalExGst / qty).toFixed(2));
+          }
+        }
+      } else if (field === 'qty') {
+        const newQty = parseFloat(value) || 0;
         const exGst = parseFloat(row.purchasePrice);
         if (!isNaN(exGst) && row.purchasePrice !== '') {
-          row.purchasePriceWithGst = Number((exGst * (1 + rate / 100)).toFixed(2));
+          row.totalExGst = Number((newQty * exGst).toFixed(2));
+          row.totalWithGst = Number((row.totalExGst * (1 + rate / 100)).toFixed(2));
+        } else if (row.totalExGst && newQty > 0) {
+          row.purchasePrice = Number((parseFloat(row.totalExGst) / newQty).toFixed(2));
+          row.purchasePriceWithGst = Number((row.purchasePrice * (1 + rate / 100)).toFixed(2));
+        }
+      } else if (field === 'gstRate') {
+        const newRate = Number(value) || 0;
+        const exGst = parseFloat(row.purchasePrice);
+        if (!isNaN(exGst) && row.purchasePrice !== '') {
+          row.purchasePriceWithGst = Number((exGst * (1 + newRate / 100)).toFixed(2));
+          if (qty > 0) {
+            row.totalExGst = Number((qty * exGst).toFixed(2));
+            row.totalWithGst = Number((row.totalExGst * (1 + newRate / 100)).toFixed(2));
+          }
         }
       }
 
@@ -761,13 +837,19 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     const rate = Number(targetRate);
     setPurchaseRows(prev => prev.map(row => {
       const exGst = parseFloat(row.purchasePrice);
+      const qty = parseFloat(row.qty) || 0;
       const newWithGst = (!isNaN(exGst) && row.purchasePrice !== '') 
         ? Number((exGst * (1 + rate / 100)).toFixed(2)) 
         : row.purchasePriceWithGst;
+      const newTotEx = (!isNaN(exGst) && qty > 0) ? Number((qty * exGst).toFixed(2)) : row.totalExGst;
+      const newTotWith = (newTotEx !== '' && !isNaN(newTotEx)) ? Number((newTotEx * (1 + rate / 100)).toFixed(2)) : row.totalWithGst;
+
       return {
         ...row,
         gstRate: rate,
-        purchasePriceWithGst: newWithGst
+        purchasePriceWithGst: newWithGst,
+        totalExGst: newTotEx,
+        totalWithGst: newTotWith
       };
     }));
   };
@@ -779,9 +861,9 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
 
     rows.forEach(r => {
       const qty = Number(r.qty) || 0;
-      const ex = Number(r.purchasePrice) || 0;
+      const ex = Number(r.purchasePrice) || (qty > 0 ? (Number(r.totalExGst) || 0) / qty : 0);
       const rate = Number(r.gstRate !== undefined ? r.gstRate : 5);
-      const taxable = qty * ex;
+      const taxable = Number(r.totalExGst) || (qty * ex);
       totalExGst += taxable;
 
       if (!slabs[rate]) slabs[rate] = { taxable: 0, gst: 0, count: 0 };
@@ -874,7 +956,21 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
       date: purchaseHeader.date,
       billNo: purchaseHeader.billNo.trim(),
       warehouseId: purchaseHeader.warehouseId,
-      items: validItems,
+      items: validItems.map(it => {
+        const q = Number(it.qty) || 0;
+        const ex = Number(it.purchasePrice) || (q > 0 ? (Number(it.totalExGst) || 0) / q : 0);
+        const r = Number(it.gstRate !== undefined ? it.gstRate : 5);
+        const tEx = Number(it.totalExGst) || Number((q * ex).toFixed(2));
+        const tWith = Number(it.totalWithGst) || Number((tEx * (1 + r / 100)).toFixed(2));
+        const pWith = Number(it.purchasePriceWithGst) || Number((ex * (1 + r / 100)).toFixed(2));
+        return {
+          ...it,
+          purchasePrice: Number(ex.toFixed(2)),
+          purchasePriceWithGst: Number(pWith.toFixed(2)),
+          totalExGst: Number(tEx.toFixed(2)),
+          totalWithGst: Number(tWith.toFixed(2))
+        };
+      }),
       totalAmountExGst: billTotals.totalExGst,
       totalGst: billTotals.totalGst,
       grandTotal: billTotals.grandTotal
@@ -3328,17 +3424,18 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
                     <thead>
                       <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.68rem', letterSpacing: '0.3px' }}>
-                        <th style={{ padding: '6px 4px', width: '28px', textAlign: 'center' }}>#</th>
-                        <th style={{ padding: '6px 5px', minWidth: '190px' }}>PRODUCT *</th>
-                        <th style={{ padding: '6px 5px', width: '80px' }}>MRP (₹)</th>
-                        <th style={{ padding: '6px 5px', width: '75px' }}>HSN</th>
-                        <th style={{ padding: '6px 5px', width: '90px' }}>SELLING PRICE (₹)</th>
-                        <th style={{ padding: '6px 5px', width: '75px' }}>RATE OF GST</th>
-                        <th style={{ padding: '6px 5px', width: '110px' }}>PURCHASE PRICE W/O GST</th>
-                        <th style={{ padding: '6px 5px', width: '115px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
-                        <th style={{ padding: '6px 5px', width: '70px' }}>QUANTITY</th>
-                        <th style={{ padding: '6px 6px', width: '90px', textAlign: 'right' }}>LINE TOTAL</th>
-                        <th style={{ padding: '6px 2px', width: '30px', textAlign: 'center' }}></th>
+                        <th style={{ padding: '6px 4px', width: '26px', textAlign: 'center' }}>#</th>
+                        <th style={{ padding: '6px 5px', minWidth: '160px' }}>PRODUCT *</th>
+                        <th style={{ padding: '6px 4px', width: '60px' }}>MRP (₹)</th>
+                        <th style={{ padding: '6px 4px', width: '60px' }}>HSN</th>
+                        <th style={{ padding: '6px 4px', width: '65px' }}>SELLING (₹)</th>
+                        <th style={{ padding: '6px 4px', width: '60px' }}>RATE OF GST</th>
+                        <th style={{ padding: '6px 4px', width: '60px' }}>QUANTITY</th>
+                        <th style={{ padding: '6px 5px', width: '95px' }}>PURCHASE PRICE W/O GST</th>
+                        <th style={{ padding: '6px 5px', width: '95px', color: '#0369a1', fontWeight: '700' }}>TOTAL W/O GST</th>
+                        <th style={{ padding: '6px 5px', width: '95px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
+                        <th style={{ padding: '6px 5px', width: '100px', color: '#059669', fontWeight: '800', textAlign: 'right' }}>TOTAL WITH GST</th>
+                        <th style={{ padding: '6px 2px', width: '26px', textAlign: 'center' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3649,33 +3746,6 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                               </select>
                             </td>
 
-                            {/* Purchase Price Without GST */}
-                            <td style={{ padding: '4px 3px' }}>
-                              <input 
-                                type="number" 
-                                step="0.01" 
-                                className="input-field" 
-                                placeholder="0.00"
-                                value={row.purchasePrice}
-                                onChange={e => handleRowFieldChange(idx, 'purchasePrice', e.target.value)}
-                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
-                                required
-                              />
-                            </td>
-
-                            {/* Purchase Price With GST */}
-                            <td style={{ padding: '4px 3px' }}>
-                              <input 
-                                type="number" 
-                                step="0.01" 
-                                className="input-field" 
-                                placeholder="0.00"
-                                value={row.purchasePriceWithGst}
-                                onChange={e => handleRowFieldChange(idx, 'purchasePriceWithGst', e.target.value)}
-                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px', background: '#f0fdf4', color: '#047857', fontWeight: '700', borderColor: '#86efac' }}
-                              />
-                            </td>
-
                             {/* Quantity */}
                             <td style={{ padding: '4px 3px' }}>
                               <input 
@@ -3690,9 +3760,60 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                               />
                             </td>
 
-                            {/* Line Total */}
-                            <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)', fontSize: '0.74rem' }}>
-                              ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {/* Purchase Price Without GST */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.purchasePrice}
+                                onChange={e => handleRowFieldChange(idx, 'purchasePrice', e.target.value)}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
+                                title="Unit Purchase Price Without GST"
+                              />
+                            </td>
+
+                            {/* Total Without GST */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.totalExGst !== undefined && row.totalExGst !== '' ? row.totalExGst : ((row.qty && row.purchasePrice) ? (Number(row.qty) * Number(row.purchasePrice)).toFixed(2) : '')}
+                                onChange={e => handleRowFieldChange(idx, 'totalExGst', e.target.value)}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px', background: '#f0f9ff', color: '#0369a1', fontWeight: '700', borderColor: '#bae6fd' }}
+                                title="Total Without GST (Taxable Value = Qty × Unit Price W/O GST)"
+                              />
+                            </td>
+
+                            {/* Purchase Price With GST */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.purchasePriceWithGst}
+                                onChange={e => handleRowFieldChange(idx, 'purchasePriceWithGst', e.target.value)}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px', background: '#f0fdf4', color: '#047857', fontWeight: '700', borderColor: '#86efac' }}
+                                title="Unit Purchase Price With GST"
+                              />
+                            </td>
+
+                            {/* Total With GST */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="number" 
+                                step="0.01" 
+                                className="input-field" 
+                                placeholder="0.00"
+                                value={row.totalWithGst !== undefined && row.totalWithGst !== '' ? row.totalWithGst : (lineTotal ? lineTotal.toFixed(2) : '')}
+                                onChange={e => handleRowFieldChange(idx, 'totalWithGst', e.target.value)}
+                                style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px', background: '#ecfdf5', color: '#059669', fontWeight: '800', borderColor: '#a7f3d0', textAlign: 'right' }}
+                                title="Total With GST (Gross Line Total = Total W/O GST + GST)"
+                              />
                             </td>
 
                             {/* Delete Action */}
@@ -4189,46 +4310,58 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.74rem' }}>
                     <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
                       <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase' }}>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '30px' }}>#</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'left', minWidth: '180px' }}>Product Name</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '50px' }}>Qty</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '70px' }}>MRP</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '75px' }}>Sale Price</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '50px' }}>GST %</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '85px' }}>Rate (Ex-GST)</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '90px' }}>Rate (With GST)</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '85px' }}>Line Total</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '28px' }}>#</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', minWidth: '160px' }}>Product Name</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '45px' }}>Qty</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '65px' }}>MRP</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '70px' }}>Sale Price</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '45px' }}>GST %</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '80px' }}>Rate (Ex-GST)</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '85px', color: '#0369a1' }}>Total (Ex-GST)</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '80px' }}>Rate (+GST)</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '85px', color: '#059669' }}>Total (+GST)</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(viewingPurchaseBill.items || []).map((item, idx) => (
-                        <tr 
-                          key={idx} 
-                          style={{ 
-                            borderBottom: '1px solid var(--border-color)',
-                            background: idx % 2 === 0 ? '#ffffff' : '#fcfcfd'
-                          }}
-                        >
-                          <td style={{ padding: '5px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
-                          <td style={{ padding: '5px 8px' }}>
-                            <div style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '0.74rem' }}>{item.name}</div>
-                            {item.hsn && <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
-                          </td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '700', color: 'var(--text-main)' }}>{item.qty}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
-                            {item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}
-                          </td>
-                          <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
-                            {item.salePrice ? `₹${Number(item.salePrice).toFixed(2)}` : '-'}
-                          </td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center' }}>{item.gstRate || 0}%</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'right' }}>₹{Number(item.purchasePrice || 0).toFixed(2)}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'right' }}>₹{Number(item.purchasePriceWithGst || 0).toFixed(2)}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: '700', color: '#059669' }}>
-                            ₹{Number(item.total || ((Number(item.qty) || 0) * (Number(item.purchasePriceWithGst || item.purchasePrice) || 0))).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
+                      {(viewingPurchaseBill.items || []).map((item, idx) => {
+                        const q = Number(item.qty) || 0;
+                        const ex = Number(item.purchasePrice) || 0;
+                        const r = Number(item.gstRate !== undefined ? item.gstRate : 5);
+                        const tEx = Number(item.totalExGst !== undefined ? item.totalExGst : (q * ex));
+                        const withGstUnit = Number(item.purchasePriceWithGst || (ex * (1 + r / 100)));
+                        const tWith = Number(item.totalWithGst !== undefined ? item.totalWithGst : (tEx * (1 + r / 100)));
+                        return (
+                          <tr 
+                            key={idx} 
+                            style={{ 
+                              borderBottom: '1px solid var(--border-color)',
+                              background: idx % 2 === 0 ? '#ffffff' : '#fcfcfd'
+                            }}
+                          >
+                            <td style={{ padding: '5px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                            <td style={{ padding: '5px 8px' }}>
+                              <div style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '0.74rem' }}>{item.name}</div>
+                              {item.hsn && <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '700', color: 'var(--text-main)' }}>{q}</td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                              {item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                              {item.salePrice ? `₹${Number(item.salePrice).toFixed(2)}` : '-'}
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'center' }}>{r}%</td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right' }}>₹{ex.toFixed(2)}</td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: '600', color: '#0369a1' }}>
+                              ₹{tEx.toFixed(2)}
+                            </td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right' }}>₹{withGstUnit.toFixed(2)}</td>
+                            <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: '700', color: '#059669' }}>
+                              ₹{tWith.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
