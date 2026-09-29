@@ -67,23 +67,34 @@ const DEFAULT_PROPRIETOR_CAPITAL = {
 
 const DEFAULT_EXPENSES = [];
 
-export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24) => {
+export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24, pcsPerBox = 1, unit = 'Pcs') => {
   const pcs = Number(pcsPerCarton) || 1;
   const stock = Number(totalStock) || 0;
+  const boxPcs = Number(pcsPerBox) || 1;
   
   if (pcs <= 1) {
-    return `${stock} Pcs`;
+    return `${stock} ${unit || 'Pcs'}`;
   }
 
   const cartons = Math.floor(stock / pcs);
-  const loosePcs = stock % pcs;
+  const remPcs = stock % pcs;
 
-  if (cartons > 0 && loosePcs > 0) {
-    return `${cartons} Ctn + ${loosePcs} Pcs`;
+  if (boxPcs > 1 && (unit === 'Box' || unit === 'Pack')) {
+    const boxes = Math.floor(remPcs / boxPcs);
+    const loose = remPcs % boxPcs;
+    const parts = [];
+    if (cartons > 0) parts.push(`${cartons} Ctn`);
+    if (boxes > 0) parts.push(`${boxes} ${unit}`);
+    if (loose > 0) parts.push(`${loose} Pcs`);
+    return parts.length > 0 ? parts.join(' + ') : `0 ${unit}`;
+  }
+
+  if (cartons > 0 && remPcs > 0) {
+    return `${cartons} Ctn + ${remPcs} Pcs`;
   } else if (cartons > 0) {
     return `${cartons} Ctn (${stock} Pcs)`;
   } else {
-    return `${loosePcs} Pcs`;
+    return `${remPcs} Pcs`;
   }
 };
 

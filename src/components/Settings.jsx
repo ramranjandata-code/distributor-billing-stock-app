@@ -61,7 +61,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     purchasePrice: '',
     gstRate: 5,
     pcsPerCarton: 24,
+    packsPerCarton: '',
+    pcsPerBox: '',
     cartonsStock: '',
+    boxesStock: '',
     loosePcsStock: '',
     currentStock: 0,
     unit: 'Pcs',
@@ -82,6 +85,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     setProdFormData({
       ...initialProdState,
       cartonsStock: 0,
+      boxesStock: 0,
       loosePcsStock: 0,
       currentStock: 0
     });
@@ -91,14 +95,29 @@ export default function Settings({ business, products, refreshAllData, lang, cha
   const handleOpenEditProduct = (prod) => {
     setEditingProd(prod);
     const pcsPerCtn = Number(prod.pcsPerCarton) || 24;
+    const isBoxOrPack = prod.unit === 'Box' || prod.unit === 'Pack';
+    const pcsPerBox = prod.pcsPerBox !== undefined && prod.pcsPerBox !== '' ? prod.pcsPerBox : (isBoxOrPack ? 1 : '');
+    const packsPerCtn = prod.packsPerCarton !== undefined && prod.packsPerCarton !== '' 
+      ? prod.packsPerCarton 
+      : (isBoxOrPack && Number(pcsPerBox) > 0 ? Math.floor(pcsPerCtn / Number(pcsPerBox)) || 1 : '');
+
     const stock = Number(prod.currentStock) || 0;
     const ctn = Math.floor(stock / pcsPerCtn);
-    const loose = stock % pcsPerCtn;
+    let remStock = stock % pcsPerCtn;
+    let boxes = 0;
+    let loose = remStock;
+    if (isBoxOrPack && Number(pcsPerBox) > 1) {
+      boxes = Math.floor(remStock / Number(pcsPerBox));
+      loose = remStock % Number(pcsPerBox);
+    }
 
     setProdFormData({
       ...prod,
       pcsPerCarton: pcsPerCtn,
+      packsPerCarton: packsPerCtn,
+      pcsPerBox: pcsPerBox,
       cartonsStock: ctn,
+      boxesStock: boxes > 0 ? boxes : '',
       loosePcsStock: loose,
       currentStock: stock
     });
@@ -107,21 +126,32 @@ export default function Settings({ business, products, refreshAllData, lang, cha
 
   const handleSaveProductForm = (e) => {
     e.preventDefault();
-    const pcsPerCtn = Number(prodFormData.pcsPerCarton) || 24;
+    const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack';
+    const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
+    const packsPerCtnNum = Number(prodFormData.packsPerCarton) || 1;
+    
+    // Total pieces per carton
+    const pcsPerCtn = isBoxOrPack && Number(prodFormData.pcsPerBox) > 0 && Number(prodFormData.packsPerCarton) > 0
+      ? (packsPerCtnNum * pcsPerBoxNum)
+      : (Number(prodFormData.pcsPerCarton) || 24);
+
     const ctn = Number(prodFormData.cartonsStock) || 0;
+    const boxes = isBoxOrPack ? (Number(prodFormData.boxesStock) || 0) : 0;
     const loose = Number(prodFormData.loosePcsStock) || 0;
-    const calculatedTotalStock = (ctn * pcsPerCtn) + loose;
+    const calculatedTotalStock = (ctn * pcsPerCtn) + (boxes * (isBoxOrPack ? pcsPerBoxNum : 0)) + loose;
 
     const payload = {
       ...prodFormData,
+      pcsPerCarton: pcsPerCtn,
+      packsPerCarton: isBoxOrPack ? (prodFormData.packsPerCarton || packsPerCtnNum) : '',
+      pcsPerBox: isBoxOrPack ? (prodFormData.pcsPerBox || pcsPerBoxNum) : '',
       mrp: Number(prodFormData.mrp) || 0,
       salePrice: Number(prodFormData.salePrice) || 0,
       purchasePrice: Number(prodFormData.purchasePrice) || 0,
       gstRate: Number(prodFormData.gstRate) || 0,
-      pcsPerCarton: pcsPerCtn,
       currentStock: calculatedTotalStock > 0 ? calculatedTotalStock : (Number(prodFormData.currentStock) || 0),
       minStockLimit: Number(prodFormData.minStockLimit) || 5,
-      sku: prodFormData.sku || `SKU-${Date.now().toString().slice(-6)}`
+      sku: (prodFormData.sku || '').trim() || `SKU-${Date.now().toString().slice(-6)}`
     };
 
     saveProduct(payload);
@@ -131,6 +161,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
     setProdFormData({
       ...initialProdState,
       cartonsStock: 0,
+      boxesStock: 0,
       loosePcsStock: 0,
       currentStock: 0
     });
@@ -1031,50 +1062,181 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Pieces Per Carton / Case *</label>
-                  <input 
-                    type="number" 
-                    min="1"
-                    className="input-field"
-                    required
-                    placeholder="e.g. 24"
-                    value={prodFormData.pcsPerCarton}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const pcs = val === '' ? '' : val;
-                      const pcsNum = Number(val) || 0;
-                      const ctn = Number(prodFormData.cartonsStock) || 0;
-                      const loose = Number(prodFormData.loosePcsStock) || 0;
-                      setProdFormData({
-                        ...prodFormData,
-                        pcsPerCarton: pcs,
-                        currentStock: (ctn * pcsNum) + loose
-                      });
-                    }}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Unit of Measure</label>
+                  <label className="form-label">Unit of Measure *</label>
                   <select 
                     className="input-field select-field"
                     value={prodFormData.unit}
-                    onChange={e => setProdFormData({...prodFormData, unit: e.target.value})}
+                    onChange={e => {
+                      const newUnit = e.target.value;
+                      const isBoxOrPack = newUnit === 'Box' || newUnit === 'Pack';
+                      setProdFormData(prev => {
+                        const currentPcs = Number(prev.pcsPerCarton) || 24;
+                        const pcsPerBox = isBoxOrPack ? (prev.pcsPerBox || 1) : '';
+                        const packsPerCtn = isBoxOrPack ? (prev.packsPerCarton || currentPcs) : '';
+                        const ctn = Number(prev.cartonsStock) || 0;
+                        const boxes = Number(prev.boxesStock) || 0;
+                        const loose = Number(prev.loosePcsStock) || 0;
+                        const totalPcsPerCtn = isBoxOrPack && Number(packsPerCtn) > 0 && Number(pcsPerBox) > 0 
+                          ? Number(packsPerCtn) * Number(pcsPerBox) 
+                          : currentPcs;
+                        const newTotalStock = (ctn * totalPcsPerCtn) + (boxes * (Number(pcsPerBox) || 1)) + loose;
+                        return {
+                          ...prev,
+                          unit: newUnit,
+                          pcsPerBox: pcsPerBox,
+                          packsPerCarton: packsPerCtn,
+                          pcsPerCarton: totalPcsPerCtn,
+                          currentStock: newTotalStock
+                        };
+                      });
+                    }}
                   >
                     <option value="Pcs">Pcs (Pieces)</option>
-                    <option value="Box">Box</option>
                     <option value="Pack">Pack</option>
+                    <option value="Box">Box</option>
                     <option value="Carton">Carton / Case</option>
                     <option value="Kg">Kg (Kilograms)</option>
                   </select>
                 </div>
 
+                {/* Packaging Setup: Single Box if Pcs, or Multi-Box hierarchy if Box / Pack */}
+                {prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' ? (
+                  <div className="form-group" style={{ gridColumn: '1 / -1', background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
+                      <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#166534' }}>
+                        📦 Packaging Configuration ({prodFormData.unit} & Master Carton Hierarchy)
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: '600' }}>
+                        1 Master Carton = {Number(prodFormData.packsPerCarton) || 0} {prodFormData.unit}s × {Number(prodFormData.pcsPerBox) || 0} Pcs = {((Number(prodFormData.packsPerCarton) || 0) * (Number(prodFormData.pcsPerBox) || 0))} Total Base Pcs
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '600', marginBottom: '3px' }}>
+                          {prodFormData.unit}s Per Carton *
+                        </label>
+                        <input 
+                          type="number" 
+                          min="1"
+                          className="input-field"
+                          required
+                          style={{ borderColor: '#86efac', background: '#ffffff', height: '34px', fontSize: '0.82rem' }}
+                          placeholder={`No. of ${prodFormData.unit}s in 1 Carton`}
+                          value={prodFormData.packsPerCarton}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const packsNum = Number(val) || 0;
+                            const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
+                            const newTotalPcsPerCtn = packsNum * pcsPerBoxNum;
+                            const ctn = Number(prodFormData.cartonsStock) || 0;
+                            const boxes = Number(prodFormData.boxesStock) || 0;
+                            const loose = Number(prodFormData.loosePcsStock) || 0;
+                            setProdFormData({
+                              ...prodFormData,
+                              packsPerCarton: val,
+                              pcsPerCarton: newTotalPcsPerCtn > 0 ? newTotalPcsPerCtn : (Number(prodFormData.pcsPerCarton) || 24),
+                              currentStock: (ctn * newTotalPcsPerCtn) + (boxes * pcsPerBoxNum) + loose
+                            });
+                          }}
+                        />
+                        <div style={{ fontSize: '0.68rem', color: '#15803d', marginTop: '2px' }}>
+                          Carton contains {prodFormData.packsPerCarton || 0} {prodFormData.unit}s
+                        </div>
+                      </div>
+
+                      {/* THE EXTRA BOX: Total Pcs in Box or Pack */}
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '600', marginBottom: '3px' }}>
+                          Total Pcs Per {prodFormData.unit} *
+                        </label>
+                        <input 
+                          type="number" 
+                          min="1"
+                          className="input-field"
+                          required
+                          style={{ borderColor: '#86efac', background: '#ffffff', height: '34px', fontSize: '0.82rem' }}
+                          placeholder={`Pcs in 1 ${prodFormData.unit}`}
+                          value={prodFormData.pcsPerBox}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const pcsPerBoxNum = Number(val) || 0;
+                            const packsNum = Number(prodFormData.packsPerCarton) || 1;
+                            const newTotalPcsPerCtn = packsNum * pcsPerBoxNum;
+                            const ctn = Number(prodFormData.cartonsStock) || 0;
+                            const boxes = Number(prodFormData.boxesStock) || 0;
+                            const loose = Number(prodFormData.loosePcsStock) || 0;
+                            setProdFormData({
+                              ...prodFormData,
+                              pcsPerBox: val,
+                              pcsPerCarton: newTotalPcsPerCtn > 0 ? newTotalPcsPerCtn : (Number(prodFormData.pcsPerCarton) || 24),
+                              currentStock: (ctn * newTotalPcsPerCtn) + (boxes * pcsPerBoxNum) + loose
+                            });
+                          }}
+                        />
+                        <div style={{ fontSize: '0.68rem', color: '#15803d', marginTop: '2px' }}>
+                          Each {prodFormData.unit} contains {prodFormData.pcsPerBox || 0} pieces
+                        </div>
+                      </div>
+
+                      {/* Total No. of Pcs in Carton */}
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.76rem', color: '#166534', fontWeight: '600', marginBottom: '3px' }}>
+                          Total Pcs in Carton (Auto)
+                        </label>
+                        <input 
+                          type="number" 
+                          className="input-field"
+                          readOnly
+                          style={{ background: '#dcfce7', fontWeight: '800', color: '#166534', borderColor: '#86efac', height: '34px', fontSize: '0.82rem' }}
+                          value={((Number(prodFormData.packsPerCarton) || 0) * (Number(prodFormData.pcsPerBox) || 0)) || prodFormData.pcsPerCarton || 0}
+                        />
+                        <div style={{ fontSize: '0.68rem', color: '#15803d', marginTop: '2px' }}>
+                          Total base pieces per master carton
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label">Pieces Per Carton / Case *</label>
+                    <input 
+                      type="number" 
+                      min="1"
+                      className="input-field"
+                      required
+                      placeholder="e.g. 24"
+                      value={prodFormData.pcsPerCarton}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const pcs = val === '' ? '' : val;
+                        const pcsNum = Number(val) || 0;
+                        const ctn = Number(prodFormData.cartonsStock) || 0;
+                        const loose = Number(prodFormData.loosePcsStock) || 0;
+                        setProdFormData({
+                          ...prodFormData,
+                          pcsPerCarton: pcs,
+                          currentStock: (ctn * pcsNum) + loose
+                        });
+                      }}
+                    />
+                    <div style={{ fontSize: '0.70rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Base units per master carton
+                    </div>
+                  </div>
+                )}
+
                 {/* Carton & Loose Pieces Input Section */}
                 <div className="form-group" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                   <label className="form-label" style={{ fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>
-                    📦 Initial Stock Entry (Cartons & Loose Pieces)
+                    📦 Initial Stock Entry ({prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' ? `Cartons, ${prodFormData.unit}s & Loose Pieces` : 'Cartons & Loose Pieces'})
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginTop: '8px' }}>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr 1fr', 
+                    gap: '12px', 
+                    marginTop: '8px' 
+                  }}>
                     <div>
                       <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Cartons / Cases</label>
                       <input 
@@ -1087,16 +1249,51 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                           const val = e.target.value;
                           const ctn = val === '' ? '' : val;
                           const ctnNum = Number(val) || 0;
-                          const pcsPerCtn = Number(prodFormData.pcsPerCarton) || 24;
+                          const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack';
+                          const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
+                          const totalPcsPerCtn = isBoxOrPack && Number(prodFormData.packsPerCarton) > 0 && Number(prodFormData.pcsPerBox) > 0
+                            ? (Number(prodFormData.packsPerCarton) * pcsPerBoxNum)
+                            : (Number(prodFormData.pcsPerCarton) || 24);
+                          const boxes = Number(prodFormData.boxesStock) || 0;
                           const loose = Number(prodFormData.loosePcsStock) || 0;
                           setProdFormData({
                             ...prodFormData,
                             cartonsStock: ctn,
-                            currentStock: (ctnNum * pcsPerCtn) + loose
+                            currentStock: (ctnNum * totalPcsPerCtn) + (boxes * (isBoxOrPack ? pcsPerBoxNum : 0)) + loose
                           });
                         }}
                       />
                     </div>
+
+                    {/* EXTRA STOCK BOX FOR BOX / PACK */}
+                    {(prodFormData.unit === 'Box' || prodFormData.unit === 'Pack') && (
+                      <div>
+                        <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{prodFormData.unit}s Count (Loose)</label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          className="input-field"
+                          placeholder="0"
+                          value={prodFormData.boxesStock}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const boxes = val === '' ? '' : val;
+                            const boxesNum = Number(val) || 0;
+                            const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
+                            const totalPcsPerCtn = Number(prodFormData.packsPerCarton) > 0 && Number(prodFormData.pcsPerBox) > 0
+                              ? (Number(prodFormData.packsPerCarton) * pcsPerBoxNum)
+                              : (Number(prodFormData.pcsPerCarton) || 24);
+                            const ctn = Number(prodFormData.cartonsStock) || 0;
+                            const loose = Number(prodFormData.loosePcsStock) || 0;
+                            setProdFormData({
+                              ...prodFormData,
+                              boxesStock: boxes,
+                              currentStock: (ctn * totalPcsPerCtn) + (boxesNum * pcsPerBoxNum) + loose
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
 
                     <div>
                       <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Loose Pieces</label>
@@ -1110,12 +1307,17 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                           const val = e.target.value;
                           const loose = val === '' ? '' : val;
                           const looseNum = Number(val) || 0;
-                          const pcsPerCtn = Number(prodFormData.pcsPerCarton) || 24;
+                          const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack';
+                          const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
+                          const totalPcsPerCtn = isBoxOrPack && Number(prodFormData.packsPerCarton) > 0 && Number(prodFormData.pcsPerBox) > 0
+                            ? (Number(prodFormData.packsPerCarton) * pcsPerBoxNum)
+                            : (Number(prodFormData.pcsPerCarton) || 24);
                           const ctn = Number(prodFormData.cartonsStock) || 0;
+                          const boxes = Number(prodFormData.boxesStock) || 0;
                           setProdFormData({
                             ...prodFormData,
                             loosePcsStock: loose,
-                            currentStock: (ctn * pcsPerCtn) + looseNum
+                            currentStock: (ctn * totalPcsPerCtn) + (boxes * (isBoxOrPack ? pcsPerBoxNum : 0)) + looseNum
                           });
                         }}
                       />
