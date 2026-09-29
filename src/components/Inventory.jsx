@@ -3542,18 +3542,42 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
       {/* View Purchase Bill Details Modal */}
       {viewingPurchaseBill && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }}>
-          <div className="modal-content" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '8px', background: 'rgba(5, 150, 105, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
-                  <Receipt size={20} />
+        <div className="modal-overlay" style={{ zIndex: 1100, padding: '16px', alignItems: 'flex-start', overflowY: 'auto' }}>
+          <div 
+            className="modal-content" 
+            style={{ 
+              maxWidth: '960px', 
+              width: '96%', 
+              maxHeight: 'calc(100vh - 32px)', 
+              margin: '16px auto',
+              background: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid var(--border-color)',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+              display: 'flex', 
+              flexDirection: 'column', 
+              overflow: 'hidden' 
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              borderBottom: '1px solid var(--border-color)', 
+              padding: '10px 18px',
+              background: '#f8fafc',
+              flexShrink: 0
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(5, 150, 105, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                  <Receipt size={17} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
+                  <h3 style={{ fontSize: '0.98rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
                     Purchase Inward Bill #{viewingPurchaseBill.billNo || viewingPurchaseBill.id}
                   </h3>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>
                     Recorded on {viewingPurchaseBill.createdAt ? new Date(viewingPurchaseBill.createdAt).toLocaleString('en-IN') : (viewingPurchaseBill.date || 'N/A')}
                   </div>
                 </div>
@@ -3561,106 +3585,150 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               <button
                 onClick={() => setViewingPurchaseBill(null)}
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+                title="Close"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '18px', paddingTop: '16px' }}>
-              {/* Supplier & Warehouse Metadata Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
-                <div style={{ background: 'var(--surface-color)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '6px' }}>
+            {/* Modal Body */}
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '10px', 
+              padding: '12px 18px',
+              flex: '1 1 auto',
+              overflowY: 'auto',
+              minHeight: 0
+            }}>
+              {/* Supplier & Warehouse Metadata Grid - Compact */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                <div style={{ background: 'var(--surface-color)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '2px' }}>
                     Supplier / Party Details
                   </div>
-                  <div style={{ fontSize: '1.05rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-main)' }}>
                     {viewingPurchaseBill.partyName || 'Unknown Supplier'}
                   </div>
-                  {viewingPurchaseBill.partyGst && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      GSTIN: <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{viewingPurchaseBill.partyGst}</strong>
-                    </div>
-                  )}
-                  {viewingPurchaseBill.partyPhone && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Phone: <span style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.partyPhone}</span>
-                    </div>
-                  )}
-                  {viewingPurchaseBill.partyAddress && (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Address: <span style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.partyAddress}</span>
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {viewingPurchaseBill.partyGst && (
+                      <span>GSTIN: <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{viewingPurchaseBill.partyGst}</strong></span>
+                    )}
+                    {viewingPurchaseBill.partyPhone && (
+                      <span>Phone: <strong style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.partyPhone}</strong></span>
+                    )}
+                    {viewingPurchaseBill.partyAddress && (
+                      <span>Address: <span style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.partyAddress}</span></span>
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ background: 'var(--surface-color)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                <div style={{ background: 'var(--surface-color)', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.66rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', letterSpacing: '0.5px', marginBottom: '2px' }}>
                     Bill & Warehouse Details
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.82rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 10px', fontSize: '0.74rem' }}>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Bill Date:</span>
-                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>{viewingPurchaseBill.date || 'N/A'}</div>
+                      <span style={{ color: 'var(--text-muted)' }}>Bill Date: </span>
+                      <strong style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.date || 'N/A'}</strong>
                     </div>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Bill Number:</span>
-                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>{viewingPurchaseBill.billNo || 'N/A'}</div>
+                      <span style={{ color: 'var(--text-muted)' }}>Bill Number: </span>
+                      <strong style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.billNo || 'N/A'}</strong>
                     </div>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Destination:</span>
-                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Destination: </span>
+                      <strong style={{ color: 'var(--text-main)' }}>
                         {viewingPurchaseBill.warehouseId === 'wh_store' ? 'Store Front Display' : 'Main Warehouse'}
-                      </div>
+                      </strong>
                     </div>
                     <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Total Products:</span>
-                      <div style={{ fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Total Products: </span>
+                      <strong style={{ color: '#059669' }}>
                         {viewingPurchaseBill.items?.length || 0} Lines
-                      </div>
+                      </strong>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Items Table */}
-              <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ background: 'var(--surface-color)', padding: '10px 14px', borderBottom: '1px solid var(--border-color)', fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-main)' }}>
-                  Inward Products Breakdown
+              {/* Items Table with Dedicated Scroll Bar & Sticky Header */}
+              <div style={{ 
+                border: '1px solid var(--border-color)', 
+                borderRadius: '8px', 
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                flex: '1 1 auto',
+                minHeight: '180px',
+                background: '#ffffff'
+              }}>
+                <div style={{ 
+                  background: 'var(--surface-color)', 
+                  padding: '6px 12px', 
+                  borderBottom: '1px solid var(--border-color)', 
+                  fontWeight: '700', 
+                  fontSize: '0.75rem', 
+                  color: 'var(--text-main)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexShrink: 0
+                }}>
+                  <span>Inward Products Breakdown</span>
+                  <span style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>
+                    Showing all {viewingPurchaseBill.items?.length || 0} items &bull; Scroll below to view all lines &darr;
+                  </span>
                 </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--bg-color)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
-                        <th style={{ padding: '10px 12px', textAlign: 'center', width: '35px' }}>#</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'left' }}>Product Name</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Qty</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>MRP</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Sale Price</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>GST %</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Rate (Ex-GST)</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Rate (With GST)</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'right' }}>Line Total</th>
+                
+                {/* Scrollable Table Area with Visible Scrollbar */}
+                <div style={{ 
+                  overflowY: 'auto', 
+                  overflowX: 'auto',
+                  flex: '1 1 auto',
+                  maxHeight: '380px',
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#94a3b8 #f1f5f9'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.74rem' }}>
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.68rem', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '30px' }}>#</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'left', minWidth: '180px' }}>Product Name</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '50px' }}>Qty</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '70px' }}>MRP</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '75px' }}>Sale Price</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '50px' }}>GST %</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '85px' }}>Rate (Ex-GST)</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '90px' }}>Rate (With GST)</th>
+                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '85px' }}>Line Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {(viewingPurchaseBill.items || []).map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                          <td style={{ padding: '10px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
-                          <td style={{ padding: '10px 12px' }}>
-                            <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{item.name}</div>
-                            {item.hsn && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
+                        <tr 
+                          key={idx} 
+                          style={{ 
+                            borderBottom: '1px solid var(--border-color)',
+                            background: idx % 2 === 0 ? '#ffffff' : '#fcfcfd'
+                          }}
+                        >
+                          <td style={{ padding: '5px 8px', textAlign: 'center', color: 'var(--text-muted)' }}>{idx + 1}</td>
+                          <td style={{ padding: '5px 8px' }}>
+                            <div style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '0.74rem' }}>{item.name}</div>
+                            {item.hsn && <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
                           </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: '700' }}>{item.qty}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                          <td style={{ padding: '5px 8px', textAlign: 'center', fontWeight: '700', color: 'var(--text-main)' }}>{item.qty}</td>
+                          <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
                             {item.mrp ? `₹${Number(item.mrp).toFixed(2)}` : '-'}
                           </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--text-muted)' }}>
+                          <td style={{ padding: '5px 8px', textAlign: 'right', color: 'var(--text-muted)' }}>
                             {item.salePrice ? `₹${Number(item.salePrice).toFixed(2)}` : '-'}
                           </td>
-                          <td style={{ padding: '10px 12px', textAlign: 'center' }}>{item.gstRate || 0}%</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>₹{Number(item.purchasePrice || 0).toFixed(2)}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>₹{Number(item.purchasePriceWithGst || 0).toFixed(2)}</td>
-                          <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#059669' }}>
+                          <td style={{ padding: '5px 8px', textAlign: 'center' }}>{item.gstRate || 0}%</td>
+                          <td style={{ padding: '5px 8px', textAlign: 'right' }}>₹{Number(item.purchasePrice || 0).toFixed(2)}</td>
+                          <td style={{ padding: '5px 8px', textAlign: 'right' }}>₹{Number(item.purchasePriceWithGst || 0).toFixed(2)}</td>
+                          <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: '700', color: '#059669' }}>
                             ₹{Number(item.total || ((Number(item.qty) || 0) * (Number(item.purchasePriceWithGst || item.purchasePrice) || 0))).toFixed(2)}
                           </td>
                         </tr>
@@ -3670,18 +3738,27 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
               </div>
 
-              {/* Totals Summary */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <div style={{ width: '300px', background: 'var(--surface-color)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              {/* Totals Summary - Compact */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+                <div style={{ 
+                  width: '260px', 
+                  background: 'var(--surface-color)', 
+                  padding: '8px 12px', 
+                  borderRadius: '6px', 
+                  border: '1px solid var(--border-color)', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '4px' 
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                     <span>Subtotal (Ex-GST):</span>
                     <strong style={{ color: 'var(--text-main)' }}>₹{Number(viewingPurchaseBill.totalAmountExGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                     <span>Total GST Amount:</span>
                     <strong style={{ color: 'var(--text-main)' }}>₹{Number(viewingPurchaseBill.totalGst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: '800', borderTop: '1px solid var(--border-color)', paddingTop: '8px', marginTop: '2px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', fontWeight: '800', borderTop: '1px solid var(--border-color)', paddingTop: '4px', marginTop: '2px' }}>
                     <span style={{ color: 'var(--text-main)' }}>Grand Total:</span>
                     <span style={{ color: '#059669' }}>₹{Number(viewingPurchaseBill.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                   </div>
@@ -3689,21 +3766,31 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid var(--border-color)', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Modal Footer */}
+            <div style={{ 
+              borderTop: '1px solid var(--border-color)', 
+              padding: '10px 18px', 
+              background: '#f8fafc',
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
               <button
                 type="button"
                 onClick={() => handlePrintPurchaseBill(viewingPurchaseBill)}
-                className="btn btn-secondary"
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', padding: '6px 14px' }}
               >
-                <Printer size={16} />
+                <Printer size={15} />
                 <span>Print Bill</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setViewingPurchaseBill(null)}
-                className="btn btn-primary"
+                className="btn btn-primary btn-sm"
+                style={{ fontSize: '0.76rem', padding: '6px 18px', background: '#059669', borderColor: '#059669' }}
               >
                 Close
               </button>
