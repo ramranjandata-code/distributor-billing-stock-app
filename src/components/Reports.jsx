@@ -74,11 +74,18 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     return `${mm}${yyyy}`;
   };
 
+  const getGstTargetInvoices = () => {
+    if (!gstFpMonth) return filteredInvoices;
+    const monthMatched = invoices.filter(inv => inv.date && inv.date.startsWith(gstFpMonth));
+    return monthMatched.length > 0 ? monthMatched : filteredInvoices;
+  };
+
   const handleValidateGstr1 = () => {
     const fp = getFpSixDigit();
     const salesReturns = fetchSalesReturns();
+    const targetInvs = getGstTargetInvoices();
     const payload = generateGstr1Payload({
-      invoices: filteredInvoices,
+      invoices: targetInvs,
       creditNotes: salesReturns,
       businessGstin: business?.gstin || '07AAAAA0000A1Z5',
       filingPeriod: fp,
@@ -93,8 +100,9 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const handleExportGstr1OfficialJson = () => {
     const fp = getFpSixDigit();
     const salesReturns = fetchSalesReturns();
+    const targetInvs = getGstTargetInvoices();
     const payload = generateGstr1Payload({
-      invoices: filteredInvoices,
+      invoices: targetInvs,
       creditNotes: salesReturns,
       businessGstin: business?.gstin || '07AAAAA0000A1Z5',
       filingPeriod: fp,
@@ -833,10 +841,22 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {reportTab === 'GST' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)' }}>Month:</span>
+                <input 
+                  type="month" 
+                  value={gstFpMonth} 
+                  onChange={(e) => setGstFpMonth(e.target.value)} 
+                  className="input-field" 
+                  style={{ padding: '4px 8px', fontSize: '0.8rem', fontWeight: '700', width: 'auto' }} 
+                />
+              </div>
+            )}
+            {reportTab === 'GST' && (
               <button 
                 type="button" 
                 onClick={handleExportGstr1Csv} 
-                className="btn btn-secondary"
+                className="btn btn-secondary" 
                 style={{ gap: '6px', padding: '6px 14px', fontWeight: '700', fontSize: '0.82rem', color: '#059669', borderColor: '#a7f3d0' }}
               >
                 <Download size={15} />
@@ -847,7 +867,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <button 
               type="button" 
               onClick={() => window.print()} 
-              className="btn btn-primary"
+              className="btn btn-primary" 
               style={{ gap: '6px', padding: '6px 14px', fontWeight: '700', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
             >
               <Printer size={15} />
@@ -1624,7 +1644,42 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 </p>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                {/* Prominent Month Picker */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.35)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                }}>
+                  <Calendar size={18} color="#34d399" />
+                  <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#ffffff', whiteSpace: 'nowrap' }}>
+                    Filing Month:
+                  </span>
+                  <input 
+                    type="month"
+                    value={gstFpMonth}
+                    onChange={(e) => setGstFpMonth(e.target.value)}
+                    style={{
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      fontWeight: '800',
+                      fontSize: '0.88rem',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                    title="Choose GST Return Filing Month"
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={handleValidateGstr1}
