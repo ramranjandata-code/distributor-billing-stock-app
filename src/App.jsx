@@ -386,7 +386,7 @@ export default function App() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)' }}>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
                 {activeTab === 'dashboard' && translate('dashboard_title')}
                 {activeTab === 'billing' && translate('create_bill')}
                 {activeTab === 'inventory' && translate('inventory_title')}

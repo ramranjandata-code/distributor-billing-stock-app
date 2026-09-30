@@ -98,41 +98,41 @@ export default function InvoiceHistory({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       
-      {/* 1. Odoo Invoicing Top Control Banner */}
+      {/* 1. Compact Invoicing Top Control Banner */}
       <div style={{ 
         background: '#ffffff', 
-        borderRadius: '14px', 
-        padding: '16px 22px', 
+        borderRadius: '10px', 
+        padding: '8px 16px', 
         border: '1px solid #e2e8f0', 
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '14px'
+        gap: '10px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{ 
-            width: '42px', 
-            height: '42px', 
-            borderRadius: '10px', 
+            width: '32px', 
+            height: '32px', 
+            borderRadius: '8px', 
             background: 'linear-gradient(135deg, #10b981, #059669)', 
             color: '#ffffff', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.25)'
           }}>
-            <FileText size={22} />
+            <FileText size={17} />
           </div>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-main)' }}>
+            <h2 style={{ margin: 0, fontSize: '1.02rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1.2 }}>
               Customer Invoices & Billing Records
             </h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Invoice history, payment reconciliation, credit notes & billing ledgers
+            <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Invoice history, payment reconciliation & credit notes
             </p>
           </div>
         </div>
@@ -143,21 +143,22 @@ export default function InvoiceHistory({
             className="btn btn-primary"
             style={{ 
               fontWeight: '700', 
-              padding: '8px 16px', 
+              padding: '6px 12px', 
+              fontSize: '0.8rem',
               display: 'flex', 
               alignItems: 'center', 
-              gap: '6px' 
+              gap: '5px' 
             }}
           >
-            <Plus size={16} />
-            <span>+ New Invoice</span>
+            <Plus size={14} />
+            <span>New Invoice</span>
           </button>
 
           {setActiveTab && (
             <button 
               onClick={() => setActiveTab('billing')}
               className="btn btn-secondary"
-              style={{ fontWeight: '700', padding: '8px 14px', fontSize: '0.85rem' }}
+              style={{ fontWeight: '700', padding: '6px 12px', fontSize: '0.8rem' }}
             >
               POS Quick Counter
             </button>
@@ -165,31 +166,28 @@ export default function InvoiceHistory({
         </div>
       </div>
 
-      {/* 2. Odoo KPI Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+      {/* 2. Compact KPI Metric Cards (Slim Bar) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
         
         {/* Drafts */}
         <div 
           onClick={() => setOdooStatusFilter('draft')}
           style={{ 
             background: '#ffffff', 
-            borderRadius: '12px', 
-            padding: '16px', 
+            borderRadius: '8px', 
+            padding: '8px 12px', 
             border: odooStatusFilter === 'draft' ? '2px solid var(--primary)' : '1px solid #e2e8f0', 
             cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+            transition: 'all 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.82rem', fontWeight: '700' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.74rem', fontWeight: '700' }}>
             <span>Draft Invoices</span>
-            <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem' }}>{draftCount}</span>
+            <span style={{ background: '#f1f5f9', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{draftCount}</span>
           </div>
-          <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#1e293b', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#1e293b', marginTop: '2px' }}>
             ₹{draftTotal.toLocaleString('en-IN')}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '700', marginTop: '4px' }}>
-            Awaiting Confirmation / Pro-forma
           </div>
         </div>
 
@@ -198,23 +196,20 @@ export default function InvoiceHistory({
           onClick={() => setOdooStatusFilter('posted')}
           style={{ 
             background: '#ffffff', 
-            borderRadius: '12px', 
-            padding: '16px', 
+            borderRadius: '8px', 
+            padding: '8px 12px', 
             border: odooStatusFilter === 'posted' ? '2px solid #2563eb' : '1px solid #e2e8f0', 
             cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+            transition: 'all 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.82rem', fontWeight: '700' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.74rem', fontWeight: '700' }}>
             <span>Posted / Unpaid</span>
-            <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem' }}>{postedCount}</span>
+            <span style={{ background: '#eff6ff', color: '#2563eb', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{postedCount}</span>
           </div>
-          <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#2563eb', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#2563eb', marginTop: '2px' }}>
             ₹{postedDueTotal.toLocaleString('en-IN')}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: '700', marginTop: '4px' }}>
-            Open Receivables
           </div>
         </div>
 
@@ -223,23 +218,20 @@ export default function InvoiceHistory({
           onClick={() => setOdooStatusFilter('in_payment')}
           style={{ 
             background: '#ffffff', 
-            borderRadius: '12px', 
-            padding: '16px', 
+            borderRadius: '8px', 
+            padding: '8px 12px', 
             border: odooStatusFilter === 'in_payment' ? '2px solid #d97706' : '1px solid #e2e8f0', 
             cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+            transition: 'all 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.82rem', fontWeight: '700' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.74rem', fontWeight: '700' }}>
             <span>In Payment</span>
-            <span style={{ background: '#fef3c7', color: '#d97706', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem' }}>{inPaymentCount}</span>
+            <span style={{ background: '#fef3c7', color: '#d97706', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{inPaymentCount}</span>
           </div>
-          <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#d97706', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#d97706', marginTop: '2px' }}>
             ₹{inPaymentTotal.toLocaleString('en-IN')}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: '700', marginTop: '4px' }}>
-            Partially Reconciled
           </div>
         </div>
 
@@ -248,23 +240,20 @@ export default function InvoiceHistory({
           onClick={() => setOdooStatusFilter('paid')}
           style={{ 
             background: '#ffffff', 
-            borderRadius: '12px', 
-            padding: '16px', 
+            borderRadius: '8px', 
+            padding: '8px 12px', 
             border: odooStatusFilter === 'paid' ? '2px solid #059669' : '1px solid #e2e8f0', 
             cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+            transition: 'all 0.15s',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.82rem', fontWeight: '700' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#64748b', fontSize: '0.74rem', fontWeight: '700' }}>
             <span>Fully Paid</span>
-            <span style={{ background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: '12px', fontSize: '0.74rem' }}>{paidCount}</span>
+            <span style={{ background: '#ecfdf5', color: '#059669', padding: '1px 6px', borderRadius: '10px', fontSize: '0.7rem' }}>{paidCount}</span>
           </div>
-          <div style={{ fontSize: '1.35rem', fontWeight: '900', color: '#059669', marginTop: '6px' }}>
+          <div style={{ fontSize: '1.05rem', fontWeight: '800', color: '#059669', marginTop: '2px' }}>
             ₹{paidTotal.toLocaleString('en-IN')}
-          </div>
-          <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: '700', marginTop: '4px' }}>
-            Zero Residual Balance
           </div>
         </div>
 
