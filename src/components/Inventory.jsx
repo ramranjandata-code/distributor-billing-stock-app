@@ -16,6 +16,7 @@ import {
   isPurchaseBillEditable,
   getPurchaseBillRemainingEditTime,
   recalculateAndNormalizeAllPurchaseBills,
+  formatDateDDMMYY,
   logAuditAction 
 } from '../utils/storage';
 import { 
@@ -157,6 +158,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
   const [inventorySubTab, setInventorySubTab] = useState(defaultSubTab || 'stock');
   const [purchases, setPurchases] = useState(() => fetchPurchases());
   const [purchaseSearchTerm, setPurchaseSearchTerm] = useState('');
+  const [purchaseSortOrder, setPurchaseSortOrder] = useState('desc'); // 'desc' (newest date first) | 'asc' (oldest date first)
   const [viewingPurchaseBill, setViewingPurchaseBill] = useState(null);
 
   useEffect(() => {
@@ -1078,9 +1080,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
     setImportRawText('');
   };
 
-  // Purchases History Filtering & KPIs
+  // Purchases History Filtering, Date Sorting & KPIs
   const filteredPurchases = useMemo(() => {
-    return purchases.filter(p => {
+    const list = purchases.filter(p => {
       const q = purchaseSearchTerm.toLowerCase().trim();
       if (!q) return true;
       return (
@@ -1090,7 +1092,19 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
         (p.items && p.items.some(it => it.name && it.name.toLowerCase().includes(q)))
       );
     });
-  }, [purchases, purchaseSearchTerm]);
+
+    return [...list].sort((a, b) => {
+      const da = a.date || '';
+      const db = b.date || '';
+      if (purchaseSortOrder === 'asc') {
+        if (da !== db) return da.localeCompare(db);
+        return (a.createdAt || '').localeCompare(b.createdAt || '');
+      } else {
+        if (db !== da) return db.localeCompare(da);
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+      }
+    });
+  }, [purchases, purchaseSearchTerm, purchaseSortOrder]);
 
   const purchaseKpis = useMemo(() => {
     const totalBills = purchases.length;
@@ -1157,7 +1171,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
           </div>
           <div style="text-align: right;">
             <div style="font-size: 16px; font-weight: bold; color: #0f172a;">Bill #: ${bill.billNo || 'N/A'}</div>
-            <div style="font-size: 13px; color: #475569; margin-top: 2px;">Date: ${bill.date || 'N/A'}</div>
+            <div style="font-size: 13px; color: #475569; margin-top: 2px;">Date: ${formatDateDDMMYY(bill.date)}</div>
           </div>
         </div>
 
@@ -1776,7 +1790,29 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.86rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--surface-color)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <th style={{ padding: '14px 16px' }}>Bill # & Date</th>
+                    <th 
+                      style={{ padding: '14px 16px', cursor: 'pointer', userSelect: 'none' }}
+                      onClick={() => setPurchaseSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                      title="Click to toggle Date Sort Order (Newest First / Oldest First)"
+                    >
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <span>Bill # & Date</span>
+                        <span style={{ 
+                          fontSize: '0.68rem', 
+                          padding: '2px 8px', 
+                          borderRadius: '12px', 
+                          background: '#ecfdf5', 
+                          color: '#047857', 
+                          border: '1px solid #a7f3d0',
+                          fontWeight: '700',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
+                        }}>
+                          {purchaseSortOrder === 'desc' ? '▼ Newest First' : '▲ Oldest First'}
+                        </span>
+                      </div>
+                    </th>
                     <th style={{ padding: '14px 16px' }}>Supplier / Vendor</th>
                     <th style={{ padding: '14px 16px' }}>Warehouse</th>
                     <th style={{ padding: '14px 16px', textAlign: 'center' }}>Items</th>
@@ -1840,8 +1876,8 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                               <Receipt size={14} />
                               <span>{bill.billNo || bill.id.substring(0, 10)}</span>
                             </div>
-                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '3px' }}>
-                              {bill.date || 'N/A'}
+                            <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '3px', fontWeight: '600' }}>
+                              {formatDateDDMMYY(bill.date)}
                             </div>
                           </td>
 
@@ -4195,7 +4231,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     Purchase Inward Bill #{viewingPurchaseBill.billNo || viewingPurchaseBill.id}
                   </h3>
                   <div style={{ fontSize: '0.70rem', color: 'var(--text-muted)' }}>
-                    Recorded on {viewingPurchaseBill.createdAt ? new Date(viewingPurchaseBill.createdAt).toLocaleString('en-IN') : (viewingPurchaseBill.date || 'N/A')}
+                    Recorded on {viewingPurchaseBill.createdAt ? new Date(viewingPurchaseBill.createdAt).toLocaleString('en-IN') : formatDateDDMMYY(viewingPurchaseBill.date)}
                   </div>
                 </div>
               </div>
@@ -4247,7 +4283,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 10px', fontSize: '0.74rem' }}>
                     <div>
                       <span style={{ color: 'var(--text-muted)' }}>Bill Date: </span>
-                      <strong style={{ color: 'var(--text-main)' }}>{viewingPurchaseBill.date || 'N/A'}</strong>
+                      <strong style={{ color: 'var(--text-main)' }}>{formatDateDDMMYY(viewingPurchaseBill.date)}</strong>
                     </div>
                     <div>
                       <span style={{ color: 'var(--text-muted)' }}>Bill Number: </span>
@@ -4565,7 +4601,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           return (
                             <tr key={lot.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx === 0 ? 'rgba(79, 70, 229, 0.03)' : '#ffffff' }}>
                               <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                                <div style={{ fontWeight: '600' }}>{lot.date || 'N/A'}</div>
+                                <div style={{ fontWeight: '600' }}>{formatDateDDMMYY(lot.date)}</div>
                                 {idx === 0 && <span className="badge badge-primary" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Next in Line (FIFO)</span>}
                               </td>
                               <td style={{ padding: '10px 12px', fontWeight: '700', color: 'var(--primary)' }}>

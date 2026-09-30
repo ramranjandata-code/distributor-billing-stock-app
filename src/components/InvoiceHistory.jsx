@@ -19,7 +19,7 @@ import {
   Send,
   Layers
 } from 'lucide-react';
-import { deleteInvoice } from '../utils/storage';
+import { deleteInvoice, formatDateDDMMYY } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
 
 export default function InvoiceHistory({ 
@@ -388,14 +388,14 @@ export default function InvoiceHistory({
                       </td>
 
                       {/* Invoice Date */}
-                      <td style={{ padding: '10px 14px', color: '#64748b', fontSize: '0.82rem' }}>
-                        {inv.date ? inv.date.split('T')[0] : 'N/A'}
+                      <td style={{ padding: '10px 14px', color: '#64748b', fontSize: '0.82rem', fontWeight: '600' }}>
+                        {formatDateDDMMYY(inv.date)}
                       </td>
 
                       {/* Due Date */}
                       <td style={{ padding: '10px 14px', fontSize: '0.82rem' }}>
                         <span style={{ color: isOverdue ? '#dc2626' : '#64748b', fontWeight: isOverdue ? '800' : '500' }}>
-                          {inv.dueDate ? inv.dueDate.split('T')[0] : (inv.date ? inv.date.split('T')[0] : '-')}
+                          {inv.dueDate ? formatDateDDMMYY(inv.dueDate) : (inv.date ? formatDateDDMMYY(inv.date) : '-')}
                           {isOverdue && ' ⚠️'}
                         </span>
                       </td>

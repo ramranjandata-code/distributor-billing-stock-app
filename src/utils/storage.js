@@ -261,6 +261,12 @@ export const initDataStorage = () => {
   }
 
   const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
+  existingPurchases.sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (db !== da) return db.localeCompare(da);
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
   setStorageData(STORAGE_KEYS.PURCHASES, existingPurchases);
 
   // Automatically recalculate and normalize all historical purchase bills to standard 5% GST
@@ -799,10 +805,46 @@ export const updateProductStock = (productId, qtyToAdd, reason = 'Stock Add') =>
   return updated;
 };
 
+// Date formatting helper for standard DD-MM-YY (e.g. 10-08-26)
+export const formatDateDDMMYY = (dateStr) => {
+  if (!dateStr) return 'N/A';
+  try {
+    const cleanStr = String(dateStr).trim();
+    // Check for YYYY-MM-DD or YYYY/MM/DD
+    const isoMatch = cleanStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if (isoMatch) {
+      const [, yyyy, mm, dd] = isoMatch;
+      return `${dd.padStart(2, '0')}-${mm.padStart(2, '0')}-${yyyy.slice(-2)}`;
+    }
+    // Check for DD-MM-YYYY or DD/MM/YYYY
+    const dmyMatch = cleanStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
+    if (dmyMatch) {
+      const [, d, m, y] = dmyMatch;
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y.slice(-2)}`;
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = String(d.getFullYear()).slice(-2);
+      return `${day}-${month}-${year}`;
+    }
+    return dateStr;
+  } catch (err) {
+    return dateStr;
+  }
+};
+
 // Operations: Purchases, Stock Lots & Inward Costing Engine
 export const fetchPurchases = () => {
   const delSet = new Set(getDeletedIds());
-  return getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
+  const list = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
+  return list.sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (db !== da) return db.localeCompare(da);
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
 };
 
 // --- BATCH-WISE / LOT-WISE PURCHASE COSTING ENGINE ---
@@ -1298,6 +1340,13 @@ export const savePurchase = (purchaseData) => {
   } else {
     updatedPurchases = [newPurchase, ...purchases];
   }
+  // Automatically arrange in date order (newest date first)
+  updatedPurchases.sort((a, b) => {
+    const da = a.date || '';
+    const db = b.date || '';
+    if (db !== da) return db.localeCompare(da);
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
   setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
 
   logAuditAction(
@@ -1443,6 +1492,12 @@ export const recalculateAndNormalizeAllPurchaseBills = () => {
   });
 
   if (hasPurchasesUpdated) {
+    updatedPurchases.sort((a, b) => {
+      const da = a.date || '';
+      const db = b.date || '';
+      if (db !== da) return db.localeCompare(da);
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
     setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
 
     // Also synchronize stock lots if they exist
