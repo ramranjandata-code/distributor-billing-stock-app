@@ -1,0 +1,31 @@
+name: Supabase Keep-Alive Bot
+
+on:
+  schedule:
+    # Runs every 3 days at 06:00 UTC (ensures 7-day inactivity pause never triggers)
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Allows manual trigger anytime from GitHub Actions tab
+
+jobs:
+  keepalive:
+    name: Prevent Supabase Auto-Pause
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database & Health Check
+        run: |
+          echo "⚡ Sending keep-alive query to Supabase PostgreSQL..."
+          STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            -H "apikey: sb_publishable_JKDdzfgEr1HMZFAuN6v62A_iGpdBk-Y" \
+            -H "Authorization: Bearer sb_publishable_JKDdzfgEr1HMZFAuN6v62A_iGpdBk-Y" \
+            "https://ickkiqvkvmicfiklshhj.supabase.co/rest/v1/distro_cloud_store?select=id&limit=1")
+          
+          echo "HTTP Status Code: $STATUS"
+          cat response.json
+          echo ""
+          
+          if [ "$STATUS" -eq 200 ]; then
+            echo "✅ Supabase PostgreSQL is active! 7-day inactivity counter reset."
+          else
+            echo "❌ Keep-alive ping failed with HTTP status $STATUS"
+            exit 1
+          fi
