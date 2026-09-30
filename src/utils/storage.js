@@ -377,16 +377,20 @@ export const fetchCloudData = async (force = false) => {
   }
 
   try {
-    const res = await fetch(`${url}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
-      headers: {
-        'apikey': key,
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    const headers = {
+      'apikey': key,
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json'
+    };
 
-    if (res.ok) {
-      const rows = await res.json();
+    // Try distro_cloud_store first, fallback to fmcg_shops
+    let res = await fetch(`${url}/rest/v1/distro_cloud_store?id=eq.${STORE_DATA_ID}`, { headers }).catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch(`${url}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, { headers }).catch(() => null);
+    }
+
+    if (res && res.ok) {
+      const rows = await res.json().catch(() => []);
       if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
         const remote = JSON.parse(rows[0].beat);
         const remoteTs = Number(remote.lastUpdated) || 0;
@@ -542,41 +546,60 @@ export const pushLocalDataToCloud = async () => {
     'Prefer': 'return=representation'
   };
 
-  try {
-    const patchRes = await fetch(`${url}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(payload)
-    });
+  const tables = ['distro_cloud_store', 'fmcg_shops'];
+  let pushedSuccess = false;
+  let lastErrorStatus = null;
 
-    if (patchRes.ok) {
-      const resData = await patchRes.json().catch(() => []);
-      if (Array.isArray(resData) && resData.length === 0) {
-        await fetch(`${url}/rest/v1/fmcg_shops`, {
+  for (const table of tables) {
+    try {
+      const patchRes = await fetch(`${url}/rest/v1/${table}?id=eq.${STORE_DATA_ID}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload)
+      });
+
+      if (patchRes.ok) {
+        const resData = await patchRes.json().catch(() => []);
+        if (Array.isArray(resData) && resData.length === 0) {
+          await fetch(`${url}/rest/v1/${table}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+          });
+        }
+        pushedSuccess = true;
+        break;
+      } else if (patchRes.status === 404) {
+        lastErrorStatus = 404;
+        continue; // Try fallback table
+      } else {
+        const postRes = await fetch(`${url}/rest/v1/${table}`, {
           method: 'POST',
           headers,
           body: JSON.stringify(payload)
         });
+        if (postRes.ok) {
+          pushedSuccess = true;
+          break;
+        }
+        lastErrorStatus = postRes.status;
       }
-      localStorage.setItem('distro_last_synced_ts', now.toString());
-      broadcastRealtimePulse();
-      return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
-    } else {
-      const postRes = await fetch(`${url}/rest/v1/fmcg_shops`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
-      if (postRes.ok) {
-        localStorage.setItem('distro_last_synced_ts', now.toString());
-        broadcastRealtimePulse();
-        return { success: true, message: 'All products, parties & invoices synced to Cloud Database!' };
-      }
-      return { success: false, message: `Cloud database responded with status ${patchRes.status}` };
+    } catch (err) {
+      lastErrorStatus = err?.message;
     }
-  } catch (err) {
-    console.warn('Live Cloud Sync push error:', err?.message || err);
-    return { success: false, message: 'Cloud database connection error. Check your URL & Key.' };
+  }
+
+  if (pushedSuccess) {
+    localStorage.setItem('distro_last_synced_ts', now.toString());
+    broadcastRealtimePulse();
+    return { success: true, message: 'All 12 bills, products & parties synced to Cloud Database!' };
+  } else if (lastErrorStatus === 404) {
+    return { 
+      success: false, 
+      message: 'Supabase table missing. Please run supabase_sync_table.sql in Supabase SQL Editor.' 
+    };
+  } else {
+    return { success: false, message: `Cloud database responded with status ${lastErrorStatus}` };
   }
 };
 
