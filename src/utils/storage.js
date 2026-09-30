@@ -448,6 +448,14 @@ export const fetchCloudData = async (force = false) => {
           setStorageData(STORAGE_KEYS.INVOICE_HISTORY, mergeById(getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []), remote.invoiceHistory || remote.invoiceHistoryLogs, activeDelSet));
         }
 
+        if (Array.isArray(remote.stockLots)) {
+          setStorageData(STORAGE_KEYS.STOCK_LOTS, mergeById(getStorageData(STORAGE_KEYS.STOCK_LOTS, []), remote.stockLots, activeDelSet));
+        }
+
+        if (Array.isArray(remote.auditLogs)) {
+          setStorageData(STORAGE_KEYS.AUDIT_LOGS, mergeById(getStorageData(STORAGE_KEYS.AUDIT_LOGS, []), remote.auditLogs, activeDelSet));
+        }
+
         if (remote.proprietorCapital && typeof remote.proprietorCapital === 'object') {
           const localCap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
           setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, { ...localCap, ...remote.proprietorCapital });
@@ -490,6 +498,8 @@ export const pushLocalDataToCloud = async () => {
   const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
   const salesReturns = getStorageData(STORAGE_KEYS.RETURNS, []).filter(r => r && !delSet.has(r.id));
   const invoiceHistory = getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []);
+  const stockLots = getStorageData(STORAGE_KEYS.STOCK_LOTS, []);
+  const auditLogs = getStorageData(STORAGE_KEYS.AUDIT_LOGS, []);
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   const deletedIds = getDeletedIds();
   const now = Date.now();
@@ -505,6 +515,7 @@ export const pushLocalDataToCloud = async () => {
       parties,
       invoices,
       purchases,
+      stockLots,
       expenses,
       bankAccounts,
       bankTransactions,
@@ -512,6 +523,7 @@ export const pushLocalDataToCloud = async () => {
       warehouses,
       salesReturns,
       invoiceHistory,
+      auditLogs,
       deletedIds,
       lastUpdated: now
     }),

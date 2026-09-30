@@ -25,7 +25,8 @@ export default function AppLauncher({
   invoices = [], 
   cloudConnected, 
   lastSyncedTime, 
-  triggerManualSync 
+  triggerManualSync,
+  onOpenCloudModal 
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -358,8 +359,8 @@ export default function AppLauncher({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {cloudConnected ? (
             <div 
-              onClick={triggerManualSync}
-              title={`Cloud Synced ${lastSyncedTime ? `(${lastSyncedTime})` : ''} - Click to refresh`}
+              onClick={onOpenCloudModal || triggerManualSync}
+              title={`Cloud Synced ${lastSyncedTime ? `(${lastSyncedTime})` : ''} - Click for Phone QR Code & Laptop Link`}
               style={{
                 cursor: 'pointer',
                 padding: '6px 12px',
@@ -381,11 +382,12 @@ export default function AppLauncher({
                 background: '#10b981',
                 boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
               }} />
-              <span>Cloud DB Active</span>
+              <span>Cloud Active (Sync)</span>
             </div>
           ) : (
             <div 
-              onClick={() => setActiveTab('settings')}
+              onClick={onOpenCloudModal || (() => setActiveTab('settings'))}
+              title="Click to Connect Cloud (Phone & Laptops)"
               style={{
                 cursor: 'pointer',
                 padding: '6px 12px',
@@ -401,7 +403,7 @@ export default function AppLauncher({
               }}
             >
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }} />
-              <span>Offline Mode</span>
+              <span>Connect Cloud</span>
             </div>
           )}
 

@@ -24,10 +24,11 @@ import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 import AppLauncher from './components/AppLauncher';
 import SalesReturns from './components/SalesReturns';
+import CloudSyncModal from './components/CloudSyncModal';
 
 import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer, LayoutGrid, AlertCircle, Trash2, X } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
-import { isSupabaseConnected } from './utils/supabaseClient';
+import { isSupabaseConnected, applyCloudPairingCode } from './utils/supabaseClient';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -47,6 +48,7 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedTime, setLastSyncedTime] = useState(null);
   const [cloudConnected, setCloudConnected] = useState(isSupabaseConnected());
+  const [cloudModalOpen, setCloudModalOpen] = useState(false);
 
   const translate = (key) => t(key, lang);
 
@@ -134,6 +136,36 @@ export default function App() {
       }
     };
     window.addEventListener('keydown', handleKeyDown);
+
+    // 1-Click Multi-Device Cloud Pairing (Phone / Laptop via QR code or link)
+    try {
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      let pairingCode = '';
+      if (hash.includes('cloud_connect=')) {
+        pairingCode = hash.split('cloud_connect=')[1].split('&')[0];
+      } else if (search.includes('cloud_connect=')) {
+        const params = new URLSearchParams(search);
+        pairingCode = params.get('cloud_connect') || '';
+      }
+
+      if (pairingCode) {
+        const applied = applyCloudPairingCode(pairingCode);
+        if (applied) {
+          if (window.history && window.history.replaceState) {
+            const cleanUrl = window.location.origin + window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+          fetchCloudData(true).then(() => {
+            refreshAllData();
+            setCloudConnected(true);
+            alert('🎉 Device Successfully Connected to Cloud Database!\n\nAll products, bills, stock, and party ledgers are now synchronized.');
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Pairing link evaluation warning:', err);
+    }
 
     // 1. Setup Supabase WebSocket Realtime + Local BroadcastChannel (<50ms delay)
     const cleanupRealtime = setupRealtimeSubscription(() => {
@@ -252,6 +284,7 @@ export default function App() {
           cloudConnected={cloudConnected}
           lastSyncedTime={lastSyncedTime}
           triggerManualSync={triggerManualSync}
+          onOpenCloudModal={() => setCloudModalOpen(true)}
         />
         {selectedInvoiceForPrint && (
         <InvoicePrintModal 
@@ -262,6 +295,12 @@ export default function App() {
             onEditInvoice={() => { setSelectedInvoiceForPrint(null); setActiveTab('billing'); }}
           />
         )}
+        <CloudSyncModal 
+          isOpen={cloudModalOpen} 
+          onClose={() => setCloudModalOpen(false)} 
+          refreshAllData={refreshAllData}
+          onSyncStateChange={(conn) => setCloudConnected(conn)}
+        />
       </>
     );
   }
@@ -275,6 +314,8 @@ export default function App() {
         business={business}
         lowStockCount={lowStockProducts.length}
         t={translate}
+        onOpenCloudModal={() => setCloudModalOpen(true)}
+        isCloudConnected={cloudConnected}
       />
 
       {/* Main Container */}
@@ -314,8 +355,8 @@ export default function App() {
             {/* Live Cloud Sync Green Dot Indicator */}
             {cloudConnected ? (
               <div 
-                onClick={triggerManualSync}
-                title={`⚡ Live Realtime Cloud Sync Active (<50ms delay) • Last Synced: ${lastSyncedTime || 'Just now'} • Click to sync manually`}
+                onClick={() => setCloudModalOpen(true)}
+                title={`⚡ Live Realtime Cloud Sync Active (<50ms delay) • Last Synced: ${lastSyncedTime || 'Just now'} • Click for Phone QR Code & Laptop Link`}
                 style={{ 
                   cursor: 'pointer', 
                   padding: '5px 12px', 
@@ -338,12 +379,12 @@ export default function App() {
                   boxShadow: '0 0 10px #10b981',
                   display: 'inline-block'
                 }} />
-                <span>⚡ Live Sync (&lt;50ms)</span>
+                <span>⚡ Cloud Live (Multi-Device)</span>
               </div>
             ) : (
               <div 
-                onClick={() => navigateToTab('settings')}
-                title="Offline Mode - Click to setup Cloud"
+                onClick={() => setCloudModalOpen(true)}
+                title="Offline Mode - Click to connect Phone & Laptops"
                 style={{ 
                   cursor: 'pointer', 
                   padding: '5px 10px', 
@@ -622,6 +663,14 @@ export default function App() {
           onEditInvoice={() => { setSelectedInvoiceForPrint(null); navigateToTab('billing'); }}
         />
       )}
+
+      {/* 1-Click Multi-Device Cloud Access Modal */}
+      <CloudSyncModal 
+        isOpen={cloudModalOpen} 
+        onClose={() => setCloudModalOpen(false)} 
+        refreshAllData={refreshAllData}
+        onSyncStateChange={(conn) => setCloudConnected(conn)}
+      />
     </div>
   );
 }

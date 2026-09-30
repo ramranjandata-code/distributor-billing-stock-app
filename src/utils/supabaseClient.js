@@ -67,3 +67,39 @@ export const testSupabaseConnection = async () => {
   }
 };
 
+// --- 1-CLICK MULTI-DEVICE PAIRING ENGINE (PHONE & LAPTOPS) ---
+
+export const generateCloudPairingCode = () => {
+  const { url, key } = getSupabaseConfig();
+  if (!url || !key) return '';
+  const obj = { u: url, k: key, t: Date.now() };
+  try {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+  } catch (e) {
+    return '';
+  }
+};
+
+export const generateCloudPairingLink = () => {
+  const code = generateCloudPairingCode();
+  if (!code) return '';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ramranjandata-code.github.io';
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '/distributor-billing-stock-app/';
+  return `${origin}${pathname}#cloud_connect=${code}`;
+};
+
+export const applyCloudPairingCode = (code) => {
+  if (!code) return false;
+  try {
+    const raw = decodeURIComponent(escape(atob(code.trim())));
+    const parsed = JSON.parse(raw);
+    if (parsed.u && parsed.k) {
+      updateSupabaseCredentials(parsed.u, parsed.k);
+      return true;
+    }
+  } catch (e) {
+    console.error('Failed to decode cloud pairing code:', e);
+  }
+  return false;
+};
+

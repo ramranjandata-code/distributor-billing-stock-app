@@ -11,10 +11,12 @@ import {
   Boxes,
   ShieldCheck,
   Building2,
-  RotateCcw
+  RotateCcw,
+  Cloud,
+  Smartphone
 } from 'lucide-react';
 
-export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t }) {
+export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t, onOpenCloudModal, isCloudConnected }) {
   const navItems = [
     { id: 'dashboard', label: t('dashboard') || 'Dashboard', icon: LayoutDashboard },
     { id: 'billing', label: 'Invoicing', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
@@ -148,6 +150,37 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
           );
         })}
       </div>
+
+      {/* Cloud Sync & Multi-Device Access Quick Button */}
+      <button
+        type="button"
+        onClick={onOpenCloudModal}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 12px',
+          borderRadius: '20px',
+          border: isCloudConnected ? '1px solid #86efac' : '1px solid #fed7aa',
+          background: isCloudConnected ? '#f0fdf4' : '#fff7ed',
+          color: isCloudConnected ? '#15803d' : '#c2410c',
+          fontSize: '0.78rem',
+          fontWeight: '700',
+          cursor: 'pointer',
+          flexShrink: 0
+        }}
+        title="Multi-Device Cloud Sync: Connect Phone & Laptops"
+      >
+        <span style={{ 
+          width: '7px', 
+          height: '7px', 
+          borderRadius: '50%', 
+          background: isCloudConnected ? '#22c55e' : '#f97316',
+          boxShadow: isCloudConnected ? '0 0 6px #22c55e' : 'none'
+        }} />
+        <Cloud size={14} />
+        <span>{isCloudConnected ? 'Cloud Live' : 'Connect Cloud'}</span>
+      </button>
     </nav>
   );
 }
