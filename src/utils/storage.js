@@ -407,6 +407,48 @@ const CLOUD_BINS = {
 export const fetchCloudData = async (force = false) => {
   let hasUpdated = false;
 
+  // 1. Primary: Official Supabase Cloud Database (distro_cloud_store)
+  try {
+    const client = getSupabaseClient();
+    if (client) {
+      const { data: rows, error } = await client
+        .from('distro_cloud_store')
+        .select('*')
+        .eq('id', STORE_DATA_ID)
+        .limit(1);
+
+      if (!error && Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
+        const remote = JSON.parse(rows[0].beat);
+        const remoteTs = Number(remote.lastUpdated) || 0;
+        const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
+        if (force || !lastLocalTs || remoteTs !== lastLocalTs) {
+          if (Array.isArray(remote.deletedIds) && remote.deletedIds.length > 0) {
+            recordDeletedIds(remote.deletedIds);
+          }
+          const activeDelSet = new Set(getDeletedIds());
+          if (Array.isArray(remote.invoices)) setStorageData(STORAGE_KEYS.INVOICES, remote.invoices.filter(i => !activeDelSet.has(i.id)));
+          if (Array.isArray(remote.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, remote.purchases.filter(p => !activeDelSet.has(p.id)));
+          if (Array.isArray(remote.products)) setStorageData(STORAGE_KEYS.PRODUCTS, remote.products.filter(p => !activeDelSet.has(p.id)));
+          if (Array.isArray(remote.parties)) setStorageData(STORAGE_KEYS.PARTIES, remote.parties.filter(p => !activeDelSet.has(p.id)));
+          if (Array.isArray(remote.suppliers)) setStorageData(STORAGE_KEYS.SUPPLIERS, remote.suppliers);
+          if (remote.business && remote.business.name) setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
+          if (Array.isArray(remote.warehouses) && remote.warehouses.length > 0) setStorageData(STORAGE_KEYS.WAREHOUSES, remote.warehouses);
+          if (Array.isArray(remote.expenses)) setStorageData(STORAGE_KEYS.EXPENSES, remote.expenses.filter(e => !activeDelSet.has(e.id)));
+          if (Array.isArray(remote.stockLots)) setStorageData(STORAGE_KEYS.STOCK_LOTS, remote.stockLots);
+
+          localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
+          hasUpdated = true;
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('distro_data_changed'));
+          return true;
+        }
+        return false;
+      }
+    }
+  } catch (e) {
+    console.warn('Supabase fetch error, fallback to bins:', e);
+  }
+
+  // 2. Secondary fallback: Cloud Bins
   try {
     const noCacheHeaders = {
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -415,7 +457,6 @@ export const fetchCloudData = async (force = false) => {
     };
     const bust = `?_t=${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    // 1. Fetch live Invoices & Metadata from Universal Cloud Store with cache-buster
     const metaRes = await fetch(CLOUD_BINS.INVOICES_META + bust, {
       cache: 'no-store',
       headers: noCacheHeaders
@@ -427,7 +468,6 @@ export const fetchCloudData = async (force = false) => {
         const remoteTs = Number(meta.lastUpdated) || 0;
         const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
 
-        // Merge whenever remote timestamp is different or forced or missing
         if (force || !lastLocalTs || remoteTs !== lastLocalTs) {
           if (Array.isArray(meta.deletedIds) && meta.deletedIds.length > 0) {
             recordDeletedIds(meta.deletedIds);
@@ -459,7 +499,6 @@ export const fetchCloudData = async (force = false) => {
             setStorageData(STORAGE_KEYS.EXPENSES, meta.expenses.filter(e => e && !activeDelSet.has(e.id)));
           }
 
-          // Fetch Purchases Bin with cache-buster
           const purRes = await fetch(CLOUD_BINS.PURCHASES + bust, {
             cache: 'no-store',
             headers: noCacheHeaders
@@ -471,7 +510,6 @@ export const fetchCloudData = async (force = false) => {
             }
           }
 
-          // Fetch Products Bin with cache-buster
           const prodRes = await fetch(CLOUD_BINS.PRODUCTS + bust, {
             cache: 'no-store',
             headers: noCacheHeaders
@@ -495,36 +533,6 @@ export const fetchCloudData = async (force = false) => {
     console.warn('Universal Cloud Sync fetch error:', err?.message || err);
   }
 
-  // Also check custom Supabase if configured
-  try {
-    const client = getSupabaseClient();
-    if (client) {
-      const { data: rows, error } = await client
-        .from('distro_cloud_store')
-        .select('*')
-        .eq('id', STORE_DATA_ID)
-        .limit(1);
-
-      if (!error && Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
-        const remote = JSON.parse(rows[0].beat);
-        const remoteTs = Number(remote.lastUpdated) || 0;
-        const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
-        if (force || remoteTs > lastLocalTs) {
-          if (Array.isArray(remote.deletedIds)) recordDeletedIds(remote.deletedIds);
-          const activeDelSet = new Set(getDeletedIds());
-          if (Array.isArray(remote.invoices)) setStorageData(STORAGE_KEYS.INVOICES, remote.invoices.filter(i => !activeDelSet.has(i.id)));
-          if (Array.isArray(remote.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, remote.purchases.filter(p => !activeDelSet.has(p.id)));
-          if (Array.isArray(remote.products)) setStorageData(STORAGE_KEYS.PRODUCTS, remote.products.filter(p => !activeDelSet.has(p.id)));
-          localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
-          hasUpdated = true;
-          if (typeof window !== 'undefined') window.dispatchEvent(new Event('distro_data_changed'));
-        }
-      }
-    }
-  } catch (e) {
-    console.warn('Supabase fetch error:', e);
-  }
-
   return hasUpdated;
 };
 
@@ -539,52 +547,14 @@ export const pushLocalDataToCloud = async () => {
   const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !activeDelSet.has(e.id));
   const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !activeDelSet.has(p.id));
   const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !activeDelSet.has(p.id));
+  const stockLots = getStorageData(STORAGE_KEYS.STOCK_LOTS, []);
+  const currentOperator = getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
   const now = Date.now();
 
-  const metaPayload = {
-    invoices,
-    deletedIds,
-    parties,
-    suppliers,
-    business,
-    warehouses,
-    expenses,
-    lastUpdated: now
-  };
-
+  let supabaseSuccess = false;
   let binSuccess = false;
 
-  try {
-    // 1. Push Invoices & Metadata (instant, ~5KB)
-    const p1 = fetch(CLOUD_BINS.INVOICES_META, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(metaPayload)
-    });
-
-    // 2. Push Purchases
-    const p2 = fetch(CLOUD_BINS.PURCHASES, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ purchases, lastUpdated: now })
-    });
-
-    // 3. Push Products
-    const p3 = fetch(CLOUD_BINS.PRODUCTS, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ products, lastUpdated: now })
-    });
-
-    await Promise.all([p1, p2, p3]);
-    binSuccess = true;
-    localStorage.setItem('distro_last_synced_ts', now.toString());
-    broadcastRealtimePulse();
-  } catch (err) {
-    console.warn('Cloud bin push error:', err);
-  }
-
-  // Also push to Supabase using official Supabase client
+  // 1. Push to Supabase Cloud Database (Primary)
   const client = getSupabaseClient();
   if (client) {
     try {
@@ -595,22 +565,56 @@ export const pushLocalDataToCloud = async () => {
           business,
           products,
           parties,
+          suppliers,
           invoices,
           purchases,
           expenses,
           warehouses,
+          stockLots,
+          currentOperator,
           deletedIds,
           lastUpdated: now
         }),
         updated_at: new Date().toISOString()
       };
-      await client.from('distro_cloud_store').upsert(payload);
+      const { error } = await client.from('distro_cloud_store').upsert(payload);
+      if (!error) {
+        supabaseSuccess = true;
+      } else {
+        console.warn('Supabase upsert warning:', error);
+      }
     } catch (e) {
       console.warn('Supabase upsert warning:', e);
     }
   }
 
-  if (binSuccess) {
+  // 2. Secondary fallback mirror
+  try {
+    const metaPayload = { invoices, deletedIds, parties, suppliers, business, warehouses, expenses, lastUpdated: now };
+    const p1 = fetch(CLOUD_BINS.INVOICES_META, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metaPayload)
+    });
+    const p2 = fetch(CLOUD_BINS.PURCHASES, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purchases, lastUpdated: now })
+    });
+    const p3 = fetch(CLOUD_BINS.PRODUCTS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products, lastUpdated: now })
+    });
+    await Promise.all([p1, p2, p3]);
+    binSuccess = true;
+  } catch (err) {
+    console.warn('Cloud bin push error:', err);
+  }
+
+  if (supabaseSuccess || binSuccess) {
+    localStorage.setItem('distro_last_synced_ts', now.toString());
+    broadcastRealtimePulse();
     return { success: true, message: 'All invoices, bills & products synchronized with Cloud Database!' };
   } else {
     return { success: false, message: 'Cloud database currently offline. Saved locally.' };

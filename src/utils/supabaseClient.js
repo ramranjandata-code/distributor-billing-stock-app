@@ -5,9 +5,9 @@ const OFFICIAL_SUPABASE_KEY = 'sb_publishable_JKDdzfgEr1HMZFAuN6v62A_iGpdBk-Y';
 
 // Retrieve Supabase URL & Anon Key from localStorage, env, or official defaults
 export const getSupabaseConfig = () => {
-  const url = localStorage.getItem('distro_supabase_url') || import.meta.env.VITE_SUPABASE_URL || OFFICIAL_SUPABASE_URL;
-  const key = localStorage.getItem('distro_supabase_key') || import.meta.env.VITE_SUPABASE_KEY || OFFICIAL_SUPABASE_KEY;
-  return { url: url.trim(), key: key.trim() };
+  const url = (typeof localStorage !== 'undefined' ? localStorage.getItem('distro_supabase_url') : null) || import.meta.env.VITE_SUPABASE_URL || OFFICIAL_SUPABASE_URL;
+  const key = (typeof localStorage !== 'undefined' ? localStorage.getItem('distro_supabase_key') : null) || import.meta.env.VITE_SUPABASE_KEY || OFFICIAL_SUPABASE_KEY;
+  return { url: (url || '').trim(), key: (key || '').trim() };
 };
 
 let cachedClient = null;
@@ -42,8 +42,10 @@ export const getSupabaseClient = () => {
 };
 
 export const updateSupabaseCredentials = (url, key) => {
-  if (url) localStorage.setItem('distro_supabase_url', url.trim());
-  if (key) localStorage.setItem('distro_supabase_key', key.trim());
+  if (typeof localStorage !== 'undefined') {
+    if (url) localStorage.setItem('distro_supabase_url', url.trim());
+    if (key) localStorage.setItem('distro_supabase_key', key.trim());
+  }
   cachedClient = null;
   cachedConfigKey = '';
   return getSupabaseClient();
@@ -60,7 +62,7 @@ export const testSupabaseConnection = async () => {
     return { success: false, message: 'Supabase URL or API Key is missing.' };
   }
   try {
-    const { data, error } = await client.from('products').select('count', { count: 'exact', head: true });
+    const { data, error } = await client.from('distro_cloud_store').select('id').limit(1);
     if (error) {
       return { success: false, message: error.message || 'Failed to connect to Supabase.' };
     }

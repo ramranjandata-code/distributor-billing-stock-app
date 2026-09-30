@@ -1,4 +1,4 @@
-﻿import { getSupabaseClient, getSupabaseConfig } from './supabaseClient';
+import { getSupabaseClient, getSupabaseConfig } from './supabaseClient';
 import { fetchCloudData } from './storage';
 
 // Unique instance ID so the sender ignores its own broadcast echoes
@@ -73,11 +73,11 @@ export const setupRealtimeSubscription = (onRemoteUpdate) => {
       }
     });
 
-    // Postgres CDC changes listener on fmcg_shops table
+    // Postgres CDC changes listener on distro_cloud_store table
     realtimeChannel.on('postgres_changes', {
       event: '*',
       schema: 'public',
-      table: 'fmcg_shops'
+      table: 'distro_cloud_store'
     }, async (payload) => {
       handleIncomingPulse({ source: 'postgres_cdc', payload });
     });
