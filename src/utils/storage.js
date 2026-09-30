@@ -497,34 +497,33 @@ export const fetchCloudData = async (force = false) => {
 
   // Also check custom Supabase if configured
   try {
-    const { url, key } = getActiveCloudCredentials();
-    if (url && key) {
-      const headers = {
-        'apikey': key,
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json'
-      };
-      let res = await fetch(`${url}/rest/v1/distro_cloud_store?id=eq.${STORE_DATA_ID}`, { headers }).catch(() => null);
-      if (res && res.ok) {
-        const rows = await res.json().catch(() => []);
-        if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
-          const remote = JSON.parse(rows[0].beat);
-          const remoteTs = Number(remote.lastUpdated) || 0;
-          const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
-          if (force || remoteTs > lastLocalTs) {
-            if (Array.isArray(remote.deletedIds)) recordDeletedIds(remote.deletedIds);
-            const activeDelSet = new Set(getDeletedIds());
-            if (Array.isArray(remote.invoices)) setStorageData(STORAGE_KEYS.INVOICES, remote.invoices.filter(i => !activeDelSet.has(i.id)));
-            if (Array.isArray(remote.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, remote.purchases.filter(p => !activeDelSet.has(p.id)));
-            if (Array.isArray(remote.products)) setStorageData(STORAGE_KEYS.PRODUCTS, remote.products.filter(p => !activeDelSet.has(p.id)));
-            localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
-            hasUpdated = true;
-            if (typeof window !== 'undefined') window.dispatchEvent(new Event('distro_data_changed'));
-          }
+    const client = getSupabaseClient();
+    if (client) {
+      const { data: rows, error } = await client
+        .from('distro_cloud_store')
+        .select('*')
+        .eq('id', STORE_DATA_ID)
+        .limit(1);
+
+      if (!error && Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
+        const remote = JSON.parse(rows[0].beat);
+        const remoteTs = Number(remote.lastUpdated) || 0;
+        const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
+        if (force || remoteTs > lastLocalTs) {
+          if (Array.isArray(remote.deletedIds)) recordDeletedIds(remote.deletedIds);
+          const activeDelSet = new Set(getDeletedIds());
+          if (Array.isArray(remote.invoices)) setStorageData(STORAGE_KEYS.INVOICES, remote.invoices.filter(i => !activeDelSet.has(i.id)));
+          if (Array.isArray(remote.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, remote.purchases.filter(p => !activeDelSet.has(p.id)));
+          if (Array.isArray(remote.products)) setStorageData(STORAGE_KEYS.PRODUCTS, remote.products.filter(p => !activeDelSet.has(p.id)));
+          localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
+          hasUpdated = true;
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('distro_data_changed'));
         }
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('Supabase fetch error:', e);
+  }
 
   return hasUpdated;
 };
@@ -585,45 +584,30 @@ export const pushLocalDataToCloud = async () => {
     console.warn('Cloud bin push error:', err);
   }
 
-  // Also push to Supabase if credentials are provided
-  const { url, key } = getActiveCloudCredentials();
-  if (url && key) {
-    const payload = {
-      id: STORE_DATA_ID,
-      name: 'DISTROPULSE_SYSTEM_STORE',
-      owner: 'SYSTEM',
-      area: 'SYSTEM',
-      beat: JSON.stringify({
-        business,
-        products,
-        parties,
-        invoices,
-        purchases,
-        expenses,
-        warehouses,
-        deletedIds,
-        lastUpdated: now
-      }),
-      day: 'System',
-      balance: 0,
-      status: 'System',
-      phone: '000',
-      lat: 0,
-      lng: 0
-    };
-    const headers = {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
-    };
+  // Also push to Supabase using official Supabase client
+  const client = getSupabaseClient();
+  if (client) {
     try {
-      await fetch(`${url}/rest/v1/distro_cloud_store?id=eq.${STORE_DATA_ID}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {}
+      const payload = {
+        id: STORE_DATA_ID,
+        name: 'DISTROPULSE_SYSTEM_STORE',
+        beat: JSON.stringify({
+          business,
+          products,
+          parties,
+          invoices,
+          purchases,
+          expenses,
+          warehouses,
+          deletedIds,
+          lastUpdated: now
+        }),
+        updated_at: new Date().toISOString()
+      };
+      await client.from('distro_cloud_store').upsert(payload);
+    } catch (e) {
+      console.warn('Supabase upsert warning:', e);
+    }
   }
 
   if (binSuccess) {

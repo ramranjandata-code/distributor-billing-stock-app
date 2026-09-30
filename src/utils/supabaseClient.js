@@ -1,9 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Retrieve Supabase URL & Anon Key from localStorage or environment variables
+const OFFICIAL_SUPABASE_URL = 'https://ickkiqvkvmicfiklshhj.supabase.co';
+const OFFICIAL_SUPABASE_KEY = 'sb_publishable_JKDdzfgEr1HMZFAuN6v62A_iGpdBk-Y';
+
+// Retrieve Supabase URL & Anon Key from localStorage, env, or official defaults
 export const getSupabaseConfig = () => {
-  const url = localStorage.getItem('distro_supabase_url') || import.meta.env.VITE_SUPABASE_URL || '';
-  const key = localStorage.getItem('distro_supabase_key') || import.meta.env.VITE_SUPABASE_KEY || '';
+  const url = localStorage.getItem('distro_supabase_url') || import.meta.env.VITE_SUPABASE_URL || OFFICIAL_SUPABASE_URL;
+  const key = localStorage.getItem('distro_supabase_key') || import.meta.env.VITE_SUPABASE_KEY || OFFICIAL_SUPABASE_KEY;
   return { url: url.trim(), key: key.trim() };
 };
 
