@@ -396,8 +396,8 @@ export const fetchCloudData = async (force = false) => {
         const remoteTs = Number(meta.lastUpdated) || 0;
         const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
 
-        // Skip merge if not forced and timestamp hasn't changed
-        if (force || !lastLocalTs || remoteTs > lastLocalTs) {
+        // Merge whenever remote timestamp is different or forced
+        if (force || !lastLocalTs || remoteTs !== lastLocalTs) {
           if (Array.isArray(meta.deletedIds) && meta.deletedIds.length > 0) {
             recordDeletedIds(meta.deletedIds);
           }
@@ -609,9 +609,6 @@ export const autoCloudSync = async () => {
 
     // 2. Immediately send millisecond broadcast pulse to local bus & peer devices
     broadcastRealtimePulse();
-
-    const { url, key } = getActiveCloudCredentials();
-    if (!url || !key) return;
 
     if (isPushing) {
       pendingPush = true;
