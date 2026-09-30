@@ -564,6 +564,7 @@ export default function App() {
             products={products}
             parties={parties}
             business={business}
+            invoices={invoices}
             refreshAllData={refreshAllData}
             handlePrintInvoice={handlePrintInvoice}
             setActiveTab={navigateToTab}

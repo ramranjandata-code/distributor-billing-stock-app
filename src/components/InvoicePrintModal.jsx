@@ -1201,7 +1201,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 className="input-field"
                 value={editInvoiceNo}
                 onChange={e => setEditInvoiceNo(e.target.value)}
-                placeholder="e.g. INV/26-27/1003"
+                placeholder="e.g. 155 or INV-155"
                 style={{ fontWeight: '700' }}
               />
             </div>

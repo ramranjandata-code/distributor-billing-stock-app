@@ -208,6 +208,36 @@ export const initDataStorage = () => {
   const existingBiz = getStorageData(STORAGE_KEYS.BUSINESS, null);
   if (!existingBiz || existingBiz.name === "Distributor Agency" || existingBiz.name === "Shree Ganesh Sales Agency" || existingBiz.gstin === "07AAACG1234F1Z8" || existingBiz.proprietor === "Rajesh Kumar Verma") {
     setStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  } else {
+    let bizUpdated = false;
+    const patchedBiz = { ...existingBiz };
+    if (patchedBiz.invoicePrefix === 'INV/26-27/') {
+      patchedBiz.invoicePrefix = '';
+      bizUpdated = true;
+    }
+    if (!patchedBiz.nextInvoiceNumber || Number(patchedBiz.nextInvoiceNumber) === 1001) {
+      patchedBiz.nextInvoiceNumber = 155;
+      bizUpdated = true;
+    }
+    if (bizUpdated) {
+      setStorageData(STORAGE_KEYS.BUSINESS, patchedBiz);
+    }
+  }
+
+  // Modernize legacy seed invoice number in storage if present
+  const storedInvoices = getStorageData(STORAGE_KEYS.INVOICES, null);
+  if (Array.isArray(storedInvoices)) {
+    let invsUpdated = false;
+    const patchedInvs = storedInvoices.map(inv => {
+      if (inv && inv.invoiceNo === 'INV/26-27/1002') {
+        invsUpdated = true;
+        return { ...inv, invoiceNo: '148' };
+      }
+      return inv;
+    });
+    if (invsUpdated) {
+      setStorageData(STORAGE_KEYS.INVOICES, patchedInvs);
+    }
   }
 
   // Clean warehouses if dummy locations exist
@@ -1926,9 +1956,43 @@ export const calculateDueDate = (invoiceDateStr, terms = 'immediate') => {
 export const getNextInvoiceNumber = () => {
   const invoices = fetchInvoices();
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
-  const startingNumber = Number(business.nextInvoiceNumber) || 1001;
-  const nextNumber = startingNumber + invoices.length;
-  return `${business.invoicePrefix || 'INV/26-27/'}${nextNumber}`;
+  const configuredStart = Number(business.nextInvoiceNumber);
+  const baseStart = (!isNaN(configuredStart) && configuredStart > 0) ? configuredStart : 155;
+  const rawPrefix = (business.invoicePrefix && business.invoicePrefix !== 'INV/26-27/') ? business.invoicePrefix.trim() : '';
+
+  let maxFound = baseStart - 1;
+
+  invoices.forEach(inv => {
+    if (!inv || !inv.invoiceNo) return;
+    const invNoStr = String(inv.invoiceNo).trim();
+    if (invNoStr.toUpperCase().startsWith('DRAFT')) return;
+
+    let numVal = null;
+    if (rawPrefix) {
+      if (invNoStr.startsWith(rawPrefix)) {
+        const rest = invNoStr.slice(rawPrefix.length).trim();
+        if (/^\d+$/.test(rest)) {
+          numVal = parseInt(rest, 10);
+        }
+      }
+    } else {
+      if (/^\d+$/.test(invNoStr)) {
+        numVal = parseInt(invNoStr, 10);
+      }
+    }
+
+    if (numVal !== null) {
+      if (numVal >= 1000 && baseStart < 1000) {
+        return; // ignore mock 1000+ numbers when user series is in the 100s
+      }
+      if (numVal > maxFound) {
+        maxFound = numVal;
+      }
+    }
+  });
+
+  const nextNum = maxFound + 1;
+  return rawPrefix ? `${rawPrefix}${nextNum}` : `${nextNum}`;
 };
 
 export const saveInvoice = (invoiceData) => {
@@ -1941,14 +2005,13 @@ export const saveInvoice = (invoiceData) => {
   const currentOp = getCurrentOperator();
 
   const isDraft = invoiceData.state === 'draft';
-  const startingNumber = Number(business.nextInvoiceNumber) || 1001;
-  const nextNumber = startingNumber + invoices.length;
+  const autoNo = getNextInvoiceNumber();
   const officialInvoiceNo = invoiceData.invoiceNo && !invoiceData.invoiceNo.startsWith('DRAFT') 
     ? invoiceData.invoiceNo.trim() 
-    : `${business.invoicePrefix || 'INV/26-27/'}${nextNumber}`;
+    : autoNo;
 
   const invoiceNo = isDraft 
-    ? (invoiceData.invoiceNo || `DRAFT/${new Date().getFullYear()}/${String(nextNumber).slice(-4)}`) 
+    ? (invoiceData.invoiceNo || `DRAFT/${new Date().getFullYear()}/${autoNo}`) 
     : officialInvoiceNo;
 
   // Generate simulated 64-char IRN for GST e-Invoice compliance
@@ -2847,9 +2910,7 @@ export const createReturnReplacementInvoice = (returnId, replacementItems) => {
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   const currentOp = getCurrentOperator();
 
-  const startingNumber = Number(business.nextInvoiceNumber) || 1001;
-  const nextNumber = startingNumber + invoices.length;
-  const replacementInvoiceNo = `${business.invoicePrefix || 'INV/26-27/'}${nextNumber}`;
+  const replacementInvoiceNo = getNextInvoiceNumber();
 
   let subtotal = 0;
   let taxTotal = 0;

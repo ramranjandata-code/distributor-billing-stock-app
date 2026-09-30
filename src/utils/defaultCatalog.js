@@ -11,7 +11,8 @@ export const DEFAULT_BUSINESS = {
   "accountNo": "",
   "ifsc": "",
   "upiId": "",
-  "invoicePrefix": "INV/26-27/",
+  "invoicePrefix": "",
+  "nextInvoiceNumber": 155,
   "terms": "1. Goods once sold will not be taken back.\n2. Subject to local jurisdiction."
 };
 
@@ -2307,7 +2308,7 @@ export const INITIAL_PARTIES = [
 export const INITIAL_INVOICES = [
   {
     "id": "inv_1790746484535",
-    "invoiceNo": "INV/26-27/1002",
+    "invoiceNo": "148",
     "date": "2026-09-30T06:30:00.000Z",
     "partyId": null,
     "partyName": "Cash Customer",
@@ -2481,7 +2482,7 @@ export const INITIAL_INVOICES = [
         "amount": 874,
         "journal": "CASH",
         "paymentMethod": "CASH",
-        "memo": "Initial payment for INV/26-27/1002"
+        "memo": "Initial payment for Invoice #148"
       }
     ],
     "chatter": [

@@ -428,11 +428,11 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div className="form-group">
-                <label className="form-label">Invoice Prefix</label>
+                <label className="form-label">Invoice Prefix (Optional)</label>
                 <input 
                   type="text" 
                   className="input-field"
-                  placeholder="e.g. INV/26-27/ or BILL/"
+                  placeholder="e.g. BILL/ (leave blank for plain numbers: 155, 156...)"
                   value={formData.invoicePrefix || ''} 
                   onChange={e => setFormData({...formData, invoicePrefix: e.target.value})}
                 />
@@ -443,12 +443,12 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 <input 
                   type="number" 
                   className="input-field"
-                  placeholder="e.g. 1001 or 1"
+                  placeholder="e.g. 155"
                   value={formData.nextInvoiceNumber || ''} 
                   onChange={e => setFormData({...formData, nextInvoiceNumber: e.target.value})}
                 />
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Series Preview: <strong style={{ color: 'var(--primary)' }}>{(formData.invoicePrefix || 'INV/26-27/')}{(formData.nextInvoiceNumber || '1001')}</strong>
+                  Series Preview: <strong style={{ color: 'var(--primary)' }}>{(formData.invoicePrefix || '')}{(formData.nextInvoiceNumber || '155')}</strong>
                 </div>
               </div>
 

@@ -36,7 +36,7 @@ import {
   Calendar
 } from 'lucide-react';
 
-export default function Billing({ products, parties, business, refreshAllData, handlePrintInvoice, setActiveTab, onRegisterNavigationGuard }) {
+export default function Billing({ products, parties, business, invoices, refreshAllData, handlePrintInvoice, setActiveTab, onRegisterNavigationGuard }) {
   // Check for saved active billing draft in progress so navigation or reload doesn't wipe work
   const getInitialDraft = () => {
     try {
@@ -76,7 +76,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
   const todayStr = new Date().toISOString().split('T')[0];
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || todayStr);
   const [customInvoiceNo, setCustomInvoiceNo] = useState(() => initialDraft?.customInvoiceNo || '');
-  const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business]);
+  const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business, invoices]);
   const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
   const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
   const isPastDate = invoiceDate && invoiceDate < todayStr;
@@ -1331,7 +1331,7 @@ export default function Billing({ products, parties, business, refreshAllData, h
                   </span>
                   <input 
                     type="text"
-                    placeholder={autoInvoiceNo || "Auto (#)"}
+                    placeholder={autoInvoiceNo || "155"}
                     value={customInvoiceNo}
                     onChange={e => setCustomInvoiceNo(e.target.value)}
                     style={{
