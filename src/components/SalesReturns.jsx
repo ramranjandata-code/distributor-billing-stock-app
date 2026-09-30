@@ -781,8 +781,8 @@ export default function SalesReturns({ onNavigateToInvoice }) {
         const selectedRows = returnItems.filter(item => item.selected);
         const selectedCount = selectedRows.length;
         const totalReturnValue = selectedRows.reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)), 0);
-        const restockUnits = selectedRows.filter(i => i.condition === 'UNDAMAGED').reduce((sum, i) => sum + (Number(item.quantity) || 0), 0);
-        const scrapUnits = selectedRows.filter(i => i.condition === 'DAMAGED').reduce((sum, i) => sum + (Number(item.quantity) || 0), 0);
+        const restockUnits = selectedRows.filter(i => i.condition === 'UNDAMAGED').reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
+        const scrapUnits = selectedRows.filter(i => i.condition === 'DAMAGED').reduce((sum, i) => sum + (Number(i.quantity) || 0), 0);
 
         return (
           <div 
