@@ -20,4 +20,5 @@ dist-setup-installer/
 *.zip
 *.sed
 *.DDF
+extracted_*.json
 

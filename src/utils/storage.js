@@ -5,7 +5,8 @@ import {
   DEFAULT_BUSINESS as REAL_DEFAULT_BUSINESS, 
   INITIAL_PRODUCTS, 
   INITIAL_PARTIES, 
-  INITIAL_INVOICES 
+  INITIAL_INVOICES,
+  INITIAL_PURCHASES
 } from './defaultCatalog';
 
 const STORAGE_KEYS = {
@@ -55,7 +56,7 @@ const DEFAULT_SECURITY = {
 const DEFAULT_PRODUCTS = INITIAL_PRODUCTS;
 const DEFAULT_PARTIES = INITIAL_PARTIES;
 const DEFAULT_INVOICES = INITIAL_INVOICES;
-const DEFAULT_PURCHASES = [];
+const DEFAULT_PURCHASES = INITIAL_PURCHASES || [];
 
 const DEFAULT_PROPRIETOR_CAPITAL = {
   openingCapital: 0,
@@ -243,7 +244,7 @@ export const initDataStorage = () => {
 
     localStorage.setItem('distro_catalog_initialized', 'true');
   } else {
-    const existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, [])
+    let existingProds = getStorageData(STORAGE_KEYS.PRODUCTS, [])
       .filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id))
       .map(p => {
         if (p && (p.name === 'KHATTA MEETHA MIXTURE - MRP-50/-' || p.name === 'AKHA CHANA - MRP-10/-') && Number(p.gstRate) === 18) {
@@ -251,16 +252,25 @@ export const initDataStorage = () => {
         }
         return p;
       });
+    if (!existingProds || existingProds.length < INITIAL_PRODUCTS.length) {
+      existingProds = mergeById(existingProds || [], INITIAL_PRODUCTS, deletedIds);
+    }
     setStorageData(STORAGE_KEYS.PRODUCTS, existingProds);
 
-    const existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
+    let existingParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !deletedIds.has(p.id));
+    if (!existingParties || existingParties.length < INITIAL_PARTIES.length) {
+      existingParties = mergeById(existingParties || [], INITIAL_PARTIES, deletedIds);
+    }
     setStorageData(STORAGE_KEYS.PARTIES, existingParties);
 
     const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
     setStorageData(STORAGE_KEYS.INVOICES, existingInvoices);
   }
 
-  const existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
+  let existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
+  if ((!existingPurchases || existingPurchases.length === 0) && Array.isArray(INITIAL_PURCHASES) && INITIAL_PURCHASES.length > 0) {
+    existingPurchases = [...INITIAL_PURCHASES];
+  }
   existingPurchases.sort((a, b) => {
     const da = a.date || '';
     const db = b.date || '';
@@ -722,6 +732,12 @@ export const importFullBackupJSON = (backupObj) => {
     setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, invoices));
   }
 
+  const purchases = backupObj.purchases;
+  if (Array.isArray(purchases) && purchases.length > 0) {
+    const localPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []);
+    setStorageData(STORAGE_KEYS.PURCHASES, mergeById(localPurchases, purchases));
+  }
+
   if (Array.isArray(backupObj.salesReturns || backupObj.returns)) {
     const localReturns = getStorageData(STORAGE_KEYS.RETURNS, []);
     setStorageData(STORAGE_KEYS.RETURNS, mergeById(localReturns, backupObj.salesReturns || backupObj.returns));
@@ -873,7 +889,11 @@ export const formatDateDDMMYY = (dateStr) => {
 // Operations: Purchases, Stock Lots & Inward Costing Engine
 export const fetchPurchases = () => {
   const delSet = new Set(getDeletedIds());
-  const list = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
+  let list = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
+  if ((!list || list.length === 0) && Array.isArray(INITIAL_PURCHASES) && INITIAL_PURCHASES.length > 0) {
+    list = [...INITIAL_PURCHASES];
+    setStorageData(STORAGE_KEYS.PURCHASES, list);
+  }
   return list.sort((a, b) => {
     const da = a.date || '';
     const db = b.date || '';
