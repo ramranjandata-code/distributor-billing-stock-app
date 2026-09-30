@@ -361,8 +361,8 @@ export default function AppLauncher({
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {cloudConnected ? (
             <div 
-              onClick={onOpenCloudModal || triggerManualSync}
-              title={`Cloud Synced ${lastSyncedTime ? `(${lastSyncedTime})` : ''} - Click for Phone QR Code & Laptop Link`}
+              onClick={triggerManualSync || onOpenCloudModal}
+              title={`⚡ Live Realtime Cloud Sync Active • Last Synced: ${lastSyncedTime || 'Just now'} • Click to Sync Cloud Now`}
               style={{
                 cursor: 'pointer',
                 padding: '6px 12px',
@@ -384,7 +384,7 @@ export default function AppLauncher({
                 background: '#10b981',
                 boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
               }} />
-              <span>Cloud Active (Sync)</span>
+              <span>⚡ Cloud Live (Tap to Sync)</span>
             </div>
           ) : (
             <div 
@@ -410,15 +410,15 @@ export default function AppLauncher({
           )}
 
           <button 
-            onClick={() => window.location.reload()}
+            onClick={triggerManualSync || (() => window.location.reload())}
             className="btn btn-secondary"
-            title="Reload App (F5)"
+            title="Sync with Cloud Database (Fetch Latest Invoices & Bills)"
             style={{
               padding: '8px 12px',
               borderRadius: '10px',
               background: '#ffffff',
               border: '1px solid #cbd5e1',
-              color: '#475569',
+              color: '#059669',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

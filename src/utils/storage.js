@@ -9,7 +9,7 @@ import {
   INITIAL_PURCHASES
 } from './defaultCatalog';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   BUSINESS: 'distro_business_info',
   PRODUCTS: 'distro_products',
   PARTIES: 'distro_parties',
@@ -154,7 +154,23 @@ const SAMPLE_IDS = [
   'party_1', 'party_2', 'party_3', 'party_4',
   'inv_1001', 'inv_1002', 'pur_1',
   'exp_sample_1', 'exp_sample_2', 'exp_sample_3', 'exp_sample_4', 'exp_sample_5',
-  'bank_1', 'bank_2'
+  'bank_1', 'bank_2',
+  'prod_1788070275457',
+  'inv_1790492355122',
+  'inv_1790398162183',
+  'inv_1790398129662',
+  'inv_1790397365814',
+  'inv_1790397346316',
+  'inv_1790512919597',
+  'inv_1790512937133',
+  'inv_1790509726439',
+  'inv_1790522370913',
+  'inv_1790522429350',
+  'inv_1790522613947',
+  'party-101',
+  'supp_1790646532308',
+  'prod_1790352594387',
+  'inv_1790492640440'
 ];
 
 // Initialize Storage with Defaults if missing
@@ -264,7 +280,11 @@ export const initDataStorage = () => {
     setStorageData(STORAGE_KEYS.PARTIES, existingParties);
 
     const existingInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
-    setStorageData(STORAGE_KEYS.INVOICES, existingInvoices);
+    if (!existingInvoices || existingInvoices.length === 0) {
+      setStorageData(STORAGE_KEYS.INVOICES, INITIAL_INVOICES.filter(i => !deletedIds.has(i.id)));
+    } else {
+      setStorageData(STORAGE_KEYS.INVOICES, existingInvoices);
+    }
   }
 
   let existingPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !deletedIds.has(i.id));
@@ -388,15 +408,26 @@ export const fetchCloudData = async (force = false) => {
   let hasUpdated = false;
 
   try {
-    // 1. Fetch live Invoices & Metadata from Universal Cloud Store
-    const metaRes = await fetch(CLOUD_BINS.INVOICES_META).catch(() => null);
+    const noCacheHeaders = {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    };
+    const bust = `?_t=${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    // 1. Fetch live Invoices & Metadata from Universal Cloud Store with cache-buster
+    const metaRes = await fetch(CLOUD_BINS.INVOICES_META + bust, {
+      cache: 'no-store',
+      headers: noCacheHeaders
+    }).catch(() => null);
+
     if (metaRes && metaRes.ok) {
       const meta = await metaRes.json().catch(() => null);
       if (meta && meta.lastUpdated) {
         const remoteTs = Number(meta.lastUpdated) || 0;
         const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
 
-        // Merge whenever remote timestamp is different or forced
+        // Merge whenever remote timestamp is different or forced or missing
         if (force || !lastLocalTs || remoteTs !== lastLocalTs) {
           if (Array.isArray(meta.deletedIds) && meta.deletedIds.length > 0) {
             recordDeletedIds(meta.deletedIds);
@@ -428,8 +459,11 @@ export const fetchCloudData = async (force = false) => {
             setStorageData(STORAGE_KEYS.EXPENSES, meta.expenses.filter(e => e && !activeDelSet.has(e.id)));
           }
 
-          // Fetch Purchases Bin
-          const purRes = await fetch(CLOUD_BINS.PURCHASES).catch(() => null);
+          // Fetch Purchases Bin with cache-buster
+          const purRes = await fetch(CLOUD_BINS.PURCHASES + bust, {
+            cache: 'no-store',
+            headers: noCacheHeaders
+          }).catch(() => null);
           if (purRes && purRes.ok) {
             const purData = await purRes.json().catch(() => null);
             if (Array.isArray(purData?.purchases)) {
@@ -437,8 +471,11 @@ export const fetchCloudData = async (force = false) => {
             }
           }
 
-          // Fetch Products Bin
-          const prodRes = await fetch(CLOUD_BINS.PRODUCTS).catch(() => null);
+          // Fetch Products Bin with cache-buster
+          const prodRes = await fetch(CLOUD_BINS.PRODUCTS + bust, {
+            cache: 'no-store',
+            headers: noCacheHeaders
+          }).catch(() => null);
           if (prodRes && prodRes.ok) {
             const prodData = await prodRes.json().catch(() => null);
             if (Array.isArray(prodData?.products)) {

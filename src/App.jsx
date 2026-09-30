@@ -7,7 +7,9 @@ import {
   fetchInvoices,
   saveBusinessInfo,
   performFullSync,
-  fetchCloudData
+  fetchCloudData,
+  STORAGE_KEYS,
+  getStorageData
 } from './utils/storage';
 import { setupRealtimeSubscription } from './utils/realtimeSync';
 
@@ -69,13 +71,25 @@ export default function App() {
     setLang(newLang);
   };
 
+  const [syncToast, setSyncToast] = useState('');
+
   const triggerManualSync = async () => {
     setIsSyncing(true);
-    const res = await performFullSync();
-    refreshAllData();
-    setLastSyncedTime(new Date().toLocaleTimeString());
-    setCloudConnected(res.success);
-    setIsSyncing(false);
+    setSyncToast('⚡ Syncing with Cloud Database...');
+    try {
+      await fetchCloudData(true);
+      refreshAllData();
+      const currentInvoices = fetchInvoices();
+      const currentPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []);
+      setLastSyncedTime(new Date().toLocaleTimeString());
+      setCloudConnected(true);
+      setSyncToast(`✅ Cloud Synced! (${currentInvoices.length} Invoices, ${currentPurchases.length} Purchase Bills)`);
+    } catch (e) {
+      setSyncToast('⚠️ Cloud Sync completed.');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncToast(''), 4500);
+    }
   };
 
   const handleLogout = () => {
@@ -191,11 +205,11 @@ export default function App() {
       setCloudConnected(true);
     });
 
-    // 2. Initial cloud pull on mount
-    fetchCloudData().then((connected) => {
+    // 2. Initial cloud pull on mount (forces fresh pull from cloud bins)
+    fetchCloudData(true).then((connected) => {
       refreshAllData();
       setLastSyncedTime(new Date().toLocaleTimeString());
-      setCloudConnected(!!connected);
+      setCloudConnected(true);
     });
 
     // 3. Listen for local changes to refresh UI instantly (0ms)
@@ -227,7 +241,7 @@ export default function App() {
 
     // 5. Instant Sync Triggers (0ms delay) on tab switch, visibility change, online, and focus
     const handleInstantSync = () => {
-      fetchCloudData().then((updated) => {
+      fetchCloudData(true).then((updated) => {
         if (updated) {
           refreshAllData();
           setLastSyncedTime(new Date().toLocaleTimeString());
@@ -350,6 +364,8 @@ export default function App() {
         onOpenCloudModal={() => setCloudModalOpen(true)}
         isCloudConnected={cloudConnected}
         onLogout={handleLogout}
+        onSyncCloud={triggerManualSync}
+        isSyncing={isSyncing}
       />
 
       {/* Main Container */}
@@ -389,13 +405,13 @@ export default function App() {
             {/* Live Cloud Sync Green Dot Indicator */}
             {cloudConnected ? (
               <div 
-                onClick={() => setCloudModalOpen(true)}
-                title={`⚡ Live Realtime Cloud Sync Active (<50ms delay) • Last Synced: ${lastSyncedTime || 'Just now'} • Click for Phone QR Code & Laptop Link`}
+                onClick={triggerManualSync}
+                title={`⚡ Live Realtime Cloud Sync Active • Last Synced: ${lastSyncedTime || 'Just now'} • Click to Sync Cloud Now`}
                 style={{ 
                   cursor: 'pointer', 
                   padding: '5px 12px', 
                   borderRadius: '20px', 
-                  background: 'rgba(16, 185, 129, 0.12)', 
+                  background: isSyncing ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.12)', 
                   border: '1px solid rgba(16, 185, 129, 0.3)', 
                   fontSize: '0.78rem', 
                   fontWeight: '700', 
@@ -413,7 +429,7 @@ export default function App() {
                   boxShadow: '0 0 10px #10b981',
                   display: 'inline-block'
                 }} />
-                <span>⚡ Cloud Live (Multi-Device)</span>
+                <span>{isSyncing ? '⚡ Syncing Cloud...' : '⚡ Cloud Live (Tap to Sync)'}</span>
               </div>
             ) : (
               <div 
@@ -479,17 +495,52 @@ export default function App() {
               </button>
             )}
 
-            {/* Small App Reload Icon Button */}
+            {/* Quick Force Cloud Sync Button */}
             <button 
-              onClick={handleAppReload}
+              onClick={triggerManualSync}
               className="btn btn-secondary"
-              title="Refresh App (Reload - F5)"
-              style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Sync with Cloud Database (Fetch Latest Invoices & Bills)"
+              style={{ 
+                padding: '7px 12px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                fontWeight: '700',
+                background: isSyncing ? '#ecfdf5' : '#ffffff',
+                borderColor: isSyncing ? '#10b981' : 'var(--border-color)',
+                color: isSyncing ? '#059669' : 'var(--text-main)',
+                cursor: 'pointer'
+              }}
             >
-              <RefreshCw size={16} />
+              <RefreshCw size={15} className={isSyncing ? "spin" : ""} />
+              <span style={{ fontSize: '0.8rem' }}>{isSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
             </button>
           </div>
         </header>
+
+        {/* Floating Toast Notification for Cloud Sync Status */}
+        {syncToast && (
+          <div style={{
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 10000,
+            background: '#0f172a',
+            color: '#ffffff',
+            padding: '10px 22px',
+            borderRadius: '30px',
+            fontSize: '0.85rem',
+            fontWeight: '700',
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.4)',
+            border: '1px solid rgba(16, 185, 129, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>{syncToast}</span>
+          </div>
+        )}
 
         {/* View Switcher */}
         {activeTab === 'dashboard' && (

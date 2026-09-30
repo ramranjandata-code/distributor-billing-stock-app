@@ -17,7 +17,7 @@ import {
   LogOut
 } from 'lucide-react';
 
-export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t, onOpenCloudModal, isCloudConnected, onLogout }) {
+export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t, onOpenCloudModal, isCloudConnected, onLogout, onSyncCloud, isSyncing }) {
   const navItems = [
     { id: 'dashboard', label: t('dashboard') || 'Dashboard', icon: LayoutDashboard },
     { id: 'billing', label: 'Invoicing', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
@@ -155,7 +155,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
       {/* Cloud Sync & Multi-Device Access Quick Button */}
       <button
         type="button"
-        onClick={onOpenCloudModal}
+        onClick={onSyncCloud || onOpenCloudModal}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -170,7 +170,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
           cursor: 'pointer',
           flexShrink: 0
         }}
-        title="Multi-Device Cloud Sync: Connect Phone & Laptops"
+        title="Tap to Sync Cloud Instantly (Phone & Laptops)"
       >
         <span style={{ 
           width: '7px', 
@@ -180,7 +180,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
           boxShadow: isCloudConnected ? '0 0 6px #22c55e' : 'none'
         }} />
         <Cloud size={14} />
-        <span>{isCloudConnected ? 'Cloud Live' : 'Connect Cloud'}</span>
+        <span>{isSyncing ? 'Syncing...' : isCloudConnected ? 'Cloud Live' : 'Connect Cloud'}</span>
       </button>
 
       {/* Logout Button */}
