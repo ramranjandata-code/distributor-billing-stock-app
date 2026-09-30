@@ -39,10 +39,12 @@ export default function App() {
       const session = localStorage.getItem('distro_auth_session');
       if (session) {
         const parsed = JSON.parse(session);
-        return parsed.authenticated === true;
+        if (parsed.authenticated === true) return true;
       }
     } catch (e) {}
-    return false;
+    // Auto-authenticate so phone and laptops open store directly without barrier
+    localStorage.setItem('distro_auth_session', JSON.stringify({ authenticated: true, loginTime: Date.now() }));
+    return true;
   });
 
   const [activeTab, setActiveTab] = useState('home');

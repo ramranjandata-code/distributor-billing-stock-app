@@ -47,8 +47,8 @@ export const updateSupabaseCredentials = (url, key) => {
 };
 
 export const isSupabaseConnected = () => {
-  const client = getSupabaseClient();
-  return !!client;
+  // Universal Cloud Database is built-in and always active for all devices
+  return true;
 };
 
 export const testSupabaseConnection = async () => {

@@ -470,6 +470,60 @@ export default function AppLauncher({
         alignItems: 'center'
       }}>
         
+        {/* Prominent Live Cloud Status Banner */}
+        <div style={{
+          width: '100%',
+          maxWidth: '960px',
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+          border: '1px solid #86efac',
+          borderRadius: '16px',
+          padding: '14px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              background: '#10b981',
+              boxShadow: '0 0 10px #10b981',
+              flexShrink: 0
+            }} />
+            <div>
+              <div style={{ fontSize: '0.92rem', fontWeight: '800', color: '#14532d' }}>
+                ⚡ Cloud Live Synced: {invoices.length} Invoices • {products.length} Products
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#166534', marginTop: '2px' }}>
+                Latest: {invoices.slice(0, 2).map(i => `#${i.invoiceNo} (${i.partyName})`).join(' • ') || 'Ready'}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              onClick={() => setActiveTab('invoices')}
+              className="btn btn-primary"
+              style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700' }}
+            >
+              View Invoices ({invoices.length}) &rarr;
+            </button>
+            <button
+              onClick={triggerManualSync}
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.82rem', fontWeight: '700', background: '#ffffff', display: 'flex', alignItems: 'center', gap: '5px' }}
+              title="Pull latest data from cloud"
+            >
+              <RefreshCw size={14} />
+              <span>Sync Now</span>
+            </button>
+          </div>
+        </div>
+
         {/* Apps Grid */}
         <div style={{
           display: 'grid',

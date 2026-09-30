@@ -40,9 +40,7 @@ export default function Login({ business, onLoginSuccess }) {
 
     try {
       // Auto-pull live cloud data on login so all devices have identical latest data
-      if (isSupabaseConnected()) {
-        await fetchCloudData(true);
-      }
+      await fetchCloudData(true);
     } catch (err) {
       console.warn('Initial cloud fetch error on login:', err);
     }
