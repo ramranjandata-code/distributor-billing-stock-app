@@ -25,12 +25,24 @@ import InvoicePrintModal from './components/InvoicePrintModal';
 import AppLauncher from './components/AppLauncher';
 import SalesReturns from './components/SalesReturns';
 import CloudSyncModal from './components/CloudSyncModal';
+import Login from './components/Login';
 
 import { Menu, Plus, Bell, Store, Save, RefreshCw, Globe, Cloud, CloudOff, CheckCircle2, Printer, LayoutGrid, AlertCircle, Trash2, X } from 'lucide-react';
 import { getAppLanguage, setAppLanguage, t } from './utils/translations';
 import { isSupabaseConnected, applyCloudPairingCode } from './utils/supabaseClient';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      const session = localStorage.getItem('distro_auth_session');
+      if (session) {
+        const parsed = JSON.parse(session);
+        return parsed.authenticated === true;
+      }
+    } catch (e) {}
+    return false;
+  });
+
   const [activeTab, setActiveTab] = useState('home');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [lang, setLang] = useState(getAppLanguage());
@@ -64,6 +76,11 @@ export default function App() {
     setLastSyncedTime(new Date().toLocaleTimeString());
     setCloudConnected(res.success);
     setIsSyncing(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('distro_auth_session');
+    setIsAuthenticated(false);
   };
 
   // Navigation Guard for Active Unsaved Bill
@@ -272,6 +289,21 @@ export default function App() {
     alert('Firm settings updated successfully!');
   };
 
+  if (!isAuthenticated) {
+    return (
+      <Login 
+        business={business} 
+        onLoginSuccess={() => {
+          setIsAuthenticated(true);
+          fetchCloudData(true).then(() => {
+            refreshAllData();
+            setCloudConnected(isSupabaseConnected());
+          });
+        }} 
+      />
+    );
+  }
+
   if (activeTab === 'home') {
     return (
       <>
@@ -285,6 +317,7 @@ export default function App() {
           lastSyncedTime={lastSyncedTime}
           triggerManualSync={triggerManualSync}
           onOpenCloudModal={() => setCloudModalOpen(true)}
+          onLogout={handleLogout}
         />
         {selectedInvoiceForPrint && (
         <InvoicePrintModal 
@@ -316,6 +349,7 @@ export default function App() {
         t={translate}
         onOpenCloudModal={() => setCloudModalOpen(true)}
         isCloudConnected={cloudConnected}
+        onLogout={handleLogout}
       />
 
       {/* Main Container */}

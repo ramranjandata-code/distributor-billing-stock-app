@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import QRCode from 'qrcode';
 import { 
   Cloud, 
   CloudOff, 
   Smartphone, 
   Laptop, 
-  QrCode, 
   Copy, 
   Check, 
   RefreshCw, 
@@ -19,641 +17,445 @@ import {
   ExternalLink,
   ShieldCheck,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from 'lucide-react';
 import { 
   getSupabaseConfig, 
   updateSupabaseCredentials, 
   isSupabaseConnected, 
-  testSupabaseConnection,
-  generateCloudPairingLink,
-  generateCloudPairingCode,
-  applyCloudPairingCode 
+  testSupabaseConnection 
 } from '../utils/supabaseClient';
 import { 
   pushLocalDataToCloud, 
   fetchCloudData, 
   performFullSync 
 } from '../utils/storage';
-import { setupRealtimeSubscription } from '../utils/realtimeSync';
 
 export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSyncStateChange }) {
-  const [activeTab, setActiveTab] = useState('phone'); // 'phone' | 'laptop' | 'settings'
+  const [activeTab, setActiveTab] = useState('browser'); // 'browser' | 'database'
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
   const [isConnected, setIsConnected] = useState(isSupabaseConnected());
-  const [qrDataUrl, setQrDataUrl] = useState('');
-  const [pairingLink, setPairingLink] = useState('');
-  const [pairingCode, setPairingCode] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [manualCodeInput, setManualCodeInput] = useState('');
   
   const [syncStatus, setSyncStatus] = useState({ loading: false, msg: '', type: '' });
 
-  // Generate QR code and link whenever modal opens or credentials change
+  const LIVE_WEB_LINK = 'https://ramranjandata-code.github.io/distributor-billing-stock-app/';
+
   useEffect(() => {
     if (isOpen) {
       const cfg = getSupabaseConfig();
       setSupabaseConfig(cfg);
       const conn = isSupabaseConnected();
       setIsConnected(conn);
-
-      if (conn) {
-        const link = generateCloudPairingLink();
-        const code = generateCloudPairingCode();
-        setPairingLink(link);
-        setPairingCode(code);
-
-        QRCode.toDataURL(link, {
-          width: 280,
-          margin: 2,
-          color: {
-            dark: '#0f172a',
-            light: '#ffffff'
-          }
-        }).then(url => {
-          setQrDataUrl(url);
-        }).catch(err => {
-          console.error('QR code generation error:', err);
-        });
-      } else {
-        setQrDataUrl('');
-        setPairingLink('');
-        setPairingCode('');
-      }
+      setSyncStatus({ loading: false, msg: '', type: '' });
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleCopyLink = () => {
-    if (!pairingLink) return;
-    navigator.clipboard.writeText(pairingLink);
+    navigator.clipboard.writeText(LIVE_WEB_LINK);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
-  const handleCopyCode = () => {
-    if (!pairingCode) return;
-    navigator.clipboard.writeText(pairingCode);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2500);
-  };
-
   const handleSaveCredentials = async (e) => {
-    e?.preventDefault();
-    if (!supabaseConfig.url || !supabaseConfig.key) {
-      setSyncStatus({ loading: false, msg: 'Please provide both Supabase URL and API Key.', type: 'error' });
-      return;
-    }
-    setSyncStatus({ loading: true, msg: 'Validating & connecting to Supabase Cloud...', type: 'info' });
-    updateSupabaseCredentials(supabaseConfig.url, supabaseConfig.key);
+    e.preventDefault();
+    setSyncStatus({ loading: true, msg: 'Testing and connecting to Cloud Database...', type: 'info' });
     
-    const testRes = await testSupabaseConnection();
-    if (testRes.success) {
-      setIsConnected(true);
-      setupRealtimeSubscription(() => { refreshAllData?.(); });
-      
-      const link = generateCloudPairingLink();
-      const code = generateCloudPairingCode();
-      setPairingLink(link);
-      setPairingCode(code);
-      if (link) {
-        const url = await QRCode.toDataURL(link, { width: 280, margin: 2 });
-        setQrDataUrl(url);
-      }
+    updateSupabaseCredentials(supabaseConfig.url, supabaseConfig.key);
+    const testResult = await testSupabaseConnection();
 
-      // Initial push to ensure cloud has the latest data
-      await pushLocalDataToCloud();
-      setSyncStatus({ loading: false, msg: '🎉 Cloud Database Connected & Synced Successfully!', type: 'success' });
-      onSyncStateChange?.(true);
-      refreshAllData?.();
+    if (testResult.success) {
+      setIsConnected(true);
+      if (onSyncStateChange) onSyncStateChange(true);
+      setSyncStatus({ loading: false, msg: '✓ Connected! Automatically syncing data with cloud...', type: 'success' });
+      await performFullSync();
+      if (refreshAllData) refreshAllData();
+      setTimeout(() => {
+        setSyncStatus({ loading: false, msg: '', type: '' });
+      }, 3000);
     } else {
       setIsConnected(false);
-      setSyncStatus({ loading: false, msg: `⚠️ Connection Failed: ${testRes.message}`, type: 'error' });
+      if (onSyncStateChange) onSyncStateChange(false);
+      setSyncStatus({ loading: false, msg: `⚠️ ${testResult.message}`, type: 'error' });
     }
   };
 
-  const handleApplyManualCode = async () => {
-    if (!manualCodeInput.trim()) return;
-    const ok = applyCloudPairingCode(manualCodeInput.trim());
-    if (ok) {
-      const cfg = getSupabaseConfig();
-      setSupabaseConfig(cfg);
-      setIsConnected(true);
-      setSyncStatus({ loading: true, msg: 'Pulling live data from cloud...', type: 'info' });
-      const pullOk = await fetchCloudData(true);
-      refreshAllData?.();
-      setSyncStatus({ 
-        loading: false, 
-        msg: pullOk ? '🎉 Successfully paired and hydrated all data from Cloud!' : 'Connected, but cloud had no existing data.', 
-        type: 'success' 
-      });
-      onSyncStateChange?.(true);
-    } else {
-      setSyncStatus({ loading: false, msg: 'Invalid pairing code. Please check and try again.', type: 'error' });
-    }
-  };
-
-  const handleSyncPush = async () => {
-    setSyncStatus({ loading: true, msg: 'Uploading all local records to Cloud...', type: 'info' });
+  const handleManualPush = async () => {
+    setSyncStatus({ loading: true, msg: 'Uploading all local products, bills & parties to cloud...', type: 'info' });
     const res = await pushLocalDataToCloud();
     setSyncStatus({ 
       loading: false, 
-      msg: res.success ? '✅ All products, purchases, stock lots & invoices uploaded to Cloud!' : res.message, 
+      msg: res.success ? '✓ All data uploaded to cloud successfully!' : `⚠️ ${res.message}`, 
       type: res.success ? 'success' : 'error' 
     });
-    if (res.success) refreshAllData?.();
+    if (res.success && refreshAllData) refreshAllData();
   };
 
-  const handleSyncPull = async () => {
+  const handleManualPull = async () => {
     setSyncStatus({ loading: true, msg: 'Pulling latest data from Cloud Database...', type: 'info' });
-    const updated = await fetchCloudData(true);
-    refreshAllData?.();
-    setSyncStatus({ 
-      loading: false, 
-      msg: updated ? '✅ Downloaded and merged latest cloud records successfully!' : 'No new cloud updates found or connection offline.', 
-      type: 'success' 
-    });
+    const success = await fetchCloudData(true);
+    if (success) {
+      if (refreshAllData) refreshAllData();
+      setSyncStatus({ loading: false, msg: '✓ Latest cloud data loaded into app!', type: 'success' });
+    } else {
+      setSyncStatus({ loading: false, msg: '⚠️ Could not pull from cloud. Check connection.', type: 'error' });
+    }
   };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div 
-        className="modal-content glass-card"
-        style={{
-          width: '92%',
-          maxWidth: '720px',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: 0,
-          overflow: 'hidden',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)'
-        }}
-      >
-        {/* Modal Header */}
+    <div className="modal-overlay" style={{ zIndex: 9999, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)' }}>
+      <div className="modal-content" style={{ maxWidth: '640px', width: '92%', borderRadius: '20px', padding: '0', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+        
+        {/* Header */}
         <div style={{
-          padding: '16px 20px',
-          background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
           color: '#ffffff',
+          padding: '24px 28px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid rgba(255,255,255,0.1)'
+          borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: isConnected ? 'rgba(34, 197, 94, 0.2)' : 'rgba(249, 115, 22, 0.2)',
+              width: '46px',
+              height: '46px',
+              borderRadius: '14px',
+              background: isConnected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+              border: `1px solid ${isConnected ? '#10b981' : '#ef4444'}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: isConnected ? '#4ade80' : '#fb923c'
+              color: isConnected ? '#10b981' : '#ef4444'
             }}>
-              {isConnected ? <Cloud size={22} /> : <CloudOff size={22} />}
+              {isConnected ? <Cloud size={26} /> : <CloudOff size={26} />}
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.01em' }}>
                 Multi-Device Cloud Access
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                 <span style={{
-                  fontSize: '0.68rem',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  background: isConnected ? '#22c55e' : '#f97316',
-                  color: '#ffffff',
-                  fontWeight: '700'
-                }}>
-                  {isConnected ? '● CLOUD ACTIVE' : 'OFFLINE MODE'}
+                  display: 'inline-block',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: isConnected ? '#10b981' : '#f59e0b',
+                  boxShadow: isConnected ? '0 0 8px #10b981' : 'none'
+                }} />
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: '600' }}>
+                  {isConnected ? '⚡ Cloud Database Active & Connected' : '🟡 Cloud Database Not Connected'}
                 </span>
-              </h3>
-              <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>
-                Access seamlessly from your Phone, Office Laptop, and Personal Laptop
-              </p>
+              </div>
             </div>
           </div>
           <button 
             type="button" 
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px' }}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', borderRadius: '8px' }}
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
+
+        {/* Status Notification Banner */}
+        {syncStatus.msg && (
+          <div style={{
+            padding: '12px 24px',
+            background: syncStatus.type === 'success' ? '#ecfdf5' : syncStatus.type === 'error' ? '#fef2f2' : '#eff6ff',
+            borderBottom: `1px solid ${syncStatus.type === 'success' ? '#a7f3d0' : syncStatus.type === 'error' ? '#fecaca' : '#bfdbfe'}`,
+            color: syncStatus.type === 'success' ? '#065f46' : syncStatus.type === 'error' ? '#991b1b' : '#1e40af',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px'
+          }}>
+            {syncStatus.loading && <RefreshCw size={16} className="spin" />}
+            {syncStatus.type === 'success' && <CheckCircle2 size={16} />}
+            {syncStatus.type === 'error' && <AlertCircle size={16} />}
+            <span>{syncStatus.msg}</span>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div style={{
           display: 'flex',
-          borderBottom: '1px solid var(--border-color)',
-          background: 'var(--surface-color)',
-          padding: '0 16px'
+          background: '#f8fafc',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '0 24px'
         }}>
           <button
             type="button"
-            onClick={() => setActiveTab('phone')}
+            onClick={() => setActiveTab('browser')}
             style={{
-              padding: '12px 16px',
+              padding: '14px 18px',
               border: 'none',
-              background: 'transparent',
-              borderBottom: activeTab === 'phone' ? '3px solid #059669' : '3px solid transparent',
-              color: activeTab === 'phone' ? '#059669' : 'var(--text-muted)',
-              fontWeight: activeTab === 'phone' ? '800' : '600',
-              fontSize: '0.86rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            <Smartphone size={16} />
-            <span>📱 Mobile Phone Access (QR Code)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('laptop')}
-            style={{
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              borderBottom: activeTab === 'laptop' ? '3px solid #059669' : '3px solid transparent',
-              color: activeTab === 'laptop' ? '#059669' : 'var(--text-muted)',
-              fontWeight: activeTab === 'laptop' ? '800' : '600',
-              fontSize: '0.86rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            <Laptop size={16} />
-            <span>💻 Office & Personal Laptop</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('settings')}
-            style={{
-              padding: '12px 16px',
-              border: 'none',
-              background: 'transparent',
-              borderBottom: activeTab === 'settings' ? '3px solid #059669' : '3px solid transparent',
-              color: activeTab === 'settings' ? '#059669' : 'var(--text-muted)',
-              fontWeight: activeTab === 'settings' ? '800' : '600',
-              fontSize: '0.86rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-          >
-            <Cloud size={16} />
-            <span>⚙️ Cloud Setup</span>
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div style={{ padding: '20px', overflowY: 'auto', flex: '1 1 auto' }}>
-          
-          {/* Status Message Alert */}
-          {syncStatus.msg && (
-            <div style={{
-              marginBottom: '16px',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              fontSize: '0.84rem',
-              fontWeight: '600',
-              background: syncStatus.type === 'error' ? '#fef2f2' : syncStatus.type === 'success' ? '#ecfdf5' : '#eff6ff',
-              color: syncStatus.type === 'error' ? '#dc2626' : syncStatus.type === 'success' ? '#059669' : '#2563eb',
-              border: `1px solid ${syncStatus.type === 'error' ? '#fca5a5' : syncStatus.type === 'success' ? '#6ee7b7' : '#93c5fd'}`,
+              background: 'none',
+              borderBottom: activeTab === 'browser' ? '3px solid #2563eb' : '3px solid transparent',
+              color: activeTab === 'browser' ? '#2563eb' : '#64748b',
+              fontWeight: activeTab === 'browser' ? '800' : '600',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
+            }}
+          >
+            <Globe size={18} />
+            <span>Web Browser Access</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('database')}
+            style={{
+              padding: '14px 18px',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'database' ? '3px solid #2563eb' : '3px solid transparent',
+              color: activeTab === 'database' ? '#2563eb' : '#64748b',
+              fontWeight: activeTab === 'database' ? '800' : '600',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <Key size={18} />
+            <span>Cloud Database Settings</span>
+          </button>
+        </div>
+
+        {/* Tab 1: Web Browser Access */}
+        {activeTab === 'browser' && (
+          <div style={{ padding: '24px 28px' }}>
+            <div style={{
+              background: '#f1f5f9',
+              borderRadius: '14px',
+              padding: '18px 20px',
+              border: '1px solid #e2e8f0',
+              marginBottom: '20px'
             }}>
-              {syncStatus.loading && <RefreshCw size={15} className="spin" />}
-              <span>{syncStatus.msg}</span>
-            </div>
-          )}
-
-          {/* TAB 1: PHONE ACCESS */}
-          {activeTab === 'phone' && (
-            <div>
-              {isConnected ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'center' }}>
-                  
-                  {/* QR Code Container */}
-                  <div style={{
+              <div style={{ fontSize: '0.82rem', fontWeight: '700', color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Your Live Cloud Web App Link
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                background: '#ffffff',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                border: '1.5px solid #cbd5e1'
+              }}>
+                <Globe size={20} color="#2563eb" style={{ flexShrink: 0 }} />
+                <span style={{
+                  flex: 1,
+                  fontSize: '0.88rem',
+                  fontFamily: 'monospace',
+                  color: '#0f172a',
+                  fontWeight: '600',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {LIVE_WEB_LINK}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    background: copiedLink ? '#059669' : '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: '700',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#f8fafc',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border-color)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
-                  }}>
-                    {qrDataUrl ? (
-                      <img 
-                        src={qrDataUrl} 
-                        alt="Scan with phone" 
-                        style={{ width: '220px', height: '220px', borderRadius: '8px', border: '1px solid #e2e8f0' }} 
-                      />
-                    ) : (
-                      <div style={{ width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <RefreshCw size={24} className="spin" color="var(--primary)" />
-                      </div>
-                    )}
-                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: '600' }}>
-                      📸 Scan with iPhone or Android Camera
-                    </span>
-                  </div>
-
-                  {/* Instructions & Quick Link */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div style={{ padding: '12px 14px', background: '#ecfdf5', borderRadius: '10px', border: '1px solid #a7f3d0' }}>
-                      <h4 style={{ margin: '0 0 4px 0', fontSize: '0.92rem', color: '#065f46', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Zap size={16} /> 1-Click Instant Phone Sync
-                      </h4>
-                      <p style={{ margin: 0, fontSize: '0.80rem', color: '#047857', lineHeight: 1.4 }}>
-                        Open your phone camera, scan the QR code, and tap the link. Your phone will immediately download all your products, bills, stock, and parties!
-                      </p>
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
-                        Or Send 1-Click Link to Phone (WhatsApp / Email):
-                      </label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input 
-                          type="text" 
-                          readOnly 
-                          value={pairingLink}
-                          className="input-field"
-                          style={{ fontSize: '0.76rem', background: '#f8fafc', color: 'var(--text-muted)' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleCopyLink}
-                          className="btn btn-primary"
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-                        >
-                          {copiedLink ? <Check size={16} /> : <Copy size={16} />}
-                          <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <div>✅ <strong>Live Realtime:</strong> Any sale made on phone updates your laptop instantly.</div>
-                      <div>✅ <strong>No App Store Needed:</strong> Works in Safari, Chrome, and Samsung Browser.</div>
-                    </div>
-                  </div>
-
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '30px 10px' }}>
-                  <CloudOff size={46} color="#f97316" style={{ marginBottom: '12px' }} />
-                  <h4 style={{ fontSize: '1.05rem', fontWeight: '800', margin: '0 0 6px 0' }}>
-                    Cloud Database Not Connected Yet
-                  </h4>
-                  <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto 16px auto' }}>
-                    To access your data from your phone and laptops, connect your free Supabase Cloud Database in the <strong>Cloud Setup</strong> tab.
-                  </p>
-                  <button 
-                    type="button" 
-                    onClick={() => setActiveTab('settings')}
-                    className="btn btn-primary"
-                    style={{ background: '#059669', borderColor: '#059669' }}
-                  >
-                    Open Cloud Setup &rarr;
-                  </button>
-                </div>
-              )}
+                    gap: '6px'
+                  }}
+                >
+                  {copiedLink ? <Check size={15} /> : <Copy size={15} />}
+                  <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* TAB 2: LAPTOP ACCESS */}
-          {activeTab === 'laptop' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ padding: '14px', background: '#f0f9ff', borderRadius: '10px', border: '1px solid #bae6fd' }}>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '0.94rem', color: '#0369a1', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Laptop size={17} /> Access from Office Laptop & Personal Laptop
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.82rem', color: '#0284c7', lineHeight: 1.4 }}>
-                  You can open DistroPulse ERP simultaneously on your office computer and home laptop. Changes made on either machine sync across the cloud automatically.
+            {/* Step-by-Step Info */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '22px' }}>
+              <div style={{
+                padding: '16px',
+                borderRadius: '12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '700', fontSize: '0.9rem' }}>
+                  <Smartphone size={18} color="#2563eb" />
+                  <span>📱 Mobile Phone Access</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4 }}>
+                  Open Chrome or Safari on your phone, paste the link, enter your Security PIN (<strong>1234</strong>), and you have full access to all bills and stock.
                 </p>
               </div>
 
-              {isConnected ? (
-                <>
-                  <div>
-                    <label style={{ fontSize: '0.80rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '6px', display: 'block' }}>
-                      Option 1: 1-Click Access Link for Any Laptop Browser:
-                    </label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={pairingLink}
-                        className="input-field"
-                        style={{ fontSize: '0.78rem', background: '#f8fafc', color: 'var(--text-muted)' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCopyLink}
-                        className="btn btn-primary"
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-                      >
-                        {copiedLink ? <Check size={16} /> : <Copy size={16} />}
-                        <span>{copiedLink ? 'Copied!' : 'Copy 1-Click Link'}</span>
-                      </button>
-                    </div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                      Tip: Bookmark this link on your office laptop and personal laptop for instant 1-click access anytime.
-                    </span>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.80rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '6px', display: 'block' }}>
-                      Option 2: Master Pairing Key:
-                    </label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={pairingCode}
-                        className="input-field"
-                        style={{ fontSize: '0.76rem', background: '#f8fafc', fontFamily: 'monospace' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleCopyCode}
-                        className="btn btn-secondary"
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-                      >
-                        {copiedCode ? <Check size={16} /> : <Copy size={16} />}
-                        <span>{copiedCode ? 'Copied Code!' : 'Copy Key'}</span>
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '20px 10px' }}>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    Please configure Cloud Database in the Cloud Setup tab to generate your laptop pairing link.
-                  </p>
+              <div style={{
+                padding: '16px',
+                borderRadius: '12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b', fontWeight: '700', fontSize: '0.9rem' }}>
+                  <Laptop size={18} color="#2563eb" />
+                  <span>💻 Office & Personal Laptop</span>
                 </div>
-              )}
-
-              {/* Paste pairing code on a new machine */}
-              <div style={{ marginTop: '10px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
-                <label style={{ fontSize: '0.80rem', fontWeight: '700', color: 'var(--text-main)', marginBottom: '6px', display: 'block' }}>
-                  Connecting this laptop to an existing business account? Paste Master Key here:
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Paste master pairing key from your other laptop..."
-                    value={manualCodeInput}
-                    onChange={e => setManualCodeInput(e.target.value)}
-                    className="input-field"
-                    style={{ fontSize: '0.78rem' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyManualCode}
-                    className="btn btn-primary"
-                    style={{ background: '#059669', borderColor: '#059669', whiteSpace: 'nowrap' }}
-                  >
-                    Pair Device
-                  </button>
-                </div>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4 }}>
+                  Open the link in any laptop browser, log in with your PIN (<strong>1234</strong>), and all items, customer khatas, and purchase bills are live.
+                </p>
               </div>
             </div>
-          )}
 
-          {/* TAB 3: CLOUD SETTINGS */}
-          {activeTab === 'settings' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: isConnected ? '#ecfdf5' : '#fff7ed', borderRadius: '10px', border: `1px solid ${isConnected ? '#a7f3d0' : '#fed7aa'}` }}>
-                <div>
-                  <strong style={{ color: isConnected ? '#065f46' : '#9a3412', fontSize: '0.88rem' }}>
-                    {isConnected ? '🟢 Cloud Database Connected' : '🟠 Local Mode (Not Connected)'}
-                  </strong>
-                  <div style={{ fontSize: '0.76rem', color: isConnected ? '#047857' : '#c2410c' }}>
-                    {isConnected ? 'Realtime WebSocket active (<50ms delay)' : 'Enter your Supabase URL & Key below to activate cloud access.'}
-                  </div>
-                </div>
+            {/* Quick Actions */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              paddingTop: '16px',
+              borderTop: '1px solid #e2e8f0'
+            }}>
+              <button
+                type="button"
+                onClick={handleManualPush}
+                disabled={!isConnected}
+                style={{
+                  flex: 1,
+                  padding: '11px',
+                  borderRadius: '10px',
+                  background: isConnected ? '#059669' : '#e2e8f0',
+                  color: isConnected ? '#ffffff' : '#94a3b8',
+                  border: 'none',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  cursor: isConnected ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <UploadCloud size={16} />
+                <span>Upload Local Data to Cloud</span>
+              </button>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={handleSyncPush}
-                    disabled={!isConnected || syncStatus.loading}
-                    className="btn btn-secondary btn-sm"
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.76rem' }}
-                    title="Upload local database to Cloud"
-                  >
-                    <UploadCloud size={14} /> Upload to Cloud
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSyncPull}
-                    disabled={!isConnected || syncStatus.loading}
-                    className="btn btn-secondary btn-sm"
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.76rem' }}
-                    title="Download latest data from Cloud"
-                  >
-                    <DownloadCloud size={14} /> Pull from Cloud
-                  </button>
-                </div>
-              </div>
-
-              {/* Form */}
-              <form onSubmit={handleSaveCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.80rem' }}>
-                    Supabase Project URL
-                  </label>
-                  <input 
-                    type="url"
-                    placeholder="https://xyzcompany.supabase.co"
-                    value={supabaseConfig.url}
-                    onChange={e => setSupabaseConfig({ ...supabaseConfig, url: e.target.value })}
-                    className="input-field"
-                    style={{ fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.80rem' }}>
-                    Supabase Anon / Public API Key
-                  </label>
-                  <input 
-                    type="password"
-                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-                    value={supabaseConfig.key}
-                    onChange={e => setSupabaseConfig({ ...supabaseConfig, key: e.target.value })}
-                    className="input-field"
-                    style={{ fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={syncStatus.loading}
-                    style={{ background: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Save size={16} />
-                    <span>Save & Connect Cloud DB</span>
-                  </button>
-                </div>
-              </form>
-
-              {/* Info Guide */}
-              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b' }}>
-                <strong style={{ color: '#0f172a' }}>Need a Free Supabase Project?</strong>
-                <ol style={{ paddingLeft: '18px', margin: '6px 0 0 0', lineHeight: 1.5 }}>
-                  <li>Create a free account at <a href="https://supabase.com" target="_blank" rel="noreferrer" style={{ color: '#059669', fontWeight: '700' }}>supabase.com</a> (Takes 1 minute).</li>
-                  <li>Click <strong>New Project</strong>, name it (e.g. <code>MyDistroERP</code>), and set a database password.</li>
-                  <li>Go to <strong>Project Settings &rarr; API</strong>, copy your <strong>Project URL</strong> and <strong>Anon Public Key</strong>, and paste them above.</li>
-                </ol>
-              </div>
+              <button
+                type="button"
+                onClick={handleManualPull}
+                disabled={!isConnected}
+                style={{
+                  flex: 1,
+                  padding: '11px',
+                  borderRadius: '10px',
+                  background: isConnected ? '#2563eb' : '#e2e8f0',
+                  color: isConnected ? '#ffffff' : '#94a3b8',
+                  border: 'none',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  cursor: isConnected ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <DownloadCloud size={16} />
+                <span>Pull from Cloud</span>
+              </button>
             </div>
-          )}
-
-        </div>
-
-        {/* Modal Footer */}
-        <div style={{
-          padding: '12px 20px',
-          background: 'var(--surface-color)',
-          borderTop: '1px solid var(--border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '10px'
-        }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <ShieldCheck size={15} color="#059669" />
-            <span>End-to-End Synced & Encrypted via Supabase Cloud PostgreSQL</span>
           </div>
-          <button 
-            type="button" 
-            onClick={onClose}
-            className="btn btn-secondary"
-            style={{ fontSize: '0.82rem' }}
-          >
-            Close
-          </button>
-        </div>
+        )}
+
+        {/* Tab 2: Cloud Database Settings */}
+        {activeTab === 'database' && (
+          <div style={{ padding: '24px 28px' }}>
+            <form onSubmit={handleSaveCredentials} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Supabase Project URL
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="https://xyzcompany.supabase.co"
+                  value={supabaseConfig.url}
+                  onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontFamily: 'monospace',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Supabase Anon / Public API Key
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={supabaseConfig.key}
+                  onChange={(e) => setSupabaseConfig({ ...supabaseConfig, key: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontFamily: 'monospace',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="submit"
+                  disabled={syncStatus.loading}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: '700',
+                    fontSize: '0.9rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Save & Connect Database
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
       </div>
     </div>

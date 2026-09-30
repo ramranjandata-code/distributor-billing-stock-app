@@ -14,7 +14,8 @@ import {
   CloudOff,
   RefreshCw,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  LogOut
 } from 'lucide-react';
 
 export default function AppLauncher({ 
@@ -26,7 +27,8 @@ export default function AppLauncher({
   cloudConnected, 
   lastSyncedTime, 
   triggerManualSync,
-  onOpenCloudModal 
+  onOpenCloudModal,
+  onLogout
 }) {
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -426,6 +428,31 @@ export default function AppLauncher({
           >
             <RefreshCw size={15} />
           </button>
+
+          {onLogout && (
+            <button
+              onClick={onLogout}
+              className="btn btn-secondary"
+              title="Sign out / Exit"
+              style={{
+                padding: '8px 12px',
+                borderRadius: '10px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: '700',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+              }}
+            >
+              <LogOut size={15} />
+              <span>Exit</span>
+            </button>
+          )}
         </div>
       </header>
 

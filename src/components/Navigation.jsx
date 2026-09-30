@@ -13,10 +13,11 @@ import {
   Building2,
   RotateCcw,
   Cloud,
-  Smartphone
+  Smartphone,
+  LogOut
 } from 'lucide-react';
 
-export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t, onOpenCloudModal, isCloudConnected }) {
+export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t, onOpenCloudModal, isCloudConnected, onLogout }) {
   const navItems = [
     { id: 'dashboard', label: t('dashboard') || 'Dashboard', icon: LayoutDashboard },
     { id: 'billing', label: 'Invoicing', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
@@ -181,6 +182,32 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
         <Cloud size={14} />
         <span>{isCloudConnected ? 'Cloud Live' : 'Connect Cloud'}</span>
       </button>
+
+      {/* Logout Button */}
+      {onLogout && (
+        <button
+          type="button"
+          onClick={onLogout}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '6px 10px',
+            borderRadius: '20px',
+            border: '1px solid #e2e8f0',
+            background: '#f8fafc',
+            color: '#64748b',
+            fontSize: '0.78rem',
+            fontWeight: '700',
+            cursor: 'pointer',
+            flexShrink: 0
+          }}
+          title="Sign out of Store"
+        >
+          <LogOut size={13} />
+          <span>Exit</span>
+        </button>
+      )}
     </nav>
   );
 }
