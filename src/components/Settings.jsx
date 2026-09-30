@@ -831,7 +831,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                   Restore / Import Backup
                 </h3>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                  Select a previously downloaded DistroPulse backup file to merge or restore all records immediately into this device.
+                  Select a previously downloaded DistroPlus backup file to merge or restore all records immediately into this device.
                 </p>
               </div>
 

@@ -1237,7 +1237,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
         </table>
 
         <div style="margin-top: 40px; font-size: 11px; color: #94a3b8; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 12px;">
-          Generated from DistroPulse ERP &bull; Purchase Inward Register &bull; ${new Date().toLocaleString('en-IN')}
+          Generated from DistroPlus ERP &bull; Purchase Inward Register &bull; ${new Date().toLocaleString('en-IN')}
         </div>
       </body>
       </html>

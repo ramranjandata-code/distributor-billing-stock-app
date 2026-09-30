@@ -254,7 +254,7 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
         `We have received your payment of *₹${amt.toLocaleString('en-IN')}* via ${paymentMode}.\n\n` +
         `• Remaining Outstanding Balance: *₹${remainingBal.toLocaleString('en-IN')}*\n` +
         `• Notes / Remarks: ${paymentNotes || 'Collection'}\n\n` +
-        `Thank you for your business!\n*${business?.name || 'DistroPulse Agency'}*`;
+        `Thank you for your business!\n*${business?.name || 'DistroPlus Agency'}*`;
 
       const url = buildWhatsAppUrl(selectedPartyForPayment.phone, receiptMsg);
       window.open(url, '_blank');
@@ -269,8 +269,8 @@ export default function Parties({ parties, invoices, refreshAllData, setActiveTa
 
     const aging = partyAgingMap[party.id];
     const daysText = aging?.oldestDays > 0 ? ` (overdue for ${aging.oldestDays} days)` : '';
-    const bizName = business?.name || 'DistroPulse Distributor';
-    const upi = business?.upiId || 'distropulse@icici';
+    const bizName = business?.name || 'DistroPlus Distributor';
+    const upi = business?.upiId || 'distroplus@icici';
 
     const msg = `*PAYMENT REMINDER*\n\n` +
       `Dear *${party.name}*,\n` +

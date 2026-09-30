@@ -41,7 +41,7 @@ export default function AppLauncher({
   const unpaidInvoicesCount = invoices.filter(inv => inv.paymentStatus === 'UNPAID' || inv.paymentStatus === 'PARTIALLY_PAID').length;
   const totalStockItems = products.reduce((sum, p) => sum + (p.currentStock || 0), 0);
 
-  // App definitions mirroring DistroPulse signature green theme & modules
+  // App definitions mirroring DistroPlus signature green theme & modules
   const apps = [
     {
       id: 'dashboard',
@@ -295,7 +295,7 @@ export default function AppLauncher({
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '1.15rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#0f172a' }}>
-                DistroPulse ERP
+                DistroPlus ERP
               </span>
               <span style={{
                 fontSize: '0.68rem',
@@ -690,7 +690,7 @@ export default function AppLauncher({
         fontSize: '0.76rem',
         fontWeight: '500'
       }}>
-        DistroPulse ERP • Enterprise Distribution System • 100% English Edition
+        DistroPlus ERP • Enterprise Distribution System • 100% English Edition
       </footer>
 
     </div>

@@ -59,7 +59,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
           borderRight: '1px solid var(--border-color)',
           marginRight: '2px'
         }}
-        title="DistroPulse Home / App Launcher"
+        title="DistroPlus Home / App Launcher"
       >
         <div style={{
           width: '32px',
@@ -74,7 +74,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
           <Boxes size={18} color="#ffffff" />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '0.92rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1.1 }}>DistroPulse</span>
+          <span style={{ fontSize: '0.92rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1.1 }}>DistroPlus</span>
           <span style={{ fontSize: '0.62rem', color: '#059669', fontWeight: '800', letterSpacing: '0.04em' }}>ERP</span>
         </div>
       </div>

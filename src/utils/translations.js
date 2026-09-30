@@ -1,4 +1,4 @@
-// English-Only Translation Dictionary for DistroPulse
+// English-Only Translation Dictionary for DistroPlus
 
 export const translations = {
   en: {

@@ -102,7 +102,7 @@ export default function Dashboard({ products = [], parties = [], invoices = [], 
 
   const sendWhatsAppReminder = (party) => {
     const cleanPhone = party.phone ? party.phone.replace(/[^0-9]/g, '') : '';
-    const message = `Hello ${party.name},\n\nYour total outstanding balance with ${business?.name || 'DistroPulse Distributor'} is ₹${party.balance?.toLocaleString('en-IN')}.\n\nKindly arrange payment at your earliest convenience.\nThank you!`;
+    const message = `Hello ${party.name},\n\nYour total outstanding balance with ${business?.name || 'DistroPlus Distributor'} is ₹${party.balance?.toLocaleString('en-IN')}.\n\nKindly arrange payment at your earliest convenience.\nThank you!`;
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone}&text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };

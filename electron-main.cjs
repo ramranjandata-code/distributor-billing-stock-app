@@ -9,7 +9,7 @@ function createWindow() {
     height: 768,
     minWidth: 1024,
     minHeight: 600,
-    title: "DistroPulse - Distributor Stock & Billing ERP",
+    title: "DistroPlus - Distributor Stock & Billing ERP",
     autoHideMenuBar: true,
     icon: path.join(__dirname, 'dist', 'favicon.ico'),
     webPreferences: {

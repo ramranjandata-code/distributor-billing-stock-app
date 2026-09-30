@@ -1,4 +1,4 @@
-// Storage Utility for Distributor Stock & Billing Manager (DistroPulse)
+// Storage Utility for Distributor Stock & Billing Manager (DistroPlus)
 import { getSupabaseClient, getSupabaseConfig } from './supabaseClient';
 import { broadcastRealtimePulse } from './realtimeSync';
 import { 
@@ -206,7 +206,7 @@ export const initDataStorage = () => {
         operator: 'System',
         action: 'SYSTEM_BOOT',
         module: 'Security & Audit',
-        details: 'DistroPulse Enterprise System initialized.'
+        details: 'DistroPlus Enterprise System initialized.'
       }
     ]);
   }
@@ -659,7 +659,7 @@ export const exportFullBackupJSON = () => {
   const blob = new Blob([jsonStr], { type: 'application/json' });
   const downloadUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const bizName = (backupData.business?.name || 'DistroPulse').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  const bizName = (backupData.business?.name || 'DistroPlus').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
   const dateStr = new Date().toISOString().split('T')[0];
   a.href = downloadUrl;
   a.download = `${bizName}_Backup_${dateStr}.json`;
@@ -3138,7 +3138,7 @@ export const saveProprietorCapital = (capitalData) => {
 export const exportBackupJSON = () => {
   const data = {
     version: '2.0.0',
-    app: 'DistroPulse ERP',
+    app: 'DistroPlus ERP',
     exportedAt: new Date().toISOString(),
     business: getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS),
     products: fetchProducts(),

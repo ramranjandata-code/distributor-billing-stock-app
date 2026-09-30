@@ -1,5 +1,5 @@
 /**
- * Tax & GST Calculation Engine for DistroPulse ERP
+ * Tax & GST Calculation Engine for DistroPlus ERP
  * Handles Tax-Inclusive and Tax-Exclusive pricing,
  * Auto-detects Intra-State (CGST+SGST) vs Inter-State (IGST) by GSTIN state code,
  * Proportionally allocates discounts, and calculates auto round-offs.
