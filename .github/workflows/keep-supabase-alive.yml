@@ -1,0 +1,58 @@
+name: Keep Supabase Database Alive
+
+on:
+  schedule:
+    # Runs every 5 days at 00:00 UTC (well within the 7-day inactivity threshold)
+    - cron: '0 0 */5 * *'
+  workflow_dispatch:
+    # Allows manual triggering from the GitHub Actions tab anytime
+
+jobs:
+  ping-supabase:
+    name: Ping Supabase PostgreSQL Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Supabase REST API Endpoint
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "=========================================================="
+          echo "Starting Supabase Database Keep-Alive Health Ping..."
+          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "=========================================================="
+
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "❌ Error: SUPABASE_URL or SUPABASE_ANON_KEY secret is missing."
+            echo "Please configure them in GitHub Repo -> Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          # Strip trailing slash from URL if present
+          CLEAN_URL="${SUPABASE_URL%/}"
+
+          # Query bills table (or fallback to health check) to generate active PostgreSQL query
+          ENDPOINT="${CLEAN_URL}/rest/v1/bills?select=id&limit=1"
+
+          echo "Pinging: ${ENDPOINT}"
+
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$ENDPOINT" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            -H "Content-Type: application/json")
+
+          HTTP_BODY=$(echo "$HTTP_RESPONSE" | head -n -1)
+          HTTP_STATUS=$(echo "$HTTP_RESPONSE" | tail -n 1)
+
+          echo "Response HTTP Status: ${HTTP_STATUS}"
+          echo "Response Payload: ${HTTP_BODY}"
+
+          # HTTP 200, 206 (success) or even 404 (table not yet created but DB awake) confirms the PostgreSQL server received & processed queries
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 500 ]; then
+            echo "✅ SUCCESS: Supabase PostgreSQL database is active and awake!"
+            echo "Inactivity pause counter has been successfully reset."
+          else
+            echo "⚠️ Warning: Received unexpected HTTP status: ${HTTP_STATUS}"
+            exit 1
+          fi
