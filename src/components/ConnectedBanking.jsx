@@ -56,6 +56,23 @@ export default function ConnectedBanking({ parties = [], invoices = [], refreshA
   const [reconcileSelectedInv, setReconcileSelectedInv] = useState(null);
   const [reconcileUtr, setReconcileUtr] = useState('');
 
+  // Cheque & Multi-Mode State
+  const [paymentEntries, setPaymentEntries] = useState(fetchPaymentEntries ? fetchPaymentEntries() : []);
+  const [chequeFilter, setChequeFilter] = useState('ALL'); // 'ALL', 'PENDING', 'CLEARED', 'BOUNCED'
+  const [splitPayModalOpen, setSplitPayModalOpen] = useState(false);
+  const [selectedChequeToBounce, setSelectedChequeToBounce] = useState(null);
+  const [bounceReason, setBounceReason] = useState('Insufficient Funds');
+  const [bouncePenalty, setBouncePenalty] = useState(350);
+
+  // Split payment state
+  const [splitTargetInvoiceId, setSplitTargetInvoiceId] = useState('');
+  const [splitPartyId, setSplitPartyId] = useState('');
+  const [splitRows, setSplitRows] = useState([
+    { mode: 'CASH', amount: '' },
+    { mode: 'UPI', amount: '', utr: '' },
+    { mode: 'CHEQUE', amount: '', chequeNo: '', chequeBank: '', chequeDate: new Date().toISOString().split('T')[0] }
+  ]);
+
   const refreshBankingData = () => {
     setBankAccounts(fetchBankAccounts());
     setTransactions(fetchBankTransactions());
@@ -63,6 +80,70 @@ export default function ConnectedBanking({ parties = [], invoices = [], refreshA
   };
 
   const totalBankBalance = bankAccounts.reduce((sum, b) => sum + (Number(b.balance) || 0), 0);
+
+  // Cheque Actions
+  const handleClearCheque = (chequeEntry) => {
+    const destAcc = bankAccounts[0]?.id || '';
+    if (!destAcc) {
+      alert('Please add a bank account first to deposit the cleared cheque.');
+      return;
+    }
+    if (window.confirm(`Clear Cheque #${chequeEntry.chequeNo || 'N/A'} for ₹${Number(chequeEntry.amount).toLocaleString('en-IN')} into ${bankAccounts[0]?.bankName}?`)) {
+      clearChequePayment(chequeEntry.id, new Date().toISOString().split('T')[0], destAcc);
+      refreshBankingData();
+      alert('✅ Cheque marked CLEARED! Bank balance updated and credit verified.');
+    }
+  };
+
+  const handleConfirmBounce = (e) => {
+    e.preventDefault();
+    if (!selectedChequeToBounce) return;
+
+    bounceChequePayment(selectedChequeToBounce.id, bounceReason, bouncePenalty);
+    setSelectedChequeToBounce(null);
+    refreshBankingData();
+    alert(`⚠️ Cheque marked BOUNCED!\n• Outstanding invoice reopened.\n• ₹${bouncePenalty} penalty debited to retailer ledger.`);
+  };
+
+  const handleSaveSplitPayment = (e) => {
+    e.preventDefault();
+    const activeSplits = splitRows.filter(r => Number(r.amount) > 0);
+    if (activeSplits.length === 0) {
+      alert('Please enter an amount for at least one payment mode.');
+      return;
+    }
+
+    const selectedInv = invoices.find(inv => inv.id === splitTargetInvoiceId);
+    const selectedP = parties.find(p => p.id === splitPartyId);
+
+    const result = recordMultiModePayment({
+      invoiceId: splitTargetInvoiceId || null,
+      partyId: splitPartyId || (selectedInv?.partyId) || null,
+      partyName: selectedP?.name || selectedInv?.partyName || 'Retailer',
+      splits: activeSplits.map(s => ({
+        mode: s.mode,
+        amount: Number(s.amount),
+        utr: s.utr || null,
+        chequeNo: s.chequeNo || null,
+        chequeBank: s.chequeBank || null,
+        chequeDate: s.chequeDate || null,
+        bankAccountId: bankAccounts[0]?.id || null
+      })),
+      notes: 'Counter Multi-Mode Settlement'
+    });
+
+    setSplitPayModalOpen(false);
+    refreshBankingData();
+    alert(`✅ Recorded multi-mode payment totaling ₹${result.totalPaid.toLocaleString('en-IN')} successfully!`);
+  };
+
+  // Filtered cheques
+  const allCheques = (paymentEntries || []).filter(p => p.paymentMode === 'CHEQUE');
+  const filteredCheques = allCheques.filter(c => {
+    if (chequeFilter === 'ALL') return true;
+    return c.chequeStatus === chequeFilter;
+  });
+  const pendingCheques = allCheques.filter(c => c.chequeStatus === 'PENDING');
 
   const handleSaveDeposit = (e) => {
     e.preventDefault();
@@ -196,6 +277,15 @@ export default function ConnectedBanking({ parties = [], invoices = [], refreshA
         </div>
 
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button 
+            type="button"
+            onClick={() => setSplitPayModalOpen(true)}
+            className="btn btn-secondary"
+            style={{ padding: '10px 18px', background: '#3b82f6', color: '#ffffff', border: 'none', fontWeight: '700', gap: '8px' }}
+          >
+            <Zap size={18} />
+            <span>Multi-Mode Split Pay</span>
+          </button>
           <button 
             onClick={() => setDepositModalOpen(true)}
             className="btn btn-primary"
@@ -317,6 +407,129 @@ export default function ConnectedBanking({ parties = [], invoices = [], refreshA
             </div>
           ))}
         </div>
+      </div>
+
+
+      {/* Cheque Clearing & Lifecycle Management Table */}
+      <div className="card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CreditCard size={18} color="#7c3aed" />
+              <span>Cheque Clearing & Bouncing Ledger</span>
+              {pendingCheques.length > 0 && (
+                <span className="badge badge-warning" style={{ fontSize: '0.72rem' }}>
+                  {pendingCheques.length} Pending Clearance
+                </span>
+              )}
+            </h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Track physical cheque clearance into commercial bank accounts or register bounced cheques with automatic ₹350 penalty debit.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {['ALL', 'PENDING', 'CLEARED', 'BOUNCED'].map(status => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setChequeFilter(status)}
+                className={`btn btn-sm ${chequeFilter === status ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {filteredCheques.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '28px 12px', color: 'var(--text-muted)' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem' }}>No cheques matching current filter ({chequeFilter}).</p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                  <th style={{ padding: '8px 10px' }}>Cheque Details</th>
+                  <th style={{ padding: '8px 10px' }}>Party / Retailer</th>
+                  <th style={{ padding: '8px 10px' }}>Date</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Amount</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCheques.map(chk => (
+                  <tr key={chk.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '10px' }}>
+                      <div style={{ fontWeight: '800', fontFamily: 'monospace', color: 'var(--text-main)' }}>
+                        Cheque #{chk.chequeNo || 'N/A'}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Bank: {chk.chequeBank || 'N/A'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '10px' }}>
+                      <div style={{ fontWeight: '700' }}>{chk.partyName || 'Retailer'}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Inv Ref: {chk.invoiceId || 'Advance / Khata'}</div>
+                    </td>
+                    <td style={{ padding: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {chk.chequeDate ? new Date(chk.chequeDate).toLocaleDateString('en-IN') : new Date(chk.date).toLocaleDateString('en-IN')}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>
+                      ₹{Number(chk.amount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                      {chk.chequeStatus === 'CLEARED' && (
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>CLEARED</span>
+                      )}
+                      {chk.chequeStatus === 'BOUNCED' && (
+                        <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>BOUNCED</span>
+                      )}
+                      {chk.chequeStatus === 'PENDING' && (
+                        <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>AWAITING CLEARANCE</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px', textAlign: 'right' }}>
+                      {chk.chequeStatus === 'PENDING' ? (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleClearCheque(chk)}
+                            className="btn btn-sm btn-primary"
+                            style={{ padding: '4px 8px', fontSize: '0.72rem', background: '#059669', borderColor: '#059669' }}
+                            title="Mark Cheque Cleared in Bank Account"
+                          >
+                            Mark Cleared
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedChequeToBounce(chk);
+                              setBouncePenalty(350);
+                              setBounceReason('Insufficient Funds');
+                            }}
+                            className="btn btn-sm btn-danger"
+                            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                            title="Bounce Cheque and charge penalty"
+                          >
+                            Bounce
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {chk.clearanceDate ? `Cleared on ${chk.clearanceDate}` : (chk.bounceReason || 'Processed')}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Two Column Section: Recent Bank Transactions & Outstanding Invoices Reconcile */}

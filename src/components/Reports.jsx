@@ -56,6 +56,77 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const [dayBookDate, setDayBookDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedStockWarehouse, setSelectedStockWarehouse] = useState('ALL');
 
+  // GSTR-1 Official Exporter State
+  const [gstFpMonth, setGstFpMonth] = useState(() => {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}`;
+  });
+  const [gstValidationResult, setGstValidationResult] = useState(null);
+  const [gstValidationModalOpen, setGstValidationModalOpen] = useState(false);
+
+  const getFpSixDigit = () => {
+    if (!gstFpMonth) {
+      const d = new Date();
+      return String(d.getMonth() + 1).padStart(2, '0') + d.getFullYear();
+    }
+    const [yyyy, mm] = gstFpMonth.split('-');
+    return `${mm}${yyyy}`;
+  };
+
+  const handleValidateGstr1 = () => {
+    const fp = getFpSixDigit();
+    const salesReturns = fetchSalesReturns();
+    const payload = generateGstr1Payload({
+      invoices: filteredInvoices,
+      creditNotes: salesReturns,
+      businessGstin: business?.gstin || '07AAAAA0000A1Z5',
+      filingPeriod: fp,
+      grossTurnover: totalSales,
+      curGrossTurnover: totalSales
+    });
+    const result = validateGstr1Payload(payload);
+    setGstValidationResult({ ...result, payload, fp });
+    setGstValidationModalOpen(true);
+  };
+
+  const handleExportGstr1OfficialJson = () => {
+    const fp = getFpSixDigit();
+    const salesReturns = fetchSalesReturns();
+    const payload = generateGstr1Payload({
+      invoices: filteredInvoices,
+      creditNotes: salesReturns,
+      businessGstin: business?.gstin || '07AAAAA0000A1Z5',
+      filingPeriod: fp,
+      grossTurnover: totalSales,
+      curGrossTurnover: totalSales
+    });
+    
+    const validation = validateGstr1Payload(payload);
+    if (!validation.isValid) {
+      alert(`⚠️ Cannot export GSTR-1 JSON due to validation errors:\n\n• ${validation.errors.join('\n• ')}`);
+      setGstValidationResult({ ...validation, payload, fp });
+      setGstValidationModalOpen(true);
+      return;
+    }
+
+    const filename = downloadGstr1Json(payload, business?.gstin, fp);
+
+    // Immutable audit timeline logging
+    filteredInvoices.forEach(inv => {
+      try {
+        InvoiceHistoryLogger.log(inv.id, 'GSTR1_EXPORTED', {
+          action: 'GSTR-1 JSON Exported',
+          fp,
+          gstin: business?.gstin,
+          filename
+        });
+      } catch (e) {}
+    });
+
+    alert(`🎉 Official GSTR-1 JSON exported successfully as ${filename}!\n\nUpload directly to the GST Portal (gst.gov.in) under 'Returns Dashboard' ➔ 'GSTR-1' ➔ 'Prepare Offline' ➔ 'Upload'.`);
+  };
+
   // Sole Proprietor Accounting State
   const [expenses, setExpenses] = useState(fetchExpenses());
   const [capital, setCapital] = useState(fetchProprietorCapital());
@@ -1523,6 +1594,82 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
         {/* ------------------------------------------------------------- */}
         {reportTab === 'GST' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* GST Official Portal Action Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
+              color: '#ffffff',
+              borderRadius: '12px',
+              padding: '18px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '16px',
+              boxShadow: '0 8px 20px -4px rgba(6, 78, 59, 0.3)'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck size={24} color="#34d399" />
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: '800', margin: 0 }}>
+                    Official GSTN GSTR-1 Schema Engine (gst.gov.in)
+                  </h3>
+                  <span style={{ background: '#34d399', color: '#064e3b', fontWeight: '800', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px' }}>
+                    Govt Compliant
+                  </span>
+                </div>
+                <p style={{ margin: '6px 0 0 0', fontSize: '0.82rem', color: '#a7f3d0' }}>
+                  Distributor GSTIN: <strong style={{ color: '#fff' }}>{business?.gstin || '07AAAAA0000A1Z5'}</strong> • 
+                  Period: <strong style={{ color: '#fff' }}>{getFpSixDigit()} ({gstFpMonth})</strong> • 
+                  Payload splits automatically below 5 MB portal upload limit.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleValidateGstr1}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    color: '#ffffff',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <ShieldCheck size={16} />
+                  <span>Validate Schema</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportGstr1OfficialJson}
+                  style={{
+                    background: '#10b981',
+                    border: 'none',
+                    color: '#ffffff',
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
+                  }}
+                >
+                  <Download size={16} />
+                  <span>Download GSTR-1 JSON</span>
+                </button>
+              </div>
+            </div>
+
             {/* GSTR-1 Summary Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>

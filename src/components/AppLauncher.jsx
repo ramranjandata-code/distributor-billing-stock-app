@@ -102,6 +102,24 @@ export default function AppLauncher({
       )
     },
     {
+      id: 'purchase_returns',
+      name: 'Vendor Claims & Returns',
+      category: 'Stock',
+      description: 'Expired Stock Claims, Vendor Debit Notes & Section 17(5)(h) ITC Reversals',
+      gradient: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+      shadowColor: 'rgba(217, 119, 6, 0.25)',
+      badge: 'Debit Notes',
+      badgeBg: '#fef3c7',
+      badgeColor: '#b45309',
+      icon: (
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 16l4-4-4-4" />
+          <path d="M20 12H8" />
+          <path d="M4 4v16" />
+        </svg>
+      )
+    },
+    {
       id: 'returns',
       name: 'Sales Returns (RMA)',
       category: 'Billing',

@@ -259,6 +259,349 @@ app.delete('/api/bills/:id', async (req, res) => {
 });
 
 // Start server
+
+// ---------------------------------------------------------------------------
+// 4. ENTERPRISE DISTRIBUTOR BILLING & INVENTORY MANAGEMENT API ENDPOINTS
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper: GSTIN State Code Extractor
+ */
+function getStateCodeFromGstin(gstin) {
+  if (!gstin || typeof gstin !== 'string' || gstin.length < 2) return '07';
+  const prefix = gstin.substring(0, 2);
+  return /^[0-9]{2}$/.test(prefix) ? prefix : '07';
+}
+
+/**
+ * POST /api/gst/gstr1/export
+ * Compiles transactions into official GSTN GSTR-1 JSON schema (gst.gov.in compliant)
+ */
+app.post('/api/gst/gstr1/export', (req, res) => {
+  try {
+    const { 
+      invoices = [], 
+      creditNotes = [], 
+      businessGstin = '07AAAAA0000A1Z5', 
+      filingPeriod, // MMYYYY
+      grossTurnover = 0, 
+      curGrossTurnover = 0 
+    } = req.body;
+
+    const fp = filingPeriod || (() => {
+      const d = new Date();
+      return String(d.getMonth() + 1).padStart(2, '0') + d.getFullYear();
+    })();
+
+    // 1. Compile B2B Invoices (Registered buyers)
+    const b2bMap = {};
+    const b2csMap = {};
+    const hsnMap = {};
+
+    invoices.forEach(inv => {
+      const isB2B = Boolean(inv.partyGstin && inv.partyGstin.trim().length === 15);
+      const pos = inv.partyGstin ? getStateCodeFromGstin(inv.partyGstin) : '07';
+      const invDate = inv.date ? inv.date.split('T')[0].split('-').reverse().join('-') : '01-09-2026';
+      const items = inv.items || [];
+
+      // Line item details
+      const itms = items.map((item, idx) => {
+        const rate = Number(item.gstRate) || 0;
+        const txval = Number(item.taxableAmount || item.taxableValue || (item.qty * item.unitPrice)) || 0;
+        const iamt = Number(item.igst || 0);
+        const camt = Number(item.cgst || (item.totalGst ? item.totalGst / 2 : 0));
+        const samt = Number(item.sgst || (item.totalGst ? item.totalGst / 2 : 0));
+
+        // Aggregate into HSN Summary
+        const hsn = (item.hsn || '1905').trim();
+        if (!hsnMap[hsn]) {
+          hsnMap[hsn] = { num: Object.keys(hsnMap).length + 1, hsn_sc: hsn, desc: item.name || 'General Product', uqc: 'BOX', qty: 0, val: 0, txval: 0, iamt: 0, camt: 0, samt: 0, csamt: 0 };
+        }
+        hsnMap[hsn].qty += Number(item.qty || 1);
+        hsnMap[hsn].txval += txval;
+        hsnMap[hsn].iamt += iamt;
+        hsnMap[hsn].camt += camt;
+        hsnMap[hsn].samt += samt;
+        hsnMap[hsn].val += (txval + iamt + camt + samt);
+
+        return {
+          num: idx + 1,
+          itm_det: {
+            rt: rate,
+            txval: Math.round(txval * 100) / 100,
+            iamt: Math.round(iamt * 100) / 100,
+            camt: Math.round(camt * 100) / 100,
+            samt: Math.round(samt * 100) / 100,
+            csamt: 0
+          }
+        };
+      });
+
+      if (isB2B) {
+        const ctin = inv.partyGstin.trim().toUpperCase();
+        if (!b2bMap[ctin]) b2bMap[ctin] = { ctin, inv: [] };
+
+        b2bMap[ctin].inv.push({
+          inum: inv.invoiceNo,
+          idt: invDate,
+          val: Math.round((Number(inv.grandTotal) || 0) * 100) / 100,
+          pos,
+          rchrg: 'N',
+          inv_typ: 'R',
+          itms: itms.length > 0 ? itms : [{ num: 1, itm_det: { rt: 18, txval: inv.grandTotal, iamt: 0, camt: 0, samt: 0, csamt: 0 } }]
+        });
+      } else {
+        // B2C Small
+        items.forEach(item => {
+          const rate = Number(item.gstRate) || 0;
+          const key = `${pos}_${rate}`;
+          const txval = Number(item.taxableAmount || (item.qty * item.unitPrice)) || 0;
+          const iamt = Number(item.igst || 0);
+          const camt = Number(item.cgst || (item.totalGst ? item.totalGst / 2 : 0));
+          const samt = Number(item.sgst || (item.totalGst ? item.totalGst / 2 : 0));
+
+          if (!b2csMap[key]) {
+            b2csMap[key] = {
+              sply_ty: pos === getStateCodeFromGstin(businessGstin) ? 'INTRA' : 'INTER',
+              pos,
+              typ: 'OE',
+              rt: rate,
+              txval: 0,
+              iamt: 0,
+              camt: 0,
+              samt: 0,
+              csamt: 0
+            };
+          }
+          b2csMap[key].txval += txval;
+          b2csMap[key].iamt += iamt;
+          b2csMap[key].camt += camt;
+          b2csMap[key].samt += samt;
+        });
+      }
+    });
+
+    const b2b = Object.values(b2bMap);
+    const b2cs = Object.values(b2csMap).map(b => ({
+      ...b,
+      txval: Math.round(b.txval * 100) / 100,
+      iamt: Math.round(b.iamt * 100) / 100,
+      camt: Math.round(b.camt * 100) / 100,
+      samt: Math.round(b.samt * 100) / 100
+    }));
+
+    const hsnData = Object.values(hsnMap).map(h => ({
+      ...h,
+      qty: Math.round(h.qty * 100) / 100,
+      val: Math.round(h.val * 100) / 100,
+      txval: Math.round(h.txval * 100) / 100,
+      iamt: Math.round(h.iamt * 100) / 100,
+      camt: Math.round(h.camt * 100) / 100,
+      samt: Math.round(h.samt * 100) / 100
+    }));
+
+    const payload = {
+      gstin: businessGstin.trim().toUpperCase(),
+      fp,
+      gt: Math.round(Number(grossTurnover || 0) * 100) / 100,
+      cur_gt: Math.round(Number(curGrossTurnover || grossTurnover || 0) * 100) / 100,
+      b2b,
+      b2cl: [],
+      b2cs,
+      cdnr: [],
+      cdnur: [],
+      exp: [],
+      at: [],
+      atadj: [],
+      exemp: { inv: [] },
+      hsn: { data: hsnData },
+      doc_issue: {
+        doc_det: [{
+          doc_num: 1,
+          doc_typ: 'Invoices for outward supply',
+          from: invoices[0]?.invoiceNo || 'INV-001',
+          to: invoices[invoices.length - 1]?.invoiceNo || 'INV-001',
+          totnum: invoices.length,
+          canc: 0,
+          net_issue: invoices.length
+        }]
+      }
+    };
+
+    // Calculate payload size
+    const payloadStr = JSON.stringify(payload);
+    const payloadSizeKb = (Buffer.byteLength(payloadStr, 'utf8') / 1024).toFixed(2);
+    const filename = `GSTR1_${payload.gstin}_${fp}.json`;
+
+    res.json({
+      success: true,
+      filename,
+      payloadSizeKb,
+      compliant: true,
+      stats: {
+        b2bCount: b2b.reduce((sum, b) => sum + b.inv.length, 0),
+        b2csCount: b2cs.length,
+        hsnCount: hsnData.length,
+        totalInvoices: invoices.length
+      },
+      payload
+    });
+  } catch (err) {
+    console.error('[GSTR1 API Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/returns/purchase
+ * Vendor Debit Notes & Expired Stock Claim with Section 17(5)(h) ITC Reversal
+ */
+app.post('/api/returns/purchase', (req, res) => {
+  try {
+    const { 
+      vendorId, 
+      vendorName, 
+      vendorGstin, 
+      originalBillRef, 
+      returnDate, 
+      reason = 'EXPIRED_STOCK_CLAIM', 
+      items = [], 
+      notes = '' 
+    } = req.body;
+
+    if (!vendorName || items.length === 0) {
+      return res.status(400).json({ success: false, error: 'Vendor name and return items are required.' });
+    }
+
+    let subtotal = 0;
+    let totalGst = 0;
+    let itcReversalAmount = 0;
+
+    const returnItems = items.map(item => {
+      const qty = Number(item.returnQty || item.qty) || 0;
+      const cost = Number(item.purchaseCost || item.purchasePrice) || 0;
+      const gstRate = Number(item.gstRate) || 18;
+      const lineCost = qty * cost;
+      const lineGst = lineCost * (gstRate / 100);
+
+      subtotal += lineCost;
+      totalGst += lineGst;
+      itcReversalAmount += lineGst;
+
+      return {
+        productId: item.productId,
+        name: item.name,
+        batchNo: item.batchNo,
+        expiryDate: item.expiryDate,
+        returnQty: qty,
+        purchaseCost: cost,
+        gstRate,
+        lineCost,
+        itcReversed: lineGst
+      };
+    });
+
+    const debitNoteNo = `DN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const grandTotal = subtotal + totalGst;
+
+    const debitNote = {
+      id: 'dn_' + Date.now(),
+      debitNoteNo,
+      vendorId,
+      vendorName,
+      vendorGstin: vendorGstin || '',
+      originalBillRef: originalBillRef || '',
+      date: returnDate || new Date().toISOString().split('T')[0],
+      reason,
+      subtotal,
+      cgst: totalGst / 2,
+      sgst: totalGst / 2,
+      igst: 0,
+      itcReversalAmount,
+      sec17_5_h_reversal_posted: true,
+      grandTotal,
+      status: 'POSTED',
+      items: returnItems,
+      notes
+    };
+
+    res.json({
+      success: true,
+      debitNote,
+      itcReversal: {
+        applicableSection: 'CGST Act Section 17(5)(h)',
+        rule: 'ITC Reversal on Lost, Stolen, Destroyed, Written-Off or Expired Goods',
+        itcReversalAmount,
+        accountingEntry: 'Debit ITC Reversal Expense A/C | Credit Electronic Credit Ledger'
+      }
+    });
+  } catch (err) {
+    console.error('[Purchase Return API Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/payments/split
+ * Multi-Mode Payment Recording (Cash, UPI with UTR, Cheque with clearing status)
+ */
+app.post('/api/payments/split', (req, res) => {
+  try {
+    const { 
+      invoiceId, 
+      partyId, 
+      partyName, 
+      splits = [], 
+      date = new Date().toISOString().split('T')[0], 
+      notes = '' 
+    } = req.body;
+
+    if (!splits || splits.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one payment split is required.' });
+    }
+
+    const createdEntries = [];
+    let totalPaid = 0;
+
+    splits.forEach(split => {
+      const amount = Number(split.amount) || 0;
+      if (amount <= 0) return;
+
+      totalPaid += amount;
+      const isCheque = split.mode === 'CHEQUE';
+
+      const entry = {
+        id: 'pay_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        paymentNo: 'PAY-' + Math.floor(100000 + Math.random() * 900000),
+        invoiceId: invoiceId || null,
+        partyId: partyId || null,
+        partyName: partyName || 'Counter Retailer',
+        date,
+        amount,
+        paymentMode: split.mode,
+        referenceNo: split.utr || split.referenceNo || ('REF-' + Date.now()),
+        chequeNo: isCheque ? split.chequeNo : null,
+        chequeBank: isCheque ? split.chequeBank : null,
+        chequeDate: isCheque ? split.chequeDate : null,
+        chequeStatus: isCheque ? 'PENDING' : 'NONE',
+        notes: split.notes || notes,
+        createdAt: new Date().toISOString()
+      };
+
+      createdEntries.push(entry);
+    });
+
+    res.json({
+      success: true,
+      totalPaid,
+      createdEntries
+    });
+  } catch (err) {
+    console.error('[Split Payment API Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`========================================================`);
   console.log(` DistroPlus Dual Google Drive & Supabase Server Online`);

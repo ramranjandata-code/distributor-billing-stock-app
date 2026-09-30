@@ -383,7 +383,10 @@ export default function OdooInvoiceForm({
       paymentMethod: paymentForm.paymentMethod,
       paymentDate: paymentForm.paymentDate,
       memo: paymentForm.memo,
-      paymentDifferenceAction: paymentForm.paymentDifferenceAction
+      paymentDifferenceAction: paymentForm.paymentDifferenceAction,
+      chequeNo: paymentForm.chequeNo,
+      chequeBank: paymentForm.chequeBank,
+      chequeDate: paymentForm.chequeDate
     });
 
     setInvoice(updated);
@@ -1552,6 +1555,35 @@ export default function OdooInvoiceForm({
                   onChange={e => setPaymentForm({ ...paymentForm, memo: e.target.value })}
                 />
               </div>
+
+              
+              {/* Cheque specific inputs */}
+              {paymentForm.paymentMethod === 'CHEQUE' && (
+                <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label className="form-label">Cheque No (6 Digits) *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. 000412"
+                      value={paymentForm.chequeNo || ''}
+                      onChange={e => setPaymentForm({ ...paymentForm, chequeNo: e.target.value })}
+                      required={paymentForm.paymentMethod === 'CHEQUE'}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Drawee Bank Name *</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. HDFC Bank"
+                      value={paymentForm.chequeBank || ''}
+                      onChange={e => setPaymentForm({ ...paymentForm, chequeBank: e.target.value })}
+                      required={paymentForm.paymentMethod === 'CHEQUE'}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Dynamic QR Code in Wizard if UPI is selected */}
               {paymentForm.paymentMethod === 'UPI' && upiQrPreviewUrl && (

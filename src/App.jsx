@@ -26,6 +26,7 @@ import Settings from './components/Settings';
 import InvoicePrintModal from './components/InvoicePrintModal';
 import AppLauncher from './components/AppLauncher';
 import SalesReturns from './components/SalesReturns';
+import PurchaseReturns from './components/PurchaseReturns';
 import CloudSyncModal from './components/CloudSyncModal';
 import Login from './components/Login';
 
@@ -395,6 +396,7 @@ export default function App() {
                 {activeTab === 'reports' && translate('reports_title')}
                 {activeTab === 'audit' && 'Security, Audit Trail & System Backup'}
                 {activeTab === 'settings' && translate('settings_title')}
+                {activeTab === 'purchase_returns' && 'Vendor Claims & Purchase Returns'}
               </h1>
               <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {business?.name} • {business?.city || 'Distributor HQ'}
@@ -607,6 +609,12 @@ export default function App() {
             handlePrintInvoice={handlePrintInvoice}
             refreshAllData={refreshAllData}
             t={translate}
+          />
+        )}
+
+        {activeTab === 'purchase_returns' && (
+          <PurchaseReturns 
+            onNavigateToInvoices={() => navigateToTab('invoices')} 
           />
         )}
 

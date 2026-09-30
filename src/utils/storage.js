@@ -53,6 +53,8 @@ export const STORAGE_KEYS = {
   PROPRIETOR_CAPITAL: 'distro_proprietor_capital',
   DELETED_IDS: 'distro_deleted_ids',
   RETURNS: 'distro_sales_returns',
+  PURCHASE_RETURNS: 'distro_purchase_returns',
+  PAYMENT_RECEIPTS: 'distro_payment_receipts',
   INVOICE_HISTORY: 'distro_invoice_history_logs',
   STOCK_LOTS: 'distro_stock_lots'
 };
@@ -60,7 +62,8 @@ export const STORAGE_KEYS = {
 const DEFAULT_BUSINESS = REAL_DEFAULT_BUSINESS;
 
 const DEFAULT_WAREHOUSES = [
-  { id: 'wh_main', name: 'Main Godown', code: 'WH-01', location: '', isDefault: true }
+  { id: 'wh_main', name: 'Main Godown', code: 'WH-01', location: '', isDefault: true },
+  { id: 'wh_scrap', name: 'Quarantine & Scrap Bin', code: 'WH-SCRAP', location: 'Virtual Quarantine', isDefault: false }
 ];
 
 const DEFAULT_BANK_ACCOUNTS = [];
@@ -3328,3 +3331,535 @@ export const restoreBackupJSON = (jsonString) => {
 
 
 
+
+
+// =========================================================================
+// MODULE 2 ENHANCEMENT: APPLY CREDIT NOTE OFFSET
+// =========================================================================
+export const applyCreditNoteToInvoice = (creditNoteId, targetInvoiceId) => {
+  const invoices = fetchInvoices();
+  const creditNote = invoices.find(i => i.id === creditNoteId || i.invoiceNo === creditNoteId);
+  const targetInvoice = invoices.find(i => i.id === targetInvoiceId || i.invoiceNo === targetInvoiceId);
+
+  if (!creditNote || !targetInvoice) {
+    return { success: false, message: 'Credit Note or Target Invoice not found.' };
+  }
+
+  const creditAvailable = Number(creditNote.balanceAmount !== undefined ? creditNote.balanceAmount : creditNote.grandTotal) || 0;
+  const targetDue = Number(targetInvoice.amountDue !== undefined ? targetInvoice.amountDue : targetInvoice.balanceAmount || targetInvoice.grandTotal) || 0;
+
+  if (creditAvailable <= 0) {
+    return { success: false, message: 'Credit Note has zero remaining balance.' };
+  }
+  if (targetDue <= 0) {
+    return { success: false, message: 'Target Invoice is already fully paid.' };
+  }
+
+  const offset = Math.min(creditAvailable, targetDue);
+  const newTargetDue = Math.max(0, targetDue - offset);
+  const newTargetPaid = (Number(targetInvoice.paidAmount) || 0) + offset;
+  const newCreditBalance = Math.max(0, creditAvailable - offset);
+
+  // Update target invoice and credit note
+  const updatedInvoices = invoices.map(inv => {
+    if (inv.id === targetInvoice.id) {
+      return {
+        ...inv,
+        paidAmount: newTargetPaid,
+        amountDue: newTargetDue,
+        balanceAmount: newTargetDue,
+        paymentStatus: newTargetDue === 0 ? 'PAID' : 'PARTIAL',
+        state: newTargetDue === 0 ? 'paid' : 'in_payment',
+        creditNoteOffset: (Number(inv.creditNoteOffset) || 0) + offset,
+        linkedCreditNoteNo: creditNote.invoiceNo
+      };
+    }
+    if (inv.id === creditNote.id) {
+      return {
+        ...inv,
+        balanceAmount: newCreditBalance,
+        linkedInvoiceNo: targetInvoice.invoiceNo
+      };
+    }
+    return inv;
+  });
+
+  setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+  // Log on Target Invoice
+  InvoiceHistoryLogger.log({
+    invoiceId: targetInvoice.id,
+    actionType: 'CREDIT_NOTE_ISSUED',
+    description: `Credit Note #${creditNote.invoiceNo} applied. Offset amount: ₹${offset.toLocaleString('en-IN')}. New balance due: ₹${newTargetDue.toLocaleString('en-IN')}`,
+    referenceDocumentId: creditNote.id,
+    referenceDocumentType: 'CREDIT_NOTE',
+    metadata: { offset, creditNoteNo: creditNote.invoiceNo, newTargetDue }
+  });
+
+  // Log on Credit Note
+  InvoiceHistoryLogger.log({
+    invoiceId: creditNote.id,
+    actionType: 'UPDATED',
+    description: `Offset ₹${offset.toLocaleString('en-IN')} against Invoice #${targetInvoice.invoiceNo}. Remaining credit: ₹${newCreditBalance.toLocaleString('en-IN')}`,
+    referenceDocumentId: targetInvoice.id,
+    referenceDocumentType: 'INVOICE',
+    metadata: { offset, targetInvoiceNo: targetInvoice.invoiceNo, newCreditBalance }
+  });
+
+  logAuditAction(
+    'APPLY_CREDIT_NOTE',
+    'Billing & Credit Notes',
+    `Applied CN #${creditNote.invoiceNo} (₹${offset.toLocaleString('en-IN')}) to Invoice #${targetInvoice.invoiceNo}`
+  );
+
+  autoCloudSync();
+  return { success: true, offset, newTargetDue, newCreditBalance };
+};
+
+// =========================================================================
+// MODULE 3: PURCHASE RETURNS & EXPIRED STOCK CLAIM ENGINE
+// =========================================================================
+export const fetchPurchaseReturns = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []).filter(r => r && !delSet.has(r.id));
+};
+
+export const getExpiredStockLots = () => {
+  const products = fetchProducts();
+  const lots = fetchStockLots();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date(todayStr);
+
+  const expiredList = [];
+
+  // 1. Check batch lots
+  (lots || []).forEach(lot => {
+    if (lot.expiryDate) {
+      const expDate = new Date(lot.expiryDate);
+      if (expDate <= today && (Number(lot.qtyRemaining) || 0) > 0) {
+        const prod = products.find(p => p.id === lot.productId);
+        expiredList.push({
+          lotId: lot.id,
+          productId: lot.productId,
+          productName: lot.productName || prod?.name || 'Unknown Product',
+          sku: lot.sku || prod?.sku || '',
+          batchNo: lot.batchNo || 'DEFAULT-BATCH',
+          expiryDate: lot.expiryDate,
+          qtyExpired: Number(lot.qtyRemaining) || 0,
+          purchasePrice: Number(lot.purchasePrice) || Number(prod?.purchasePrice) || 0,
+          purchasePriceWithGst: Number(lot.purchasePriceWithGst) || 0,
+          gstRate: Number(lot.gstRate) || Number(prod?.gstRate) || 5,
+          supplierId: lot.supplierId || null,
+          supplierName: lot.supplierName || 'Primary Supplier',
+          warehouseId: lot.warehouseId || 'wh_main'
+        });
+      }
+    }
+  });
+
+  // 2. Also check product level expiryDate if not captured in lots
+  products.forEach(p => {
+    if (p.expiryDate) {
+      const expDate = new Date(p.expiryDate);
+      const stock = Number(p.currentStock) || 0;
+      const alreadyInLots = expiredList.some(e => e.productId === p.id);
+      if (expDate <= today && stock > 0 && !alreadyInLots) {
+        expiredList.push({
+          lotId: null,
+          productId: p.id,
+          productName: p.name,
+          sku: p.sku || '',
+          batchNo: p.batchNo || 'BATCH-01',
+          expiryDate: p.expiryDate,
+          qtyExpired: stock,
+          purchasePrice: Number(p.purchasePrice) || 0,
+          purchasePriceWithGst: Number(p.purchasePrice * (1 + (p.gstRate || 5) / 100)),
+          gstRate: Number(p.gstRate) || 5,
+          supplierId: p.supplierId || null,
+          supplierName: p.supplierName || 'Primary Supplier',
+          warehouseId: p.warehouseId || 'wh_main'
+        });
+      }
+    }
+  });
+
+  return expiredList;
+};
+
+export const createPurchaseReturnDebitNote = ({
+  supplierId,
+  supplierName,
+  originalBillNo,
+  originalBillDate,
+  items = [],
+  reason = 'EXPIRED_STOCK', // 'EXPIRED_STOCK' | 'DEFECTIVE' | 'OVER_DELIVERY'
+  reverseItc = true,
+  notes = ''
+}) => {
+  const existingReturns = fetchPurchaseReturns();
+  const year = new Date().getFullYear();
+  const debitNoteNo = `DN/${year}/${1001 + existingReturns.length}`;
+  const now = new Date().toISOString();
+
+  let totalTaxable = 0;
+  let totalTax = 0;
+  let totalDebitAmount = 0;
+
+  // Process items & decrement inventory
+  const processedItems = items.map(item => {
+    const qty = Number(item.qty || item.quantity) || 1;
+    const rate = Number(item.purchasePrice || item.rate) || 0;
+    const gstRate = Number(item.gstRate) || 5;
+    const lineTaxable = qty * rate;
+    const lineTax = (lineTaxable * gstRate) / 100;
+    const lineTotal = lineTaxable + lineTax;
+
+    totalTaxable += lineTaxable;
+    totalTax += lineTax;
+    totalDebitAmount += lineTotal;
+
+    // 1. Deduct stock from sellable godown
+    if (item.productId) {
+      updateProductStock(item.productId, -qty, `Vendor Return / Debit Note (${debitNoteNo})`);
+    }
+
+    // 2. Consume from lot if lotId exists
+    if (item.lotId) {
+      consumeStockLotsForSale([{ productId: item.productId, lotId: item.lotId, qty }]);
+    }
+
+    return {
+      productId: item.productId,
+      productName: item.productName || item.name,
+      batchNo: item.batchNo || '',
+      expiryDate: item.expiryDate || '',
+      qty,
+      purchasePrice: rate,
+      gstRate,
+      taxableAmount: Math.round(lineTaxable * 100) / 100,
+      taxAmount: Math.round(lineTax * 100) / 100,
+      totalAmount: Math.round(lineTotal * 100) / 100,
+      reason: item.reason || reason
+    };
+  });
+
+  // Section 17(5)(h) ITC Reversal handling
+  const itcReversalAmount = reverseItc ? Math.round(totalTax * 100) / 100 : 0;
+
+  const debitNoteRecord = {
+    id: 'pr_' + Date.now(),
+    debitNoteNo,
+    date: now,
+    supplierId: supplierId || null,
+    supplierName: supplierName || 'Vendor / Manufacturer',
+    originalBillNo: originalBillNo || 'PUR-000',
+    originalBillDate: originalBillDate || now.split('T')[0],
+    reason,
+    items: processedItems,
+    taxableAmount: Math.round(totalTaxable * 100) / 100,
+    taxAmount: Math.round(totalTax * 100) / 100,
+    totalDebitAmount: Math.round(totalDebitAmount * 100) / 100,
+    reverseItc,
+    itcReversalAmount,
+    status: 'ISSUED',
+    notes,
+    createdAt: now
+  };
+
+  // Adjust Vendor Accounts Payable (credit party balance if supplier tracked)
+  if (supplierId) {
+    updatePartyBalance(supplierId, -Math.round(totalDebitAmount * 100) / 100);
+  }
+
+  // If Section 17(5)(h) ITC Reversal is active, log an expense entry for the reversed ITC
+  if (itcReversalAmount > 0) {
+    saveExpense({
+      category: 'GST Section 17(5)(h) ITC Reversal',
+      type: 'OPERATING',
+      amount: itcReversalAmount,
+      date: now.split('T')[0],
+      paidTo: 'GST Authority (Input Tax Credit Reversal)',
+      notes: `Section 17(5)(h) ITC Reversal on Expired/Scrapped Stock: Debit Note #${debitNoteNo} (Tax: ₹${itcReversalAmount})`,
+      paymentMode: 'CASH'
+    });
+  }
+
+  const updatedReturns = [debitNoteRecord, ...existingReturns];
+  setStorageData(STORAGE_KEYS.PURCHASE_RETURNS, updatedReturns);
+
+  logAuditAction(
+    'VENDOR_DEBIT_NOTE_ISSUED',
+    'Purchase Returns & Claims',
+    `Issued Vendor Debit Note #${debitNoteNo} for ₹${debitNoteRecord.totalDebitAmount.toLocaleString('en-IN')} to ${debitNoteRecord.supplierName} (ITC Reversal: ₹${itcReversalAmount})`
+  );
+
+  autoCloudSync();
+  return debitNoteRecord;
+};
+
+// =========================================================================
+// MODULE 4: MULTI-MODE PAYMENTS & BANK RECONCILIATION ENGINE
+// =========================================================================
+export const fetchPaymentReceipts = () => {
+  const delSet = new Set(getDeletedIds());
+  return getStorageData(STORAGE_KEYS.PAYMENT_RECEIPTS, []).filter(p => p && !delSet.has(p.id));
+};
+
+export const recordMultiModePayment = ({
+  invoiceId,
+  partyId,
+  partyName,
+  date = new Date().toISOString(),
+  payments = [], // Array of { mode: 'CASH'|'UPI'|'CHEQUE'|'NEFT', amount: number, referenceNo: string, chequeNo: string, chequeDate: string, bankName: string, bankAccountId: string }
+  notes = ''
+}) => {
+  const invoices = fetchInvoices();
+  const targetInvoice = invoices.find(i => i.id === invoiceId || i.invoiceNo === invoiceId);
+  const receipts = fetchPaymentReceipts();
+  const receiptNo = `REC/${new Date().getFullYear()}/${1001 + receipts.length}`;
+  const currentOp = getCurrentOperator();
+
+  let totalPaid = 0;
+  let clearedAmount = 0;
+  let pendingChequeAmount = 0;
+
+  const processedPayments = payments.map((p, idx) => {
+    const amount = Number(p.amount) || 0;
+    totalPaid += amount;
+    const mode = (p.mode || 'CASH').toUpperCase();
+    const isCheque = mode === 'CHEQUE';
+    const status = isCheque ? 'PENDING_REALIZATION' : 'CLEARED';
+
+    if (isCheque) {
+      pendingChequeAmount += amount;
+    } else {
+      clearedAmount += amount;
+      // If linked to a bank account, credit the bank ledger
+      if (p.bankAccountId && (mode === 'UPI' || mode === 'NEFT' || mode === 'RTGS' || mode === 'IMPS')) {
+        recordBankTransaction({
+          bankAccountId: p.bankAccountId,
+          partyId,
+          partyName: partyName || targetInvoice?.partyName || 'Customer',
+          type: 'CREDIT',
+          amount,
+          mode,
+          referenceNo: p.referenceNo || ('UTR-' + Math.floor(10000000 + Math.random() * 90000000)),
+          notes: notes || `Payment for Invoice #${targetInvoice?.invoiceNo || invoiceId}`
+        });
+      }
+    }
+
+    return {
+      id: 'pay_' + Date.now() + '_' + idx,
+      mode,
+      amount,
+      status, // 'CLEARED' | 'PENDING_REALIZATION' | 'BOUNCED'
+      referenceNo: p.referenceNo || p.utr || '',
+      chequeNo: p.chequeNo || '',
+      chequeDate: p.chequeDate || '',
+      bankName: p.bankName || '',
+      bankAccountId: p.bankAccountId || null,
+      clearedAt: !isCheque ? date : null
+    };
+  });
+
+  const receipt = {
+    id: 'rec_' + Date.now(),
+    receiptNo,
+    invoiceId: targetInvoice?.id || invoiceId,
+    invoiceNo: targetInvoice?.invoiceNo || '',
+    partyId: partyId || targetInvoice?.partyId,
+    partyName: partyName || targetInvoice?.partyName || 'Customer',
+    date,
+    totalPaid,
+    clearedAmount,
+    pendingChequeAmount,
+    payments: processedPayments,
+    notes,
+    recordedBy: currentOp?.name || 'Administrator',
+    createdAt: new Date().toISOString()
+  };
+
+  // Update Invoice balances if invoice found
+  if (targetInvoice) {
+    const grandTotal = Number(targetInvoice.grandTotal) || 0;
+    const prevPaid = Number(targetInvoice.paidAmount) || 0;
+    const newPaid = prevPaid + clearedAmount;
+    const newDue = Math.max(0, grandTotal - newPaid);
+    const paymentStatus = newDue === 0 ? 'PAID' : (newPaid > 0 ? 'PARTIAL' : 'UNPAID');
+    const state = newDue === 0 ? 'paid' : (newPaid > 0 || pendingChequeAmount > 0 ? 'in_payment' : 'posted');
+
+    const updatedInvoices = invoices.map(i => i.id === targetInvoice.id ? {
+      ...i,
+      paidAmount: newPaid,
+      amountDue: newDue,
+      balanceAmount: newDue,
+      paymentStatus,
+      state,
+      lastPaymentReceiptNo: receiptNo
+    } : i);
+    setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+    // Log on Invoice History Timeline
+    const modesSummary = processedPayments.map(p => `${p.mode}: ₹${p.amount.toLocaleString('en-IN')}${p.referenceNo ? ` (Ref: ${p.referenceNo})` : ''}`).join(' + ');
+    InvoiceHistoryLogger.log({
+      invoiceId: targetInvoice.id,
+      actionType: 'PAYMENT_RECEIVED',
+      description: `Payment Receipt #${receiptNo} recorded: ₹${totalPaid.toLocaleString('en-IN')} [${modesSummary}]${pendingChequeAmount > 0 ? ` (₹${pendingChequeAmount.toLocaleString('en-IN')} Uncleared Cheque)` : ''}`,
+      referenceDocumentId: receipt.id,
+      referenceDocumentType: 'PAYMENT',
+      metadata: { receiptNo, totalPaid, modesSummary, pendingChequeAmount, newDue }
+    });
+  }
+
+  // Deduct party ledger balance by cleared amount
+  if (partyId && clearedAmount > 0) {
+    updatePartyBalance(partyId, -clearedAmount);
+  }
+
+  const updatedReceipts = [receipt, ...receipts];
+  setStorageData(STORAGE_KEYS.PAYMENT_RECEIPTS, updatedReceipts);
+
+  logAuditAction(
+    'RECORD_PAYMENT',
+    'Billing & Payments',
+    `Recorded ₹${totalPaid.toLocaleString('en-IN')} payment (Receipt #${receiptNo}) for Invoice #${targetInvoice?.invoiceNo || invoiceId}`
+  );
+
+  autoCloudSync();
+  return receipt;
+};
+
+export const clearChequePayment = (receiptId, paymentSubId, destinationBankAccountId) => {
+  const receipts = fetchPaymentReceipts();
+  const receipt = receipts.find(r => r.id === receiptId);
+  if (!receipt) return { success: false, message: 'Receipt not found.' };
+
+  const payItem = receipt.payments.find(p => p.id === paymentSubId || p.mode === 'CHEQUE');
+  if (!payItem || payItem.status === 'CLEARED') {
+    return { success: false, message: 'Cheque is already cleared or not found.' };
+  }
+
+  const chequeAmount = Number(payItem.amount) || 0;
+  payItem.status = 'CLEARED';
+  payItem.clearedAt = new Date().toISOString();
+  receipt.clearedAmount = (Number(receipt.clearedAmount) || 0) + chequeAmount;
+  receipt.pendingChequeAmount = Math.max(0, (Number(receipt.pendingChequeAmount) || 0) - chequeAmount);
+
+  // Credit destination bank account
+  if (destinationBankAccountId || payItem.bankAccountId) {
+    recordBankTransaction({
+      bankAccountId: destinationBankAccountId || payItem.bankAccountId,
+      partyId: receipt.partyId,
+      partyName: receipt.partyName,
+      type: 'CREDIT',
+      amount: chequeAmount,
+      mode: 'CHEQUE',
+      referenceNo: `CHQ-${payItem.chequeNo || 'CLEARED'}`,
+      notes: `Cheque #${payItem.chequeNo || 'N/A'} cleared for Receipt #${receipt.receiptNo}`
+    });
+  }
+
+  // Update party balance
+  if (receipt.partyId) {
+    updatePartyBalance(receipt.partyId, -chequeAmount);
+  }
+
+  // Update linked invoice
+  if (receipt.invoiceId) {
+    const invoices = fetchInvoices();
+    const targetInvoice = invoices.find(i => i.id === receipt.invoiceId);
+    if (targetInvoice) {
+      const grandTotal = Number(targetInvoice.grandTotal) || 0;
+      const newPaid = (Number(targetInvoice.paidAmount) || 0) + chequeAmount;
+      const newDue = Math.max(0, grandTotal - newPaid);
+      const updatedInvoices = invoices.map(i => i.id === targetInvoice.id ? {
+        ...i,
+        paidAmount: newPaid,
+        amountDue: newDue,
+        balanceAmount: newDue,
+        paymentStatus: newDue === 0 ? 'PAID' : 'PARTIAL',
+        state: newDue === 0 ? 'paid' : 'in_payment'
+      } : i);
+      setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+      InvoiceHistoryLogger.log({
+        invoiceId: targetInvoice.id,
+        actionType: 'CHEQUE_CLEARED',
+        description: `Cheque #${payItem.chequeNo} for ₹${chequeAmount.toLocaleString('en-IN')} CLEARED & Realized to Bank. Invoice balance due: ₹${newDue.toLocaleString('en-IN')}`,
+        referenceDocumentId: receipt.id,
+        referenceDocumentType: 'PAYMENT',
+        metadata: { chequeNo: payItem.chequeNo, chequeAmount, newDue }
+      });
+    }
+  }
+
+  setStorageData(STORAGE_KEYS.PAYMENT_RECEIPTS, receipts);
+  logAuditAction('CHEQUE_CLEARED', 'Banking & Settlements', `Cheque #${payItem.chequeNo} (₹${chequeAmount.toLocaleString('en-IN')}) cleared`);
+  autoCloudSync();
+  return { success: true, chequeAmount };
+};
+
+export const bounceChequePayment = (receiptId, paymentSubId, bounceCharges = 350, reason = 'Insufficient Funds') => {
+  const receipts = fetchPaymentReceipts();
+  const receipt = receipts.find(r => r.id === receiptId);
+  if (!receipt) return { success: false, message: 'Receipt not found.' };
+
+  const payItem = receipt.payments.find(p => p.id === paymentSubId || p.mode === 'CHEQUE');
+  if (!payItem) return { success: false, message: 'Cheque not found.' };
+
+  const chequeAmount = Number(payItem.amount) || 0;
+  payItem.status = 'BOUNCED';
+  payItem.bouncedAt = new Date().toISOString();
+  payItem.bounceReason = reason;
+  payItem.bounceCharges = bounceCharges;
+  receipt.pendingChequeAmount = Math.max(0, (Number(receipt.pendingChequeAmount) || 0) - chequeAmount);
+
+  // Add penalty to retailer khata
+  if (receipt.partyId) {
+    updatePartyBalance(receipt.partyId, bounceCharges);
+  }
+
+  // Debit Bank Charges Expense
+  if (bounceCharges > 0) {
+    saveExpense({
+      category: 'Bank Charges & Cheque Bounce Fee',
+      type: 'OPERATING',
+      amount: bounceCharges,
+      date: new Date().toISOString().split('T')[0],
+      paidTo: 'Bank Penalty Charges',
+      notes: `Cheque #${payItem.chequeNo} bounced for Receipt #${receipt.receiptNo}. Reason: ${reason}`,
+      paymentMode: 'CASH'
+    });
+  }
+
+  // Update target invoice: revert state
+  if (receipt.invoiceId) {
+    const invoices = fetchInvoices();
+    const targetInvoice = invoices.find(i => i.id === receipt.invoiceId);
+    if (targetInvoice) {
+      const updatedInvoices = invoices.map(i => i.id === targetInvoice.id ? {
+        ...i,
+        state: 'posted',
+        paymentStatus: 'UNPAID',
+        chequeBounced: true,
+        chequeBounceReason: reason
+      } : i);
+      setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+
+      InvoiceHistoryLogger.log({
+        invoiceId: targetInvoice.id,
+        actionType: 'CHEQUE_BOUNCED',
+        description: `⚠️ CHEQUE BOUNCED! Cheque #${payItem.chequeNo} for ₹${chequeAmount.toLocaleString('en-IN')} dishonored. Reason: "${reason}". Penalty charges ₹${bounceCharges} applied to party ledger.`,
+        referenceDocumentId: receipt.id,
+        referenceDocumentType: 'PAYMENT',
+        metadata: { chequeNo: payItem.chequeNo, chequeAmount, bounceCharges, reason }
+      });
+    }
+  }
+
+  setStorageData(STORAGE_KEYS.PAYMENT_RECEIPTS, receipts);
+  logAuditAction('CHEQUE_BOUNCED', 'Banking & Settlements', `Cheque #${payItem.chequeNo} bounced! Reason: ${reason}`);
+  autoCloudSync();
+  return { success: true, chequeAmount, bounceCharges };
+};
