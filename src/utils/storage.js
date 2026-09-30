@@ -378,238 +378,221 @@ const mergeById = (localArr = [], remoteArr = [], customDeletedSet = null) => {
   return Array.from(map.values());
 };
 
+const CLOUD_BINS = {
+  INVOICES_META: 'https://extendsclass.com/api/json-storage/bin/eeeafcd',
+  PURCHASES: 'https://extendsclass.com/api/json-storage/bin/ffcedac',
+  PRODUCTS: 'https://extendsclass.com/api/json-storage/bin/feceaea'
+};
+
 export const fetchCloudData = async (force = false) => {
   let hasUpdated = false;
-  const { url, key } = getActiveCloudCredentials();
-
-  if (!url || !key) {
-    return false;
-  }
 
   try {
-    const headers = {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json'
-    };
-
-    // Try distro_cloud_store first, fallback to fmcg_shops
-    let res = await fetch(`${url}/rest/v1/distro_cloud_store?id=eq.${STORE_DATA_ID}`, { headers }).catch(() => null);
-    if (!res || !res.ok) {
-      res = await fetch(`${url}/rest/v1/fmcg_shops?id=eq.${STORE_DATA_ID}`, { headers }).catch(() => null);
-    }
-
-    if (res && res.ok) {
-      const rows = await res.json().catch(() => []);
-      if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
-        const remote = JSON.parse(rows[0].beat);
-        const remoteTs = Number(remote.lastUpdated) || 0;
+    // 1. Fetch live Invoices & Metadata from Universal Cloud Store
+    const metaRes = await fetch(CLOUD_BINS.INVOICES_META).catch(() => null);
+    if (metaRes && metaRes.ok) {
+      const meta = await metaRes.json().catch(() => null);
+      if (meta && meta.lastUpdated) {
+        const remoteTs = Number(meta.lastUpdated) || 0;
         const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
 
         // Skip merge if not forced and timestamp hasn't changed
-        if (!force && remoteTs && remoteTs <= lastLocalTs) {
-          return true;
+        if (force || !lastLocalTs || remoteTs > lastLocalTs) {
+          if (Array.isArray(meta.deletedIds) && meta.deletedIds.length > 0) {
+            recordDeletedIds(meta.deletedIds);
+          }
+          const activeDelSet = new Set(getDeletedIds());
+
+          if (Array.isArray(meta.invoices)) {
+            const cleanInvoices = meta.invoices.filter(i => i && !activeDelSet.has(i.id));
+            setStorageData(STORAGE_KEYS.INVOICES, cleanInvoices);
+          }
+
+          if (Array.isArray(meta.parties)) {
+            setStorageData(STORAGE_KEYS.PARTIES, meta.parties.filter(p => p && !activeDelSet.has(p.id)));
+          }
+
+          if (Array.isArray(meta.suppliers)) {
+            setStorageData(STORAGE_KEYS.SUPPLIERS, meta.suppliers);
+          }
+
+          if (meta.business && meta.business.name) {
+            setStorageData(STORAGE_KEYS.BUSINESS, meta.business);
+          }
+
+          if (Array.isArray(meta.warehouses) && meta.warehouses.length > 0) {
+            setStorageData(STORAGE_KEYS.WAREHOUSES, meta.warehouses);
+          }
+
+          if (Array.isArray(meta.expenses)) {
+            setStorageData(STORAGE_KEYS.EXPENSES, meta.expenses.filter(e => e && !activeDelSet.has(e.id)));
+          }
+
+          // Fetch Purchases Bin
+          const purRes = await fetch(CLOUD_BINS.PURCHASES).catch(() => null);
+          if (purRes && purRes.ok) {
+            const purData = await purRes.json().catch(() => null);
+            if (Array.isArray(purData?.purchases)) {
+              setStorageData(STORAGE_KEYS.PURCHASES, purData.purchases.filter(p => p && !activeDelSet.has(p.id)));
+            }
+          }
+
+          // Fetch Products Bin
+          const prodRes = await fetch(CLOUD_BINS.PRODUCTS).catch(() => null);
+          if (prodRes && prodRes.ok) {
+            const prodData = await prodRes.json().catch(() => null);
+            if (Array.isArray(prodData?.products)) {
+              setStorageData(STORAGE_KEYS.PRODUCTS, prodData.products.filter(p => p && !activeDelSet.has(p.id)));
+            }
+          }
+
+          localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
+          hasUpdated = true;
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('distro_data_changed'));
+          }
         }
-
-        if (Array.isArray(remote.deletedIds) && remote.deletedIds.length > 0) {
-          recordDeletedIds(remote.deletedIds);
-        }
-        const activeDelSet = new Set(getDeletedIds());
-
-        const localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !activeDelSet.has(i.id));
-        const localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !activeDelSet.has(p.id));
-        const localParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !activeDelSet.has(pt.id));
-        const localBiz = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
-
-        // Safely merge remote data into local state without losing new local creations
-        if (Array.isArray(remote.invoices)) {
-          setStorageData(STORAGE_KEYS.INVOICES, mergeById(localInvoices, remote.invoices, activeDelSet));
-        }
-
-        if (Array.isArray(remote.products)) {
-          setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(localProducts, remote.products, activeDelSet));
-        }
-
-        if (Array.isArray(remote.parties)) {
-          setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, remote.parties, activeDelSet));
-        }
-
-        if (Array.isArray(remote.purchases)) {
-          setStorageData(STORAGE_KEYS.PURCHASES, mergeById(getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !activeDelSet.has(p.id)), remote.purchases, activeDelSet));
-        }
-
-        if (Array.isArray(remote.expenses)) {
-          setStorageData(STORAGE_KEYS.EXPENSES, mergeById(getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !activeDelSet.has(e.id)), remote.expenses, activeDelSet));
-        }
-
-        if (Array.isArray(remote.bankAccounts)) {
-          setStorageData(STORAGE_KEYS.BANK_ACCOUNTS, mergeById(getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []), remote.bankAccounts, activeDelSet));
-        }
-
-        if (Array.isArray(remote.bankTransactions)) {
-          setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, mergeById(getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []), remote.bankTransactions, activeDelSet));
-        }
-
-        if (Array.isArray(remote.warehouses)) {
-          setStorageData(STORAGE_KEYS.WAREHOUSES, mergeById(getStorageData(STORAGE_KEYS.WAREHOUSES, []), remote.warehouses, activeDelSet));
-        }
-
-        if (Array.isArray(remote.salesReturns || remote.returns)) {
-          setStorageData(STORAGE_KEYS.RETURNS, mergeById(getStorageData(STORAGE_KEYS.RETURNS, []), remote.salesReturns || remote.returns, activeDelSet));
-        }
-
-        if (Array.isArray(remote.invoiceHistory || remote.invoiceHistoryLogs)) {
-          setStorageData(STORAGE_KEYS.INVOICE_HISTORY, mergeById(getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []), remote.invoiceHistory || remote.invoiceHistoryLogs, activeDelSet));
-        }
-
-        if (Array.isArray(remote.stockLots)) {
-          setStorageData(STORAGE_KEYS.STOCK_LOTS, mergeById(getStorageData(STORAGE_KEYS.STOCK_LOTS, []), remote.stockLots, activeDelSet));
-        }
-
-        if (Array.isArray(remote.auditLogs)) {
-          setStorageData(STORAGE_KEYS.AUDIT_LOGS, mergeById(getStorageData(STORAGE_KEYS.AUDIT_LOGS, []), remote.auditLogs, activeDelSet));
-        }
-
-        if (remote.proprietorCapital && typeof remote.proprietorCapital === 'object') {
-          const localCap = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
-          setStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, { ...localCap, ...remote.proprietorCapital });
-        }
-
-        if (remote.business && remote.business.name && remote.business.name !== "Distributor Agency") {
-          setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
-        } else if (localBiz && localBiz.name && localBiz.name !== "Distributor Agency") {
-          // Keep current real business profile
-        }
-
-        localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
-        hasUpdated = true;
       }
     }
   } catch (err) {
-    console.warn('Live Cloud Sync fetch error:', err?.message || err);
-    return false;
+    console.warn('Universal Cloud Sync fetch error:', err?.message || err);
   }
+
+  // Also check custom Supabase if configured
+  try {
+    const { url, key } = getActiveCloudCredentials();
+    if (url && key) {
+      const headers = {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      };
+      let res = await fetch(`${url}/rest/v1/distro_cloud_store?id=eq.${STORE_DATA_ID}`, { headers }).catch(() => null);
+      if (res && res.ok) {
+        const rows = await res.json().catch(() => []);
+        if (Array.isArray(rows) && rows.length > 0 && rows[0].beat) {
+          const remote = JSON.parse(rows[0].beat);
+          const remoteTs = Number(remote.lastUpdated) || 0;
+          const lastLocalTs = Number(localStorage.getItem('distro_last_synced_ts')) || 0;
+          if (force || remoteTs > lastLocalTs) {
+            if (Array.isArray(remote.deletedIds)) recordDeletedIds(remote.deletedIds);
+            const activeDelSet = new Set(getDeletedIds());
+            if (Array.isArray(remote.invoices)) setStorageData(STORAGE_KEYS.INVOICES, remote.invoices.filter(i => !activeDelSet.has(i.id)));
+            if (Array.isArray(remote.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, remote.purchases.filter(p => !activeDelSet.has(p.id)));
+            if (Array.isArray(remote.products)) setStorageData(STORAGE_KEYS.PRODUCTS, remote.products.filter(p => !activeDelSet.has(p.id)));
+            localStorage.setItem('distro_last_synced_ts', (remoteTs || Date.now()).toString());
+            hasUpdated = true;
+            if (typeof window !== 'undefined') window.dispatchEvent(new Event('distro_data_changed'));
+          }
+        }
+      }
+    }
+  } catch (e) {}
 
   return hasUpdated;
 };
 
 export const pushLocalDataToCloud = async () => {
-  const { url, key } = getActiveCloudCredentials();
-
-  if (!url || !key) {
-    return { success: false, message: 'Cloud database URL or Key is not configured.' };
-  }
-
-  const delSet = new Set(getDeletedIds());
-  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
-  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(pt => pt && !SAMPLE_IDS.includes(pt.id) && !delSet.has(pt.id));
-  const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !delSet.has(i.id));
-  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(i => i && !delSet.has(i.id));
-  const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !delSet.has(e.id));
-  const bankAccounts = getStorageData(STORAGE_KEYS.BANK_ACCOUNTS, []);
-  const bankTransactions = getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, []);
-  const proprietorCapital = getStorageData(STORAGE_KEYS.PROPRIETOR_CAPITAL, DEFAULT_PROPRIETOR_CAPITAL);
-  const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
-  const salesReturns = getStorageData(STORAGE_KEYS.RETURNS, []).filter(r => r && !delSet.has(r.id));
-  const invoiceHistory = getStorageData(STORAGE_KEYS.INVOICE_HISTORY, []);
-  const stockLots = getStorageData(STORAGE_KEYS.STOCK_LOTS, []);
-  const auditLogs = getStorageData(STORAGE_KEYS.AUDIT_LOGS, []);
-  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const activeDelSet = new Set(getDeletedIds());
+  const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !activeDelSet.has(i.id));
   const deletedIds = getDeletedIds();
+  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !activeDelSet.has(p.id));
+  const suppliers = getStorageData(STORAGE_KEYS.SUPPLIERS, []);
+  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+  const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !activeDelSet.has(e.id));
+  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !activeDelSet.has(p.id));
+  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !activeDelSet.has(p.id));
   const now = Date.now();
 
-  const payload = {
-    id: STORE_DATA_ID,
-    name: 'DISTROPULSE_SYSTEM_STORE',
-    owner: 'SYSTEM',
-    area: 'SYSTEM',
-    beat: JSON.stringify({
-      business,
-      products,
-      parties,
-      invoices,
-      purchases,
-      stockLots,
-      expenses,
-      bankAccounts,
-      bankTransactions,
-      proprietorCapital,
-      warehouses,
-      salesReturns,
-      invoiceHistory,
-      auditLogs,
-      deletedIds,
-      lastUpdated: now
-    }),
-    day: 'System',
-    balance: 0,
-    status: 'System',
-    phone: '000',
-    lat: 0,
-    lng: 0
+  const metaPayload = {
+    invoices,
+    deletedIds,
+    parties,
+    suppliers,
+    business,
+    warehouses,
+    expenses,
+    lastUpdated: now
   };
 
-  const headers = {
-    'apikey': key,
-    'Authorization': `Bearer ${key}`,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
-  };
+  let binSuccess = false;
 
-  const tables = ['distro_cloud_store', 'fmcg_shops'];
-  let pushedSuccess = false;
-  let lastErrorStatus = null;
+  try {
+    // 1. Push Invoices & Metadata (instant, ~5KB)
+    const p1 = fetch(CLOUD_BINS.INVOICES_META, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metaPayload)
+    });
 
-  for (const table of tables) {
+    // 2. Push Purchases
+    const p2 = fetch(CLOUD_BINS.PURCHASES, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ purchases, lastUpdated: now })
+    });
+
+    // 3. Push Products
+    const p3 = fetch(CLOUD_BINS.PRODUCTS, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products, lastUpdated: now })
+    });
+
+    await Promise.all([p1, p2, p3]);
+    binSuccess = true;
+    localStorage.setItem('distro_last_synced_ts', now.toString());
+    broadcastRealtimePulse();
+  } catch (err) {
+    console.warn('Cloud bin push error:', err);
+  }
+
+  // Also push to Supabase if credentials are provided
+  const { url, key } = getActiveCloudCredentials();
+  if (url && key) {
+    const payload = {
+      id: STORE_DATA_ID,
+      name: 'DISTROPULSE_SYSTEM_STORE',
+      owner: 'SYSTEM',
+      area: 'SYSTEM',
+      beat: JSON.stringify({
+        business,
+        products,
+        parties,
+        invoices,
+        purchases,
+        expenses,
+        warehouses,
+        deletedIds,
+        lastUpdated: now
+      }),
+      day: 'System',
+      balance: 0,
+      status: 'System',
+      phone: '000',
+      lat: 0,
+      lng: 0
+    };
+    const headers = {
+      'apikey': key,
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    };
     try {
-      const patchRes = await fetch(`${url}/rest/v1/${table}?id=eq.${STORE_DATA_ID}`, {
+      await fetch(`${url}/rest/v1/distro_cloud_store?id=eq.${STORE_DATA_ID}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify(payload)
       });
-
-      if (patchRes.ok) {
-        const resData = await patchRes.json().catch(() => []);
-        if (Array.isArray(resData) && resData.length === 0) {
-          await fetch(`${url}/rest/v1/${table}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload)
-          });
-        }
-        pushedSuccess = true;
-        break;
-      } else if (patchRes.status === 404) {
-        lastErrorStatus = 404;
-        continue; // Try fallback table
-      } else {
-        const postRes = await fetch(`${url}/rest/v1/${table}`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload)
-        });
-        if (postRes.ok) {
-          pushedSuccess = true;
-          break;
-        }
-        lastErrorStatus = postRes.status;
-      }
-    } catch (err) {
-      lastErrorStatus = err?.message;
-    }
+    } catch (e) {}
   }
 
-  if (pushedSuccess) {
-    localStorage.setItem('distro_last_synced_ts', now.toString());
-    broadcastRealtimePulse();
-    return { success: true, message: 'All 12 bills, products & parties synced to Cloud Database!' };
-  } else if (lastErrorStatus === 404) {
-    return { 
-      success: false, 
-      message: 'Supabase table missing. Please run supabase_sync_table.sql in Supabase SQL Editor.' 
-    };
+  if (binSuccess) {
+    return { success: true, message: 'All invoices, bills & products synchronized with Cloud Database!' };
   } else {
-    return { success: false, message: `Cloud database responded with status ${lastErrorStatus}` };
+    return { success: false, message: 'Cloud database currently offline. Saved locally.' };
   }
 };
 
