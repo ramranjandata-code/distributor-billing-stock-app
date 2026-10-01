@@ -466,13 +466,13 @@ input[type=number] {
     color: #000000 !important;
   }
 
-  /* Professional Half-Page / A5 Print Typography (Compact Enterprise Layout - Fits strictly in top half of A4 / A5) */
+  /* Professional Half-Page / A5 Print Typography (Compact Enterprise Layout - Fits 12 items strictly in half-page <= 135mm) */
   .print-area.print-area-a5,
   .print-area-a5 {
     width: 100% !important;
     max-width: 100% !important;
-    font-size: 7.6px !important;
-    line-height: 1.1 !important;
+    font-size: 7.2px !important;
+    line-height: 1.05 !important;
     padding: 0 !important;
   }
 
@@ -480,47 +480,45 @@ input[type=number] {
   .print-area.print-area-a5 table td,
   .print-area-a5 table th,
   .print-area-a5 table td {
-    padding: 0.8px 3px !important;
-    font-size: 7.6px !important;
-    line-height: 1.1 !important;
+    padding: 0.5px 2.5px !important;
+    font-size: 7.2px !important;
+    line-height: 1.05 !important;
     color: #000000 !important;
   }
 
   .print-area.print-area-a5 .items-table tr,
   .print-area-a5 .items-table tr {
-    height: 13.5px !important;
-    max-height: 14.5px !important;
+    height: 11px !important;
+    max-height: 12px !important;
   }
 
   .print-area.print-area-a5 .items-table th,
   .print-area.print-area-a5 .items-table td,
   .print-area-a5 .items-table th,
   .print-area-a5 .items-table td {
-    padding: 0.8px 3px !important;
-    font-size: 7.8px !important;
-    line-height: 1.1 !important;
+    padding: 0.4px 2.5px !important;
+    font-size: 7.2px !important;
+    line-height: 1.05 !important;
   }
 
   .print-area.print-area-a5 .hsn-table th,
   .print-area.print-area-a5 .hsn-table td,
   .print-area-a5 .hsn-table th,
   .print-area-a5 .hsn-table td {
-    padding: 0.5px 2px !important;
-    font-size: 6.8px !important;
-    line-height: 1.05 !important;
+    padding: 0.3px 2px !important;
+    font-size: 6.2px !important;
+    line-height: 1.0 !important;
   }
 
   .print-area.print-area-a5 .totals-table th,
   .print-area.print-area-a5 .totals-table td,
   .print-area-a5 .totals-table th,
   .print-area-a5 .totals-table td {
-    padding: 0.5px 3px !important;
-    font-size: 7.2px !important;
-    line-height: 1.1 !important;
+    padding: 0.3px 2.5px !important;
+    font-size: 6.8px !important;
+    line-height: 1.05 !important;
   }
 
-  
-  /* A3 Page Styling (Large Sheet - Fits 12 to 25+ Items with Premium Spacing) */
   .print-area.print-area-a3,
   .print-area-a3 {
     width: 100% !important;
