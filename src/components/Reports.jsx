@@ -34,7 +34,8 @@ import {
   Save,
   Sparkles,
   RefreshCw,
-  ChevronDown
+  ChevronDown,
+  Tag
 } from 'lucide-react';
 import { 
   fetchBankTransactions, 
@@ -49,7 +50,8 @@ import {
 } from '../utils/storage';
 
 export default function Reports({ invoices = [], products = [], parties = [], business, refreshAllData, t }) {
-  const [reportTab, setReportTab] = useState('SALES'); // 'SALES', 'PNL', 'BALANCESHEET', 'EXPENSES', 'GST', 'DAYBOOK', 'STOCK'
+  const [reportTab, setReportTab] = useState('SALES');
+  const [salesViewMode, setSalesViewMode] = useState('ALL'); // 'ALL', 'BRAND', 'PARTY', 'PRODUCT' // 'SALES', 'PNL', 'BALANCESHEET', 'EXPENSES', 'GST', 'DAYBOOK', 'STOCK'
   const [period, setPeriod] = useState('MONTHLY'); // 'TODAY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'CUSTOM', 'ALL'
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -452,32 +454,78 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     };
   }, [products, parties, bankAccounts, invoices, expenses, business, totalTax, capital, pnlData.netProfit, totalPersonalDrawings]);
 
-  // Product Sales Breakdown
+  // Helper to resolve brand accurately from invoice item or inventory products master
+  const resolveItemBrand = (item) => {
+    if (item.brand && item.brand.trim()) return item.brand.trim();
+    const matched = products.find(p => p.id === item.productId || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
+    if (matched && matched.brand && matched.brand.trim()) return matched.brand.trim();
+    return 'General';
+  };
+
+  // 1. Brand Sales Breakdown
+  const brandSalesMap = {};
+  filteredInvoices.forEach(inv => {
+    (inv.items || []).forEach(item => {
+      const bName = resolveItemBrand(item);
+      if (!brandSalesMap[bName]) {
+        brandSalesMap[bName] = {
+          name: bName,
+          totalQty: 0,
+          totalAmount: 0,
+          productsSet: new Set(),
+          invoiceIdsSet: new Set()
+        };
+      }
+      const qty = Number(item.qty) || 0;
+      const amt = Number(item.total) || (Number(item.price) * qty) || 0;
+      brandSalesMap[bName].totalQty += qty;
+      brandSalesMap[bName].totalAmount += amt;
+      if (item.name) brandSalesMap[bName].productsSet.add(item.name.trim());
+      if (inv.id) brandSalesMap[bName].invoiceIdsSet.add(inv.id);
+    });
+  });
+
+  const totalBrandSales = Object.values(brandSalesMap).reduce((sum, b) => sum + b.totalAmount, 0);
+
+  const brandBreakdown = Object.values(brandSalesMap).map(b => ({
+    name: b.name,
+    productCount: b.productsSet.size,
+    ordersCount: b.invoiceIdsSet.size,
+    totalQty: b.totalQty,
+    totalAmount: b.totalAmount,
+    sharePercent: totalBrandSales > 0 ? ((b.totalAmount / totalBrandSales) * 100).toFixed(1) : '0.0'
+  })).sort((a, b) => b.totalAmount - a.totalAmount);
+
+  // 2. Product Sales Breakdown (enhanced with Brand)
   const productSalesMap = {};
   filteredInvoices.forEach(inv => {
     (inv.items || []).forEach(item => {
-      if (!productSalesMap[item.productId]) {
-        productSalesMap[item.productId] = {
+      const prodKey = item.productId || item.name;
+      if (!productSalesMap[prodKey]) {
+        productSalesMap[prodKey] = {
           name: item.name,
+          brand: resolveItemBrand(item),
           sku: item.sku || '-',
           totalQty: 0,
           totalAmount: 0
         };
       }
-      productSalesMap[item.productId].totalQty += Number(item.qty) || 0;
-      productSalesMap[item.productId].totalAmount += Number(item.total) || (Number(item.price) * Number(item.qty)) || 0;
+      productSalesMap[prodKey].totalQty += Number(item.qty) || 0;
+      productSalesMap[prodKey].totalAmount += Number(item.total) || (Number(item.price) * Number(item.qty)) || 0;
     });
   });
   const topProducts = Object.values(productSalesMap).sort((a, b) => b.totalAmount - a.totalAmount);
 
-  // Party Sales Breakdown
+  // 3. Party Sales Breakdown (enhanced with GSTIN, Paid amount, and Balance status)
   const partySalesMap = {};
   filteredInvoices.forEach(inv => {
-    const key = inv.partyName || 'Cash Customer';
+    const key = (inv.partyName && inv.partyName.trim()) || 'Cash Customer';
     if (!partySalesMap[key]) {
+      const matchedParty = parties.find(p => p.name && p.name.trim().toLowerCase() === key.toLowerCase());
       partySalesMap[key] = {
         name: key,
-        phone: inv.partyPhone || '-',
+        phone: inv.partyPhone || matchedParty?.phone || '-',
+        gstin: inv.partyGstin || matchedParty?.gstin || '-',
         billCount: 0,
         totalSales: 0,
         totalBalance: 0
@@ -488,6 +536,56 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     partySalesMap[key].totalBalance += Number(inv.balanceAmount) || 0;
   });
   const partyBreakdown = Object.values(partySalesMap).sort((a, b) => b.totalSales - a.totalSales);
+
+  // CSV Exporters for Brand and Party Reports
+  const handleExportBrandSalesCsv = () => {
+    if (brandBreakdown.length === 0) {
+      alert('No brand sales data to export for this period.');
+      return;
+    }
+    const headers = ['#', 'Brand Name', 'Products Sold Count', 'Orders Count', 'Quantity Sold (Units)', 'Sales Revenue (INR)', 'Revenue Share (%)'];
+    const rows = brandBreakdown.map((b, idx) => [
+      idx + 1,
+      `"${(b.name || '').replace(/"/g, '""')}"`,
+      b.productCount,
+      b.ordersCount,
+      b.totalQty,
+      b.totalAmount.toFixed(2),
+      `${b.sharePercent}%`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', `Brand_Wise_Sales_Report_${period}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPartySalesCsv = () => {
+    if (partyBreakdown.length === 0) {
+      alert('No party sales data to export for this period.');
+      return;
+    }
+    const headers = ['#', 'Party Name', 'Phone', 'GSTIN', 'Total Bills', 'Total Sales (INR)', 'Collected (INR)', 'Due Balance (INR)'];
+    const rows = partyBreakdown.map((p, idx) => [
+      idx + 1,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      `"${p.phone || '-'}"`,
+      `"${p.gstin || '-'}"`,
+      p.billCount,
+      p.totalSales.toFixed(2),
+      (p.totalSales - p.totalBalance).toFixed(2),
+      p.totalBalance.toFixed(2)
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', `Party_Wise_Sales_Report_${period}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // GSTR-1 & 3B Categorization
   const b2bInvoices = filteredInvoices.filter(inv => inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP');
@@ -693,13 +791,29 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           </label>
           <select 
             className="input-field select-field"
-            value={reportTab}
+            value={
+              reportTab === 'SALES' 
+                ? (salesViewMode === 'BRAND' ? 'BRAND_SALES' : salesViewMode === 'PARTY' ? 'PARTY_SALES' : salesViewMode === 'PRODUCT' ? 'PRODUCT_SALES' : 'SALES')
+                : reportTab
+            } 
             onChange={(e) => {
               const val = e.target.value;
               if (val === 'ACTION_EXPENSE') {
                 setExpenseModalOpen(true);
               } else if (val === 'ACTION_CAPITAL') {
                 handleOpenCapitalModal();
+              } else if (val === 'BRAND_SALES') {
+                setReportTab('SALES');
+                setSalesViewMode('BRAND');
+              } else if (val === 'PARTY_SALES') {
+                setReportTab('SALES');
+                setSalesViewMode('PARTY');
+              } else if (val === 'PRODUCT_SALES') {
+                setReportTab('SALES');
+                setSalesViewMode('PRODUCT');
+              } else if (val === 'SALES') {
+                setReportTab('SALES');
+                setSalesViewMode('ALL');
               } else {
                 setReportTab(val);
               }
@@ -715,8 +829,13 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               cursor: 'pointer'
             }}
           >
-            <optgroup label="📊 Financial & Stock Reports">
-              <option value="SALES">📈 Sales Analytics</option>
+            <optgroup label="📊 Sales & Performance Reports">
+              <option value="SALES">📈 All Sales Analytics</option>
+              <option value="BRAND_SALES">🏷️ Brand-wise Sales Report</option>
+              <option value="PARTY_SALES">👥 Party-wise Sales Report</option>
+              <option value="PRODUCT_SALES">📦 Product-wise Sales Report</option>
+            </optgroup>
+            <optgroup label="💼 Financial & Accounting Reports">
               <option value="PNL">🥧 Trading & P&L</option>
               <option value="BALANCESHEET">⚖️ Balance Sheet</option>
               <option value="EXPENSES">🧾 Expenses & Drawings</option>
@@ -915,7 +1034,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
             <div style={{ textAlign: 'right' }}>
               <span className="badge badge-info" style={{ fontSize: '0.85rem', padding: '6px 12px', fontWeight: '800' }}>
-                {reportTab === 'SALES' && `📊 Sales Analytics • ${getPeriodLabel()}`}
+                {reportTab === 'SALES' && (
+                  salesViewMode === 'BRAND' ? `🏷️ Brand-Wise Sales Report • ${getPeriodLabel()}` :
+                  salesViewMode === 'PARTY' ? `👥 Party-Wise Sales Report • ${getPeriodLabel()}` :
+                  salesViewMode === 'PRODUCT' ? `📦 Product-Wise Sales Report • ${getPeriodLabel()}` :
+                  `📊 Sales Analytics • ${getPeriodLabel()}`
+                )}
                 {reportTab === 'PNL' && `📈 Trading & P&L Statement • ${getPeriodLabel()}`}
                 {reportTab === 'BALANCESHEET' && `⚖️ Balance Sheet • As on ${new Date().toLocaleDateString('en-IN')}`}
                 {reportTab === 'EXPENSES' && `🧾 Expenses & Drawings Ledger • ${getPeriodLabel()}`}
@@ -989,90 +1113,285 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-              {/* Top Products Table */}
-              <div className="glass-card" style={{ padding: '18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                  <Award size={20} color="var(--primary)" />
-                  <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
-                    Product-wise Sales Performance
-                  </h3>
-                </div>
+            {/* Sub-Navigation Buttons for Sales Reports */}
+            <div className="no-print" style={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              gap: '10px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '10px',
+              padding: '10px 14px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Filter size={16} color="var(--primary)" />
+                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-muted)' }}>
+                  Sales Report View:
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSalesViewMode('ALL')}
+                  className={`btn btn-sm ${salesViewMode === 'ALL' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', borderRadius: '6px' }}
+                >
+                  📊 All Sales Reports
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesViewMode('BRAND')}
+                  className={`btn btn-sm ${salesViewMode === 'BRAND' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', borderRadius: '6px' }}
+                >
+                  🏷️ Brand-Wise Sales ({brandBreakdown.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesViewMode('PARTY')}
+                  className={`btn btn-sm ${salesViewMode === 'PARTY' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', borderRadius: '6px' }}
+                >
+                  👥 Party-Wise Sales ({partyBreakdown.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSalesViewMode('PRODUCT')}
+                  className={`btn btn-sm ${salesViewMode === 'PRODUCT' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '700', borderRadius: '6px' }}
+                >
+                  📦 Product-Wise Sales ({topProducts.length})
+                </button>
+              </div>
+            </div>
 
-                {topProducts.length === 0 ? (
-                  <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    No sales records found for this period.
-                  </p>
-                ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+              {/* 1. BRAND-WISE SALES REPORT TABLE */}
+              {(salesViewMode === 'ALL' || salesViewMode === 'BRAND') && (
+                <div className="glass-card" style={{ padding: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Tag size={20} color="var(--primary)" />
+                      <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
+                        Brand-wise Sales Performance
+                      </h3>
+                      <span style={{ fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                        {brandBreakdown.length} Brands
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        Total Brand Sales: <strong style={{ color: 'var(--text-main)' }}>₹{totalBrandSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleExportBrandSalesCsv}
+                        className="btn btn-secondary btn-sm no-print"
+                        style={{ gap: '5px', padding: '4px 10px', fontSize: '0.78rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                        title="Download Brand Sales as Excel/CSV"
+                      >
+                        <Download size={13} />
+                        <span>Brand CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {brandBreakdown.length === 0 ? (
+                    <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      No brand sales records found for this period.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                        <thead>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                            <th style={{ padding: '8px' }}>#</th>
+                            <th style={{ padding: '8px' }}>Brand Name</th>
+                            <th style={{ padding: '8px', textAlign: 'center' }}>Distinct Products</th>
+                            <th style={{ padding: '8px', textAlign: 'center' }}>Orders Count</th>
+                            <th style={{ padding: '8px', textAlign: 'center' }}>Quantity Sold (Units)</th>
+                            <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
+                            <th style={{ padding: '8px', width: '190px' }}>Revenue Share (%)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {brandBreakdown.map((brand, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
+                              <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>
+                                <span style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '6px',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  padding: '3px 9px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(255,255,255,0.08)'
+                                }}>
+                                  🏷️ {brand.name}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600' }}>{brand.productCount}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600' }}>{brand.ordersCount}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{brand.totalQty}</td>
+                              <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
+                                ₹{brand.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              </td>
+                              <td style={{ padding: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ flex: 1, height: '7px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ 
+                                      width: `${Math.min(100, Math.max(0, brand.sharePercent))}%`, 
+                                      height: '100%', 
+                                      background: 'linear-gradient(90deg, #3b82f6, #10b981)',
+                                      borderRadius: '4px' 
+                                    }} />
+                                  </div>
+                                  <span style={{ fontSize: '0.78rem', fontWeight: '700', minWidth: '44px', textAlign: 'right' }}>
+                                    {brand.sharePercent}%
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 2. PARTY-WISE SALES & UDHAR BREAKDOWN TABLE */}
+              {(salesViewMode === 'ALL' || salesViewMode === 'PARTY') && (
+                <div className="glass-card" style={{ padding: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Users size={20} color="var(--primary)" />
+                      <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
+                        Party-wise Sales & Udhar Breakdown
+                      </h3>
+                      <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                        {partyBreakdown.length} Parties
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={handleExportPartySalesCsv}
+                        className="btn btn-secondary btn-sm no-print"
+                        style={{ gap: '5px', padding: '4px 10px', fontSize: '0.78rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                        title="Download Party Sales as Excel/CSV"
+                      >
+                        <Download size={13} />
+                        <span>Party CSV</span>
+                      </button>
+                    </div>
+                  </div>
+
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
                       <thead>
                         <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '8px' }}>#</th>
-                          <th style={{ padding: '8px' }}>Product Name</th>
-                          <th style={{ padding: '8px' }}>SKU</th>
-                          <th style={{ padding: '8px', textAlign: 'center' }}>Quantity Sold (Units)</th>
+                          <th style={{ padding: '8px' }}>Party / Customer Name</th>
+                          <th style={{ padding: '8px' }}>Phone</th>
+                          <th style={{ padding: '8px' }}>GSTIN</th>
+                          <th style={{ padding: '8px', textAlign: 'center' }}>Total Bills</th>
                           <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
+                          <th style={{ padding: '8px', textAlign: 'right' }}>Collected (₹)</th>
+                          <th style={{ padding: '8px', textAlign: 'right' }}>Due Balance (₹)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {topProducts.map((prod, idx) => (
+                        {partyBreakdown.map((party, idx) => (
                           <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
-                            <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>{prod.name}</td>
-                            <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{prod.sku}</td>
-                            <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{prod.totalQty}</td>
+                            <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>{party.name}</td>
+                            <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{party.phone}</td>
+                            <td style={{ padding: '8px', color: 'var(--text-dim)', fontSize: '0.78rem', fontFamily: 'monospace' }}>{party.gstin}</td>
+                            <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{party.billCount}</td>
                             <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
-                              ₹{prod.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              ₹{party.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#34d399' }}>
+                              ₹{(party.totalSales - party.totalBalance).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: party.totalBalance > 0 ? '#fbbf24' : '#34d399' }}>
+                              ₹{party.totalBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
-              </div>
-
-              {/* Party Sales Breakdown */}
-              <div className="glass-card" style={{ padding: '18px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                  <Users size={20} color="var(--primary)" />
-                  <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
-                    Party-wise Sales & Udhar Breakdown
-                  </h3>
                 </div>
+              )}
 
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-                    <thead>
-                      <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '8px' }}>#</th>
-                        <th style={{ padding: '8px' }}>Party / Customer Name</th>
-                        <th style={{ padding: '8px' }}>Phone</th>
-                        <th style={{ padding: '8px', textAlign: 'center' }}>Total Bills</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
-                        <th style={{ padding: '8px', textAlign: 'right' }}>Due Balance (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {partyBreakdown.map((party, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
-                          <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>{party.name}</td>
-                          <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{party.phone}</td>
-                          <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{party.billCount}</td>
-                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
-                            ₹{party.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                          </td>
-                          <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: party.totalBalance > 0 ? '#fbbf24' : '#34d399' }}>
-                            ₹{party.totalBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {/* 3. PRODUCT-WISE SALES PERFORMANCE TABLE */}
+              {(salesViewMode === 'ALL' || salesViewMode === 'PRODUCT') && (
+                <div className="glass-card" style={{ padding: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Award size={20} color="var(--primary)" />
+                      <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
+                        Product-wise Sales Performance
+                      </h3>
+                      <span style={{ fontSize: '0.75rem', background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
+                        {topProducts.length} Items
+                      </span>
+                    </div>
+                  </div>
+
+                  {topProducts.length === 0 ? (
+                    <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      No sales records found for this period.
+                    </p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                        <thead>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                            <th style={{ padding: '8px' }}>#</th>
+                            <th style={{ padding: '8px' }}>Product Name</th>
+                            <th style={{ padding: '8px' }}>Brand</th>
+                            <th style={{ padding: '8px' }}>SKU</th>
+                            <th style={{ padding: '8px', textAlign: 'center' }}>Quantity Sold (Units)</th>
+                            <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {topProducts.map((prod, idx) => (
+                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
+                              <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>{prod.name}</td>
+                              <td style={{ padding: '8px' }}>
+                                <span style={{ 
+                                  display: 'inline-block',
+                                  fontSize: '0.75rem',
+                                  background: 'rgba(255,255,255,0.05)',
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
+                                  color: 'var(--text-muted)'
+                                }}>
+                                  🏷️ {prod.brand || 'General'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{prod.sku}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{prod.totalQty}</td>
+                              <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
+                                ₹{prod.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           </>
         )}
