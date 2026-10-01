@@ -346,6 +346,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   }
 
   const totalQtyPcs = processedItems.reduce((sum, item) => sum + item.itemQty, 0);
+  const isDense = (paperFormat === "A5" && processedItems.length >= 10);
 
   // Statutory HSN/SAC Tax Summary computation
   const hsnSummary = useMemo(() => {
@@ -383,8 +384,17 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
   return (
     <>
+            {/* Dynamic @page sizing for A3, A4, and A5 printing */}
+      <style>{`
+        @media print {
+          @page {
+            size: ${paperFormat === 'A3' ? 'A3 portrait' : paperFormat === 'A5' ? 'A5 portrait' : paperFormat === 'A4' ? 'A4 portrait' : 'auto'} !important;
+            margin: ${paperFormat === 'A3' ? '8mm 10mm' : paperFormat === 'A5' ? '3mm 4mm' : '4mm 6mm'} !important;
+          }
+        }
+      `}</style>
       <div className="modal-overlay" style={{ zIndex: 1000 }}>
-        <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'A5' ? '820px' : '900px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
+        <div className="modal-content printable-modal-content" style={{ width: '100%', maxWidth: paperFormat === 'A5' ? '820px' : paperFormat === 'A3' ? '1060px' : '900px', background: '#ffffff', color: '#000000', padding: 0, transition: 'all 0.3s ease' }}>
         
         {/* Success Banner */}
         {saveSuccess && (
@@ -435,6 +445,20 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 A5 Half Page
               </button>
               <button
+                onClick={() => changePaperFormat('A3')}
+                style={{
+                  padding: '4px 10px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  background: paperFormat === 'A3' ? '#ffffff' : 'transparent',
+                  fontWeight: paperFormat === 'A3' ? '700' : '500',
+                  fontSize: '0.76rem',
+                  cursor: 'pointer'
+                }}
+              >
+                A3 Page (12+ Items)
+              </button>
+              <button
                 onClick={() => changePaperFormat('POS80')}
                 style={{
                   padding: '4px 10px',
@@ -450,9 +474,14 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               </button>
             </div>
 
+            {paperFormat === 'A3' && (
+              <span style={{ fontSize: '0.72rem', color: '#1d4ed8', background: '#eff6ff', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>⚡ A3 Large Page: 12+ Items Fit Guarantee</span>
+              </span>
+            )}
             {paperFormat === 'A5' && (
               <span style={{ fontSize: '0.72rem', color: '#047857', background: '#ecfdf5', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>⚡ A5 Half Page: 10 Items Fit Guarantee</span>
+                <span>⚡ A5 Half Page: 10–12 Items Fit Guarantee</span>
               </span>
             )}
 
@@ -675,7 +704,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </div>
           </div>
         ) : (
-        <div className={`print-area ${paperFormat === 'A5' ? 'print-area-a5' : 'print-area-a4'}`} style={{ 
+        <div className={`print-area ${paperFormat === 'A5' ? `print-area-a5 ${isDense ? 'is-dense' : ''}` : paperFormat === 'A3' ? 'print-area-a3' : 'print-area-a4'}`} style={{ 
           width: '100%',
           maxWidth: '100%',
           padding: paperFormat === 'A5' ? '2px 4px' : '6px 10px', 
@@ -854,7 +883,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             <tbody>
               {processedItems.map((item, index) => {
                 return (
-                  <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', height: paperFormat === 'A5' ? '13px' : '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                  <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', height: paperFormat === 'A5' ? (isDense ? '11.5px' : '13px') : '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                     <td style={{ padding: paperFormat === 'A5' ? '0.6px 2px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '600', color: '#000' }}>{index + 1}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isNonGst ? '360px' : '300px' }}>{item.name}</td>
                     <td style={{ padding: paperFormat === 'A5' ? '0.6px 2px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600' }}>{item.hsn || '1905'}</td>
@@ -871,7 +900,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               })}
 
               {/* Grid Filler Rows - 0 for A5 to keep height strictly within half-page */}
-              {Array.from({ length: Math.max(0, (paperFormat === 'A5' ? 0 : 7) - processedItems.length) }).map((_, emptyIndex) => (
+              {Array.from({ length: Math.max(0, (paperFormat === 'A5' || paperFormat === 'A3' ? 0 : 7) - processedItems.length) }).map((_, emptyIndex) => (
                 <tr key={`empty-${emptyIndex}`} style={{ borderBottom: '1px solid #cbd5e1', height: '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                   <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
                   <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>

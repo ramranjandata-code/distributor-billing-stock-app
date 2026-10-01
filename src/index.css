@@ -519,6 +519,82 @@ input[type=number] {
     line-height: 1.1 !important;
   }
 
+  
+  /* A3 Page Styling (Large Sheet - Fits 12 to 25+ Items with Premium Spacing) */
+  .print-area.print-area-a3,
+  .print-area-a3 {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 12.5px !important;
+    line-height: 1.25 !important;
+    padding: 0 !important;
+  }
+
+  .print-area.print-area-a3 table th,
+  .print-area.print-area-a3 table td,
+  .print-area-a3 table th,
+  .print-area-a3 table td {
+    padding: 3px 6px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    color: #000000 !important;
+  }
+
+  .print-area.print-area-a3 .items-table tr,
+  .print-area-a3 .items-table tr {
+    height: 24px !important;
+    max-height: 28px !important;
+  }
+
+  .print-area.print-area-a3 .items-table th,
+  .print-area.print-area-a3 .items-table td,
+  .print-area-a3 .items-table th,
+  .print-area-a3 .items-table td {
+    padding: 3px 6px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .print-area.print-area-a3 .hsn-table th,
+  .print-area.print-area-a3 .hsn-table td,
+  .print-area-a3 .hsn-table th,
+  .print-area-a3 .hsn-table td {
+    padding: 2.5px 5px !important;
+    font-size: 10.5px !important;
+    line-height: 1.2 !important;
+  }
+
+  .print-area.print-area-a3 .totals-table th,
+  .print-area.print-area-a3 .totals-table td,
+  .print-area-a3 .totals-table th,
+  .print-area-a3 .totals-table td {
+    padding: 2.5px 6px !important;
+    font-size: 11.5px !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Ultra-dense A5 mode when items >= 10 (guarantees up to 12 items fit strictly on half-page) */
+  .print-area.print-area-a5.is-dense,
+  .print-area-a5.is-dense {
+    font-size: 7.0px !important;
+    line-height: 1.05 !important;
+  }
+
+  .print-area.print-area-a5.is-dense .items-table tr,
+  .print-area-a5.is-dense .items-table tr {
+    height: 11.5px !important;
+    max-height: 12.5px !important;
+  }
+
+  .print-area.print-area-a5.is-dense .items-table th,
+  .print-area.print-area-a5.is-dense .items-table td,
+  .print-area-a5.is-dense .items-table th,
+  .print-area-a5.is-dense .items-table td {
+    padding: 0.4px 2.5px !important;
+    font-size: 7.2px !important;
+    line-height: 1.05 !important;
+  }
+
   .print-summary-signature {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
