@@ -1478,25 +1478,27 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.80rem' }}>
             <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px 10px' }}>Product Details</th>
-                <th style={{ padding: '12px 10px' }}>Batch & Expiry</th>
-                <th style={{ padding: '12px 10px' }}>Warehouse</th>
-                <th style={{ padding: '12px 10px' }}>MRP</th>
-                <th style={{ padding: '12px 10px' }}>Sale Price</th>
-                <th style={{ padding: '12px 10px' }}>Cost Price (WAC)</th>
-                <th style={{ padding: '12px 10px' }}>GST %</th>
-                <th style={{ padding: '12px 10px', color: '#047857', fontWeight: '700' }}>Purchase Price (w/ GST)</th>
-                <th style={{ padding: '12px 10px' }}>Current Stock</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right' }}>Actions</th>
+              <tr style={{ textAlign: 'left', borderBottom: '1.5px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                <th style={{ padding: '7px 8px' }}>Product Details</th>
+                <th style={{ padding: '7px 8px' }}>Brand</th>
+                <th style={{ padding: '7px 8px' }}>HSN Code</th>
+                <th style={{ padding: '7px 8px' }}>Batch & Expiry</th>
+                <th style={{ padding: '7px 8px' }}>Warehouse</th>
+                <th style={{ padding: '7px 8px' }}>MRP</th>
+                <th style={{ padding: '7px 8px' }}>Sale Price</th>
+                <th style={{ padding: '7px 8px' }}>Cost Price (WAC)</th>
+                <th style={{ padding: '7px 8px' }}>GST %</th>
+                <th style={{ padding: '7px 8px', color: '#047857', fontWeight: '700' }}>Purchase Price (w/ GST)</th>
+                <th style={{ padding: '7px 8px' }}>Current Stock</th>
+                <th style={{ padding: '7px 8px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No products found.
                   </td>
                 </tr>
@@ -1513,34 +1515,67 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
                   return (
                     <tr key={prod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '12px 10px' }}>
-                        <div style={{ fontWeight: '700', color: 'var(--text-main)' }}>{prod.name}</div>
-                        <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                          Brand: {prod.brand || 'N/A'} • SKU: <span style={{ color: 'var(--primary)' }}>{prod.sku}</span>
+                      {/* 1. Product Details */}
+                      <td style={{ padding: '6px 8px' }}>
+                        <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.82rem', lineHeight: '1.2' }}>{prod.name}</div>
+                        <div style={{ fontSize: '0.69rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+                          SKU: <span style={{ color: 'var(--primary)', fontWeight: '600' }}>{prod.sku}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '12px 10px' }}>
-                        <div style={{ fontWeight: '700', fontSize: '0.78rem' }}>{prod.batchNo || 'LOT-MAIN'}</div>
+
+                      {/* 2. Brand Column */}
+                      <td style={{ padding: '6px 8px' }}>
+                        <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>
+                          {prod.brand || 'General'}
+                        </span>
+                      </td>
+
+                      {/* 3. HSN Code Column */}
+                      <td style={{ padding: '6px 8px' }}>
+                        <span style={{ 
+                          fontWeight: '700', 
+                          color: '#334155', 
+                          fontSize: '0.73rem', 
+                          background: '#f1f5f9', 
+                          padding: '1px 5px', 
+                          borderRadius: '4px', 
+                          border: '1px solid #cbd5e1' 
+                        }}>
+                          {prod.hsn || prod.hsnCode || '1905'}
+                        </span>
+                      </td>
+
+                      {/* 4. Batch & Expiry */}
+                      <td style={{ padding: '6px 8px' }}>
+                        <div style={{ fontWeight: '700', fontSize: '0.74rem' }}>{prod.batchNo || 'LOT-MAIN'}</div>
                         {prod.expiryDate ? (
-                          <div style={{ marginTop: '3px' }}>
-                            <span className={`badge ${expInfo.status === 'EXPIRED' ? 'badge-danger' : expInfo.status === 'EXPIRING_SOON' ? 'badge-warning' : 'badge-secondary'}`} style={{ fontSize: '0.68rem', padding: '2px 6px' }}>
+                          <div style={{ marginTop: '2px' }}>
+                            <span className={`badge ${expInfo.status === 'EXPIRED' ? 'badge-danger' : expInfo.status === 'EXPIRING_SOON' ? 'badge-warning' : 'badge-secondary'}`} style={{ fontSize: '0.64rem', padding: '1px 5px' }}>
                               {expInfo.status === 'EXPIRED' ? `Expired (${prod.expiryDate})` : expInfo.status === 'EXPIRING_SOON' ? `Exp in ${expInfo.daysLeft}d` : `Exp: ${prod.expiryDate}`}
                             </span>
                           </div>
                         ) : (
-                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>N/A</span>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>N/A</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 10px' }}>
-                        <span className="badge badge-secondary" style={{ fontSize: '0.72rem' }}>
+
+                      {/* 5. Warehouse */}
+                      <td style={{ padding: '6px 8px' }}>
+                        <span className="badge badge-secondary" style={{ fontSize: '0.68rem', padding: '2px 5px' }}>
                           {whObj?.name || 'Main Godown'}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 10px', fontWeight: '600' }}>₹{prod.mrp}</td>
-                      <td style={{ padding: '12px 10px', fontWeight: '700', color: 'var(--primary)' }}>₹{prod.salePrice}</td>
-                      <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>
-                        <div style={{ fontWeight: '700', color: 'var(--text-main)' }}>₹{pPrice.toFixed(2)}</div>
-                        <div style={{ fontSize: '0.7rem' }}>
+
+                      {/* 6. MRP */}
+                      <td style={{ padding: '6px 8px', fontWeight: '600', fontSize: '0.78rem' }}>₹{prod.mrp}</td>
+
+                      {/* 7. Sale Price */}
+                      <td style={{ padding: '6px 8px', fontWeight: '700', color: 'var(--primary)', fontSize: '0.80rem' }}>₹{prod.salePrice}</td>
+
+                      {/* 8. Cost Price (WAC) */}
+                      <td style={{ padding: '6px 8px', color: 'var(--text-muted)' }}>
+                        <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.78rem' }}>₹{pPrice.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.67rem' }}>
                           {prodVal.lots.length > 1 ? (
                             <button
                               type="button"
@@ -1550,52 +1585,60 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 color: '#b45309', 
                                 border: '1px solid #fde68a',
                                 borderRadius: '4px',
-                                padding: '1px 5px',
-                                fontSize: '0.67rem',
+                                padding: '1px 4px',
+                                fontSize: '0.64rem',
                                 fontWeight: '700',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '3px',
-                                marginTop: '2px'
+                                gap: '2px',
+                                marginTop: '1px'
                               }}
                               title="Click to view inward lots with varying purchase rates"
                             >
-                              ⚡ {prodVal.lots.length} Lots (WAC)
+                              ⚡ {prodVal.lots.length} Lots
                             </button>
                           ) : (
                             <span style={{ color: 'var(--text-muted)' }}>Ex-GST</span>
                           )}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 10px' }}>{prod.gstRate}%</td>
-                      <td style={{ padding: '12px 10px', fontWeight: '700', color: '#047857' }}>
-                        <div>₹{purchaseWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                        <div style={{ fontSize: '0.69rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>
+
+                      {/* 9. GST % */}
+                      <td style={{ padding: '6px 8px', fontSize: '0.78rem' }}>{prod.gstRate}%</td>
+
+                      {/* 10. Purchase Price (w/ GST) */}
+                      <td style={{ padding: '6px 8px', fontWeight: '700', color: '#047857' }}>
+                        <div style={{ fontSize: '0.78rem' }}>₹{purchaseWithGst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                        <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>
                           Val: ₹{prodVal.totalWithGst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 10px' }}>
-                        <span className={`badge ${isLow ? 'badge-danger' : 'badge-success'}`}>
+
+                      {/* 11. Current Stock */}
+                      <td style={{ padding: '6px 8px' }}>
+                        <span className={`badge ${isLow ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.70rem', padding: '2px 5px' }}>
                           {formatCartonStock(prod.currentStock, prod.pcsPerCarton, prod.pcsPerBox, prod.unit)}
                         </span>
-                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
                           Total: {prod.currentStock} {prod.unit || 'Pcs'} ({prod.pcsPerCarton || 24} Pcs/Ctn{Number(prod.pcsPerBox) > 1 ? ` • ${prod.pcsPerBox} Pcs/${prod.unit}` : ''})
                         </div>
                         {isLow && (
-                          <div style={{ fontSize: '0.7rem', color: '#f87171', marginTop: '2px', fontWeight: '700' }}>Low Warning</div>
+                          <div style={{ fontSize: '0.66rem', color: '#f87171', marginTop: '1px', fontWeight: '700' }}>Low Warning</div>
                         )}
                       </td>
-                      <td style={{ padding: '12px 10px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+
+                      {/* 12. Actions */}
+                      <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '4px' }}>
                           <button 
                             type="button"
                             onClick={() => setSelectedLotProduct(prod)}
                             className="btn btn-secondary btn-sm"
                             title="View Inward Lots & Purchase Rates"
-                            style={{ background: '#f8fafc', color: '#4f46e5', borderColor: '#e0e7ff', fontWeight: '700' }}
+                            style={{ background: '#f8fafc', color: '#4f46e5', borderColor: '#e0e7ff', fontWeight: '700', padding: '3px 6px', fontSize: '0.72rem' }}
                           >
-                            <Layers size={14} />
+                            <Layers size={13} />
                             <span>Lots</span>
                           </button>
 
@@ -1603,9 +1646,9 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                             onClick={() => handleOpenStockIn(prod)}
                             className="btn btn-secondary btn-sm"
                             title="Add Stock (Stock In)"
-                            style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontWeight: '700' }}
+                            style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontWeight: '700', padding: '3px 6px', fontSize: '0.72rem' }}
                           >
-                            <ArrowDownCircle size={14} />
+                            <ArrowDownCircle size={13} />
                             <span>+ Stock</span>
                           </button>
 
@@ -1613,16 +1656,18 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                             onClick={() => handleOpenEditModal(prod)}
                             className="btn btn-secondary btn-sm"
                             title="Edit"
+                            style={{ padding: '3px 6px' }}
                           >
-                            <Edit3 size={14} />
+                            <Edit3 size={13} />
                           </button>
 
                           <button 
                             onClick={() => handleDelete(prod.id, prod.name)}
                             className="btn btn-danger btn-sm"
                             title="Delete"
+                            style={{ padding: '3px 6px' }}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
