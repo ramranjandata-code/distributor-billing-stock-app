@@ -2147,10 +2147,13 @@ export const saveInvoice = (invoiceData) => {
   if (!isDraft) {
     // 1. Consume FIFO stock lots and attach original purchase cost breakdown per item
     const enrichedItems = (invoiceData.items || []).map(item => {
-      if (!item.isSection && !item.isNote && item.productId) {
-        const fifoResult = consumeStockLotsFIFO(item.productId, Number(item.qty) || 0);
+      if (!item.isSection && !item.isNote) {
+        const prod = products.find(p => p.id === item.productId || (p.sku && item.sku && p.sku === item.sku) || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
+        const resolvedBrand = (item.brand && item.brand.trim() && item.brand !== 'General') ? item.brand : (prod?.brand || 'General');
+        const fifoResult = item.productId ? consumeStockLotsFIFO(item.productId, Number(item.qty) || 0) : { unitCost: Number(item.costPrice) || 0, totalCost: 0, consumedLots: [] };
         return {
           ...item,
+          brand: resolvedBrand,
           costPrice: fifoResult.unitCost,
           totalCost: fifoResult.totalCost,
           consumedLots: fifoResult.consumedLots

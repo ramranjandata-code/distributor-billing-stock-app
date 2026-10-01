@@ -331,6 +331,7 @@ export default function Billing({ products, parties, business, invoices, refresh
           productId: product.id,
           name: product.name,
           sku: product.sku,
+          brand: product.brand || 'General',
           hsn: product.hsn,
           pcsPerCarton: pcsPerCtn,
           cartonQty: 0,

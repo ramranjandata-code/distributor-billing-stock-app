@@ -611,7 +611,8 @@ export const INITIAL_PRODUCTS = [
   },
   {
     "name": "ALOO BHUJIA - MRP-5/-",
-    "brand": "General",
+    "sku": "SKU-8287",
+    "brand": "SIFI PARKASH",
     "category": "General",
     "hsn": "21069099",
     "mrp": 60,
@@ -1281,7 +1282,7 @@ export const INITIAL_PRODUCTS = [
     "latestPurchasePrice": 44.71
   },
   {
-    "name": "CLAP  MASALA CHASKA - MRP-5/-",
+    "name": "CLAP MASALA CHASKA - MRP-5/-",
     "sku": "SKU-8319",
     "barcode": "",
     "hsn": "21069099",
@@ -1989,7 +1990,7 @@ export const INITIAL_PRODUCTS = [
     "latestPurchasePrice": 60
   },
   {
-    "name": "NAVRATNA -MRP-5/-",
+    "name": "NAVRATNA - MRP-5/-",
     "sku": "SKU-4207",
     "barcode": "",
     "hsn": "21069099",
@@ -2225,7 +2226,7 @@ export const INITIAL_PRODUCTS = [
     "name": "DITE LITE - MRP 10/-",
     "sku": "SKU-4221",
     "barcode": "",
-    "brand": " SIFI Parkash",
+    "brand": "SIFI PARKASH",
     "category": "General",
     "unit": "Pcs",
     "pcsPerCarton": 15,
@@ -3161,7 +3162,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790616376608_vlpn",
         "productId": "prod_1790482823691",
-        "name": "CLAP  MASALA CHASKA - MRP-5/-",
+        "name": "CLAP MASALA CHASKA - MRP-5/-",
         "mrp": 70,
         "hsn": "21069099",
         "salePrice": 54,
@@ -3218,7 +3219,7 @@ export const INITIAL_PURCHASES = [
         "purchasePriceWithGst": 64.36,
         "qty": "18",
         "sku": "SKU-4221",
-        "brand": " SIFI Parkash",
+        "brand": "SIFI PARKASH",
         "category": "General",
         "pcsPerCarton": 15
       },
@@ -3601,7 +3602,7 @@ export const INITIAL_PURCHASES = [
         "purchasePriceWithGst": 64.36,
         "qty": "18",
         "sku": "SKU-4221",
-        "brand": " SIFI Parkash",
+        "brand": "SIFI PARKASH",
         "category": "General",
         "pcsPerCarton": 15
       },
@@ -3672,7 +3673,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790612419891_u4hz",
         "productId": "prod_1790478840744",
-        "name": "NAVRATNA -MRP-5/-",
+        "name": "NAVRATNA - MRP-5/-",
         "mrp": 60,
         "hsn": "21069099",
         "salePrice": 47,
@@ -3985,7 +3986,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790647399194_4rgc",
         "productId": "prod_1790478840744",
-        "name": "NAVRATNA -MRP-5/-",
+        "name": "NAVRATNA - MRP-5/-",
         "mrp": 60,
         "hsn": "21069099",
         "salePrice": 47,
@@ -4058,7 +4059,7 @@ export const INITIAL_PURCHASES = [
         "purchasePriceWithGst": 63.35,
         "qty": "72",
         "sku": "SKU-4221",
-        "brand": " SIFI Parkash",
+        "brand": "SIFI PARKASH",
         "category": "General",
         "pcsPerCarton": 15
       },
@@ -4463,7 +4464,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790648903303_vacu",
         "productId": "prod_1790482823691",
-        "name": "CLAP  MASALA CHASKA - MRP-5/-",
+        "name": "CLAP MASALA CHASKA - MRP-5/-",
         "mrp": 70,
         "hsn": "21069099",
         "salePrice": 54,
@@ -5486,7 +5487,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790689642624_3",
         "productId": "prod_1790478840744",
-        "name": "NAVRATNA -MRP-5/-",
+        "name": "NAVRATNA - MRP-5/-",
         "mrp": 60,
         "hsn": "21069099",
         "salePrice": 47,
@@ -5981,7 +5982,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790689642624_36",
         "productId": "prod_1790482823691",
-        "name": "CLAP  MASALA CHASKA - MRP-5/-",
+        "name": "CLAP MASALA CHASKA - MRP-5/-",
         "mrp": 70,
         "hsn": "21069099",
         "salePrice": 54,
@@ -6749,7 +6750,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790685312801_17",
         "productId": "prod_1790478840744",
-        "name": "NAVRATNA -MRP-5/-",
+        "name": "NAVRATNA - MRP-5/-",
         "mrp": 60,
         "hsn": "21069099",
         "salePrice": 47,

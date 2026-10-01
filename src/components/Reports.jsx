@@ -1,5 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { 
+import {
+  Search,
+  Eye,
+  ArrowLeft,
   TrendingUp, 
   IndianRupee, 
   ShieldCheck, 
@@ -49,10 +52,79 @@ import {
   getProductStockValuation 
 } from '../utils/storage';
 
+
+// Bulletproof Brand Normalizer & Canonicalizer for FMCG Products
+const canonicalizeBrand = (brandStr) => {
+  if (!brandStr) return 'General';
+  const clean = brandStr.trim();
+  const upper = clean.toUpperCase();
+
+  if (upper.includes('PARKASH') || upper.includes('PRAKASH') || upper.includes('SIFI')) {
+    return 'SIFI PARKASH';
+  }
+  if (upper.includes('RELIANCE') || upper.includes('RELIENCE') || upper.includes('RELINCE')) {
+    return 'RELIANCE CONSUMER PRODUCTS';
+  }
+  if (upper.includes('BEYOND SNACK')) {
+    return 'BEYOND SNACKS';
+  }
+  if (upper.includes('RAVALGAON') || upper.includes('PAN PASAND')) {
+    return 'RAVALGAON';
+  }
+  if (upper.includes('TOFFEEMAN') || upper.includes('COFFEE BREAK')) {
+    return 'TOFFEEMAN';
+  }
+  if (upper === 'GENERAL' || upper === 'STANDARD' || upper === 'DEFAULT') {
+    return 'General';
+  }
+  return clean;
+};
+
+const KNOWN_PARKASH_KEYWORDS = [
+  'KOOPA', 'FINGER', 'NOODLES', 'CLAP', 'NAVRATNA', 'MOONG DAL', 
+  'SALTED PEANUTS', 'RAJASTHANI SEV', 'TASTY NUTS', 'AKHA CHANA', 
+  'CHANA DAL', 'ALOO BHUJIA', 'BHUJIA', 'DITE LITE', 'SIFI', 'PARKASH', 'PRAKASH'
+];
+
+const normalizeText = (text) => {
+  if (!text) return '';
+  return text.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const parseInvoiceDate = (dateVal) => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+  let d = new Date(dateVal);
+  if (!isNaN(d.getTime())) return d;
+  if (typeof dateVal === 'string') {
+    const clean = dateVal.trim();
+    const parts = clean.split(/[-/]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      } else if (parts[2].length === 4) {
+        const p0 = parseInt(parts[0], 10);
+        const p1 = parseInt(parts[1], 10);
+        const p2 = parseInt(parts[2], 10);
+        if (p0 > 12) {
+          d = new Date(p2, p1 - 1, p0);
+        } else {
+          d = new Date(p2, p0 - 1, p1);
+        }
+      }
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+  return null;
+};
+
 export default function Reports({ invoices = [], products = [], parties = [], business, refreshAllData, t }) {
   const [reportTab, setReportTab] = useState('SALES');
   const [salesViewMode, setSalesViewMode] = useState('ALL'); // 'ALL', 'BRAND', 'PARTY', 'PRODUCT' // 'SALES', 'PNL', 'BALANCESHEET', 'EXPENSES', 'GST', 'DAYBOOK', 'STOCK'
-  const [period, setPeriod] = useState('MONTHLY'); // 'TODAY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'CUSTOM', 'ALL'
+  const [period, setPeriod] = useState('ALL'); // Default ALL so previous months (Aug/Sep) are never hidden
+  const [brandSearchQuery, setBrandSearchQuery] = useState('');
+  const [selectedBrandDetail, setSelectedBrandDetail] = useState(null);
+  const [brandDetailTab, setBrandDetailTab] = useState('PRODUCTS'); // 'PRODUCTS' or 'INVOICES' // 'TODAY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'CUSTOM', 'ALL'
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [dayBookDate, setDayBookDate] = useState(new Date().toISOString().split('T')[0]);
@@ -193,20 +265,21 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     if (refreshAllData) refreshAllData();
   };
 
-  // Date Filtering Helper for Invoices
+    // Date Filtering Helper for Invoices (Robust parser handles all date formats)
   const filterInvoicesByPeriod = () => {
     const now = new Date();
 
     return invoices.filter(inv => {
       if (!inv || !inv.date) return false;
-      const invDate = new Date(inv.date);
-      if (isNaN(invDate.getTime())) return false;
-
       if (period === 'ALL') return true;
+
+      const invDate = parseInvoiceDate(inv.date);
+      if (!invDate) return true; // If unparseable date, keep in report rather than dropping
 
       if (period === 'TODAY') {
         const todayStr = now.toISOString().split('T')[0];
-        return inv.date.startsWith(todayStr);
+        const dateStr = invDate.toISOString().split('T')[0];
+        return dateStr === todayStr || (typeof inv.date === 'string' && inv.date.startsWith(todayStr));
       }
 
       if (period === 'WEEKLY') {
@@ -454,47 +527,132 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     };
   }, [products, parties, bankAccounts, invoices, expenses, business, totalTax, capital, pnlData.netProfit, totalPersonalDrawings]);
 
-  // Helper to resolve brand accurately from invoice item or inventory products master
+    // Multi-tier Intelligent Brand Resolver
   const resolveItemBrand = (item) => {
-    if (item.brand && item.brand.trim()) return item.brand.trim();
-    const matched = products.find(p => p.id === item.productId || (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
-    if (matched && matched.brand && matched.brand.trim()) return matched.brand.trim();
+    // 1. Explicit valid brand on line item
+    if (item.brand && item.brand.trim() && item.brand.trim().toLowerCase() !== 'general') {
+      return canonicalizeBrand(item.brand);
+    }
+    // 2. Lookup by Product ID
+    if (item.productId) {
+      const matched = products.find(p => p.id === item.productId);
+      if (matched && matched.brand && matched.brand.trim().toLowerCase() !== 'general') {
+        return canonicalizeBrand(matched.brand);
+      }
+    }
+    // 3. Lookup by SKU
+    if (item.sku && item.sku.trim()) {
+      const cleanSku = item.sku.trim().toLowerCase();
+      const matched = products.find(p => p.sku && p.sku.trim().toLowerCase() === cleanSku);
+      if (matched && matched.brand && matched.brand.trim().toLowerCase() !== 'general') {
+        return canonicalizeBrand(matched.brand);
+      }
+    }
+    // 4. Normalized Product Name match
+    const itemNameNorm = normalizeText(item.name);
+    if (itemNameNorm) {
+      const matched = products.find(p => {
+        const pNameNorm = normalizeText(p.name);
+        return pNameNorm === itemNameNorm || (pNameNorm && (pNameNorm.includes(itemNameNorm) || itemNameNorm.includes(pNameNorm)));
+      });
+      if (matched && matched.brand && matched.brand.trim().toLowerCase() !== 'general') {
+        return canonicalizeBrand(matched.brand);
+      }
+    }
+    // 5. Keyword Heuristic for Parkash FMCG lineup
+    const upperName = (item.name || '').toUpperCase();
+    for (const kw of KNOWN_PARKASH_KEYWORDS) {
+      if (upperName.includes(kw)) {
+        return 'SIFI PARKASH';
+      }
+    }
+    if (upperName.includes('RAVALGAON') || upperName.includes('PAN PASAND')) {
+      return 'RAVALGAON';
+    }
+    if (upperName.includes('TOFFEEMAN') || upperName.includes('COFFEE BREAK')) {
+      return 'TOFFEEMAN';
+    }
     return 'General';
   };
 
-  // 1. Brand Sales Breakdown
+  // 1. Brand Sales Breakdown with Complete Drill-Down
   const brandSalesMap = {};
   filteredInvoices.forEach(inv => {
     (inv.items || []).forEach(item => {
+      if (item.isSection || item.isNote) return;
       const bName = resolveItemBrand(item);
       if (!brandSalesMap[bName]) {
         brandSalesMap[bName] = {
           name: bName,
           totalQty: 0,
           totalAmount: 0,
-          productsSet: new Set(),
-          invoiceIdsSet: new Set()
+          productsMap: {},
+          invoicesMap: {}
         };
       }
       const qty = Number(item.qty) || 0;
       const amt = Number(item.total) || (Number(item.price) * qty) || 0;
       brandSalesMap[bName].totalQty += qty;
       brandSalesMap[bName].totalAmount += amt;
-      if (item.name) brandSalesMap[bName].productsSet.add(item.name.trim());
-      if (inv.id) brandSalesMap[bName].invoiceIdsSet.add(inv.id);
+
+      // Track item inside brand
+      const prodKey = item.productId || item.name || 'item_' + Date.now();
+      if (!brandSalesMap[bName].productsMap[prodKey]) {
+        brandSalesMap[bName].productsMap[prodKey] = {
+          id: item.productId,
+          name: item.name || 'Unnamed Product',
+          sku: item.sku || '-',
+          qty: 0,
+          amount: 0,
+          rate: Number(item.price) || 0
+        };
+      }
+      brandSalesMap[bName].productsMap[prodKey].qty += qty;
+      brandSalesMap[bName].productsMap[prodKey].amount += amt;
+
+      // Track invoice inside brand
+      const invKey = inv.id || inv.invoiceNo || 'inv_' + Date.now();
+      if (!brandSalesMap[bName].invoicesMap[invKey]) {
+        brandSalesMap[bName].invoicesMap[invKey] = {
+          id: inv.id,
+          invoiceNo: inv.invoiceNo || '-',
+          date: inv.date || '-',
+          partyName: inv.partyName || inv.customerName || 'Cash Customer',
+          grandTotal: Number(inv.grandTotal) || 0,
+          state: inv.state || 'posted',
+          paidAmount: Number(inv.paidAmount) || 0,
+          balanceAmount: Number(inv.balanceAmount) || 0,
+          brandQty: 0,
+          brandAmount: 0,
+          itemsCount: 0
+        };
+      }
+      brandSalesMap[bName].invoicesMap[invKey].brandQty += qty;
+      brandSalesMap[bName].invoicesMap[invKey].brandAmount += amt;
+      brandSalesMap[bName].invoicesMap[invKey].itemsCount += 1;
     });
   });
 
   const totalBrandSales = Object.values(brandSalesMap).reduce((sum, b) => sum + b.totalAmount, 0);
 
-  const brandBreakdown = Object.values(brandSalesMap).map(b => ({
-    name: b.name,
-    productCount: b.productsSet.size,
-    ordersCount: b.invoiceIdsSet.size,
-    totalQty: b.totalQty,
-    totalAmount: b.totalAmount,
-    sharePercent: totalBrandSales > 0 ? ((b.totalAmount / totalBrandSales) * 100).toFixed(1) : '0.0'
-  })).sort((a, b) => b.totalAmount - a.totalAmount);
+  const brandBreakdown = Object.values(brandSalesMap).map(b => {
+    const productsList = Object.values(b.productsMap).sort((p1, p2) => p2.amount - p1.amount);
+    const invoicesList = Object.values(b.invoicesMap).sort((i1, i2) => {
+      const d1 = parseInvoiceDate(i1.date)?.getTime() || 0;
+      const d2 = parseInvoiceDate(i2.date)?.getTime() || 0;
+      return d2 - d1;
+    });
+    return {
+      name: b.name,
+      productCount: productsList.length,
+      ordersCount: invoicesList.length,
+      totalQty: b.totalQty,
+      totalAmount: b.totalAmount,
+      sharePercent: totalBrandSales > 0 ? ((b.totalAmount / totalBrandSales) * 100).toFixed(1) : '0.0',
+      productsList,
+      invoicesList
+    };
+  }).sort((a, b) => b.totalAmount - a.totalAmount);
 
   // 2. Product Sales Breakdown (enhanced with Brand)
   const productSalesMap = {};
@@ -1169,98 +1327,318 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-              {/* 1. BRAND-WISE SALES REPORT TABLE */}
+                            {/* 1. BRAND-WISE SALES REPORT TABLE & DRILL-DOWN */}
               {(salesViewMode === 'ALL' || salesViewMode === 'BRAND') && (
-                <div className="glass-card" style={{ padding: '18px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', flexWrap: 'wrap', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Tag size={20} color="var(--primary)" />
-                      <h3 style={{ fontSize: '1rem', fontWeight: '700', margin: 0 }}>
-                        Brand-wise Sales Performance
-                      </h3>
-                      <span style={{ fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>
-                        {brandBreakdown.length} Brands
-                      </span>
+                <div className="glass-card" style={{ padding: '20px' }}>
+                  
+                  {/* Top Bar: Title & Stats */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Tag size={20} color="var(--primary)" />
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: '800', margin: 0, color: 'var(--text-main)' }}>
+                          Brand-wise Sales Performance
+                        </h3>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                          {period === 'ALL' ? 'Showing All Bills (No Cutoff)' : `Period: ${period}`} • {filteredInvoices.length} Bills Analyzed
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                        Total Brand Sales: <strong style={{ color: 'var(--text-main)' }}>₹{totalBrandSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)', background: 'var(--bg-secondary, #f8fafc)', padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                        Total Brand Sales: <strong style={{ color: '#059669', fontSize: '0.92rem' }}>₹{totalBrandSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
                       </span>
                       <button
                         type="button"
                         onClick={handleExportBrandSalesCsv}
                         className="btn btn-secondary btn-sm no-print"
-                        style={{ gap: '5px', padding: '4px 10px', fontSize: '0.78rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
-                        title="Download Brand Sales as Excel/CSV"
+                        style={{ gap: '6px', padding: '5px 12px', fontSize: '0.78rem', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.3)' }}
+                        title="Download Brand Sales Summary CSV"
                       >
-                        <Download size={13} />
-                        <span>Brand CSV</span>
+                        <Download size={14} />
+                        <span>Export CSV</span>
                       </button>
                     </div>
                   </div>
 
-                  {brandBreakdown.length === 0 ? (
-                    <p style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      No brand sales records found for this period.
-                    </p>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-                        <thead>
-                          <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                            <th style={{ padding: '8px' }}>#</th>
-                            <th style={{ padding: '8px' }}>Brand Name</th>
-                            <th style={{ padding: '8px', textAlign: 'center' }}>Distinct Products</th>
-                            <th style={{ padding: '8px', textAlign: 'center' }}>Orders Count</th>
-                            <th style={{ padding: '8px', textAlign: 'center' }}>Quantity Sold (Units)</th>
-                            <th style={{ padding: '8px', textAlign: 'right' }}>Total Sales (₹)</th>
-                            <th style={{ padding: '8px', width: '190px' }}>Revenue Share (%)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {brandBreakdown.map((brand, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                              <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
-                              <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>
-                                <span style={{ 
-                                  display: 'inline-flex', 
-                                  alignItems: 'center', 
-                                  gap: '6px',
-                                  background: 'rgba(255,255,255,0.05)',
-                                  padding: '3px 9px',
-                                  borderRadius: '6px',
-                                  border: '1px solid rgba(255,255,255,0.08)'
-                                }}>
-                                  🏷️ {brand.name}
-                                </span>
-                              </td>
-                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600' }}>{brand.productCount}</td>
-                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '600' }}>{brand.ordersCount}</td>
-                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{brand.totalQty}</td>
-                              <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
-                                ₹{brand.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                              </td>
-                              <td style={{ padding: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <div style={{ flex: 1, height: '7px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ 
-                                      width: `${Math.min(100, Math.max(0, brand.sharePercent))}%`, 
-                                      height: '100%', 
-                                      background: 'linear-gradient(90deg, #3b82f6, #10b981)',
-                                      borderRadius: '4px' 
-                                    }} />
-                                  </div>
-                                  <span style={{ fontSize: '0.78rem', fontWeight: '700', minWidth: '44px', textAlign: 'right' }}>
-                                    {brand.sharePercent}%
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {/* Search Bar & Filter */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+                      <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                      <input 
+                        type="text"
+                        className="input-field"
+                        placeholder="Search brand name or product (e.g. Parkash, Koopa, Finger, Clap)..."
+                        value={brandSearchQuery}
+                        onChange={(e) => setBrandSearchQuery(e.target.value)}
+                        style={{ paddingLeft: '32px', fontSize: '0.84rem' }}
+                      />
                     </div>
-                  )}
+                    {brandSearchQuery && (
+                      <button 
+                        type="button" 
+                        onClick={() => setBrandSearchQuery('')} 
+                        className="btn btn-sm btn-secondary" 
+                        style={{ fontSize: '0.78rem', padding: '6px 10px' }}
+                      >
+                        Clear Search
+                      </button>
+                    )}
+                  </div>
+
+                  {/* DETAIL DRILL-DOWN MODAL / PANEL */}
+                  {selectedBrandDetail ? (
+                    <div style={{ background: 'var(--bg-secondary, #f8fafc)', borderRadius: '10px', padding: '16px', border: '1.5px solid var(--primary)', marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBrandDetail(null)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ gap: '6px', padding: '5px 10px', fontSize: '0.8rem', fontWeight: '700' }}
+                          >
+                            <ArrowLeft size={14} />
+                            <span>All Brands</span>
+                          </button>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>🏷️ {selectedBrandDetail.name}</span>
+                              <span style={{ fontSize: '0.75rem', background: '#3b82f6', color: '#fff', padding: '2px 8px', borderRadius: '10px' }}>
+                                {selectedBrandDetail.sharePercent}% Share
+                              </span>
+                            </h4>
+                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                              Total Sold: <strong>{selectedBrandDetail.totalQty} Units</strong> • Revenue: <strong style={{ color: '#059669' }}>₹{selectedBrandDetail.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Drill-down Sub-tabs */}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setBrandDetailTab('PRODUCTS')}
+                            className={`btn btn-sm ${brandDetailTab === 'PRODUCTS' ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ padding: '5px 12px', fontSize: '0.8rem', fontWeight: '700' }}
+                          >
+                            📦 Products ({selectedBrandDetail.productsList.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBrandDetailTab('INVOICES')}
+                            className={`btn btn-sm ${brandDetailTab === 'INVOICES' ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ padding: '5px 12px', fontSize: '0.8rem', fontWeight: '700' }}
+                          >
+                            📄 Bills & Invoices ({selectedBrandDetail.invoicesList.length})
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Tab 1: Products under Brand */}
+                      {brandDetailTab === 'PRODUCTS' && (
+                        <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: '#475569' }}>
+                                <th style={{ padding: '8px 10px' }}>#</th>
+                                <th style={{ padding: '8px 10px' }}>Product Name</th>
+                                <th style={{ padding: '8px 10px' }}>SKU</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Units Sold</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Avg Rate (₹)</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Total Revenue (₹)</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>% Share in Brand</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedBrandDetail.productsList.map((prod, pIdx) => {
+                                const prodShare = selectedBrandDetail.totalAmount > 0 
+                                  ? ((prod.amount / selectedBrandDetail.totalAmount) * 100).toFixed(1) 
+                                  : '0.0';
+                                return (
+                                  <tr key={pIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                    <td style={{ padding: '8px 10px', fontWeight: '700', color: 'var(--primary)' }}>{pIdx + 1}</td>
+                                    <td style={{ padding: '8px 10px', fontWeight: '700', color: 'var(--text-main)' }}>{prod.name}</td>
+                                    <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{prod.sku}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700' }}>{prod.qty}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right' }}>₹{(prod.qty > 0 ? (prod.amount / prod.qty) : prod.rate).toFixed(2)}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>₹{prod.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: '#2563eb' }}>{prodShare}%</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* Tab 2: Invoices under Brand */}
+                      {brandDetailTab === 'INVOICES' && (
+                        <div style={{ overflowX: 'auto', background: '#fff', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: '#475569' }}>
+                                <th style={{ padding: '8px 10px' }}>Invoice #</th>
+                                <th style={{ padding: '8px 10px' }}>Date</th>
+                                <th style={{ padding: '8px 10px' }}>Customer / Party</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Brand Items</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Brand Qty Sold</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Brand Sales (₹)</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'right' }}>Full Bill Total (₹)</th>
+                                <th style={{ padding: '8px 10px', textAlign: 'center' }}>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedBrandDetail.invoicesList.map((bill, bIdx) => (
+                                <tr key={bIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                  <td style={{ padding: '8px 10px', fontWeight: '800', color: 'var(--primary)' }}>
+                                    #{bill.invoiceNo}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', color: 'var(--text-muted)' }}>
+                                    {bill.date ? bill.date.split('T')[0] : '-'}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', fontWeight: '700', color: 'var(--text-main)' }}>
+                                    {bill.partyName}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '600' }}>
+                                    {bill.itemsCount} lines
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700' }}>
+                                    {bill.brandQty} Pcs
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>
+                                    ₹{bill.brandAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: 'var(--text-main)' }}>
+                                    ₹{bill.grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                    <span style={{ 
+                                      padding: '2px 8px', 
+                                      borderRadius: '10px', 
+                                      fontSize: '0.72rem', 
+                                      fontWeight: '800',
+                                      background: bill.balanceAmount <= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                      color: bill.balanceAmount <= 0 ? '#059669' : '#dc2626'
+                                    }}>
+                                      {bill.balanceAmount <= 0 ? 'PAID' : 'DUE'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {/* MAIN BRANDS SUMMARY TABLE */}
+                  {(() => {
+                    const filteredBrands = brandBreakdown.filter(b => {
+                      if (!brandSearchQuery) return true;
+                      const q = brandSearchQuery.toLowerCase();
+                      return b.name.toLowerCase().includes(q) || b.productsList.some(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+                    });
+
+                    if (filteredBrands.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                          <p style={{ fontWeight: '600', marginBottom: '8px' }}>No brand sales records found for this criteria.</p>
+                          <span style={{ fontSize: '0.8rem' }}>Try switching Period to <strong>"All"</strong> or clearing your search filter.</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                          <thead>
+                            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                              <th style={{ padding: '10px 8px' }}>#</th>
+                              <th style={{ padding: '10px 8px' }}>Brand Name</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Distinct Products</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Orders Count</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Quantity Sold (Units)</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'right' }}>Total Sales (₹)</th>
+                              <th style={{ padding: '10px 8px', width: '180px' }}>Revenue Share (%)</th>
+                              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredBrands.map((brand, idx) => (
+                              <tr 
+                                key={idx} 
+                                style={{ 
+                                  borderBottom: '1px solid rgba(255,255,255,0.04)',
+                                  cursor: 'pointer',
+                                  transition: 'background 0.15s'
+                                }}
+                                onClick={() => setSelectedBrandDetail(brand)}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.05)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                              >
+                                <td style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
+                                <td style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--text-main)' }}>
+                                  <span style={{ 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    gap: '6px',
+                                    background: brand.name.includes('PARKASH') ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255,255,255,0.05)',
+                                    color: brand.name.includes('PARKASH') ? '#059669' : 'inherit',
+                                    padding: '4px 10px', 
+                                    borderRadius: '6px',
+                                    border: brand.name.includes('PARKASH') ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                                    fontWeight: '800'
+                                  }}>
+                                    🏷️ {brand.name}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '600' }}>{brand.productCount}</td>
+                                <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '600' }}>{brand.ordersCount}</td>
+                                <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '700' }}>{brand.totalQty}</td>
+                                <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
+                                  ₹{brand.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                </td>
+                                <td style={{ padding: '10px 8px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ flex: 1, height: '7px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                      <div style={{ 
+                                        width: `${Math.min(100, Math.max(0, brand.sharePercent))}%`, 
+                                        height: '100%', 
+                                        background: brand.name.includes('PARKASH') ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #3b82f6, #10b981)',
+                                        borderRadius: '4px' 
+                                      }} />
+                                    </div>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: '700', minWidth: '44px', textAlign: 'right' }}>
+                                      {brand.sharePercent}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedBrandDetail(brand);
+                                    }}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{ gap: '4px', padding: '3px 8px', fontSize: '0.75rem', fontWeight: '700' }}
+                                    title="View items and invoices in this brand"
+                                  >
+                                    <Eye size={13} color="var(--primary)" />
+                                    <span>Details</span>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

@@ -176,6 +176,7 @@ export default function OdooInvoiceForm({
       productId: firstProd?.id || 'prod_1',
       name: firstProd?.name || 'Product',
       sku: firstProd?.sku || '',
+      brand: firstProd?.brand || 'General',
       hsn: firstProd?.hsn || '1905',
       qty: 1,
       pcsPerCarton: pcsPerCtn,
@@ -238,6 +239,7 @@ export default function OdooInvoiceForm({
       if (p) {
         item.name = p.name;
         item.sku = p.sku;
+        item.brand = p.brand || 'General';
         item.hsn = p.hsn;
         item.price = Number(p.salePrice || p.mrp);
         item.gstRate = p.gstRate || 0;
