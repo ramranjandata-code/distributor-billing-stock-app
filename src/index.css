@@ -466,57 +466,64 @@ input[type=number] {
     color: #000000 !important;
   }
 
-  /* Professional Half-Page / A5 Print Typography (Optimized Enterprise Layout - Larger text & 56px QR while strictly fitting 12 items <= 125mm) */
+  /* Professional Half-Page / A5 Print Typography (Tally Prime / Busy Grade Executive Layout) */
   .print-area.print-area-a5,
   .print-area-a5 {
     width: 100% !important;
     max-width: 100% !important;
-    font-size: 8.2px !important;
-    line-height: 1.12 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 8.8px !important;
+    line-height: 1.2 !important;
     padding: 0 !important;
+    color: #0f172a !important;
+  }
+
+  .print-area.print-area-a5 table,
+  .print-area-a5 table {
+    border-collapse: collapse !important;
   }
 
   .print-area.print-area-a5 table th,
   .print-area.print-area-a5 table td,
   .print-area-a5 table th,
   .print-area-a5 table td {
-    padding: 0.6px 3px !important;
-    font-size: 8.2px !important;
-    line-height: 1.12 !important;
-    color: #000000 !important;
+    padding: 2px 4px !important;
+    font-size: 8.5px !important;
+    line-height: 1.2 !important;
+    color: #0f172a !important;
   }
 
   .print-area.print-area-a5 .items-table tr,
   .print-area-a5 .items-table tr {
-    height: 13px !important;
-    max-height: 14px !important;
+    height: 16px !important;
+    max-height: 18px !important;
   }
 
   .print-area.print-area-a5 .items-table th,
   .print-area.print-area-a5 .items-table td,
   .print-area-a5 .items-table th,
   .print-area-a5 .items-table td {
-    padding: 0.6px 3px !important;
-    font-size: 8.2px !important;
-    line-height: 1.12 !important;
+    padding: 2.5px 5px !important;
+    font-size: 8.8px !important;
+    line-height: 1.2 !important;
   }
 
   .print-area.print-area-a5 .hsn-table th,
   .print-area.print-area-a5 .hsn-table td,
   .print-area-a5 .hsn-table th,
   .print-area-a5 .hsn-table td {
-    padding: 0.5px 2px !important;
-    font-size: 7.0px !important;
-    line-height: 1.05 !important;
+    padding: 1.5px 4px !important;
+    font-size: 7.6px !important;
+    line-height: 1.15 !important;
   }
 
   .print-area.print-area-a5 .totals-table th,
   .print-area.print-area-a5 .totals-table td,
   .print-area-a5 .totals-table th,
   .print-area-a5 .totals-table td {
-    padding: 0.6px 3px !important;
-    font-size: 7.6px !important;
-    line-height: 1.12 !important;
+    padding: 1.5px 6px !important;
+    font-size: 8.2px !important;
+    line-height: 1.2 !important;
   }
 
   .print-area.print-area-a3,

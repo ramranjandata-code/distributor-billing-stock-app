@@ -704,500 +704,523 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </div>
           </div>
         ) : (
-        <div className={`print-area ${paperFormat === 'A5' ? `print-area-a5 ${isDense ? 'is-dense' : ''}` : paperFormat === 'A3' ? 'print-area-a3' : 'print-area-a4'}`} style={{ 
+        <div className={`print-area ${paperFormat === 'A5' ? 'print-area-a5' : paperFormat === 'A3' ? 'print-area-a3' : 'print-area-a4'}`} style={{ 
           width: '100%',
           maxWidth: '100%',
-          padding: paperFormat === 'A5' ? '2px 4px' : '6px 10px', 
+          padding: paperFormat === 'A5' ? '2px 4px' : '8px 12px', 
           background: '#ffffff', 
-          color: '#000000', 
-          fontFamily: "'Inter', -apple-system, sans-serif",
-          fontSize: paperFormat === 'A5' ? '7.6px' : '11px',
-          lineHeight: paperFormat === 'A5' ? '1.1' : '1.2',
+          color: '#0f172a', 
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+          fontSize: paperFormat === 'A5' ? '8.6px' : '11px',
+          lineHeight: '1.25',
           pageBreakInside: 'avoid',
           breakInside: 'avoid',
           boxSizing: 'border-box'
         }}>
           
-          {/* SECTION 1: TOP UNBOXED HEADER (Logo, Firm Name, Address) */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: paperFormat === 'A5' ? '1.5px' : '6px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: paperFormat === 'A5' ? '8px' : '14px' }}>
+          {/* ========================================================= */}
+          {/* SECTION 1: EXECUTIVE DISTRIBUTOR LETTERHEAD */}
+          {/* ========================================================= */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            borderBottom: '2px solid #0f172a',
+            paddingBottom: paperFormat === 'A5' ? '4px' : '8px',
+            marginBottom: paperFormat === 'A5' ? '4px' : '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: paperFormat === 'A5' ? '12px' : '18px' }}>
               <img 
                 src={firmLogo} 
                 alt="Logo" 
                 style={{ 
-                  height: paperFormat === 'A5' ? '32px' : '52px', 
+                  height: paperFormat === 'A5' ? '40px' : '56px', 
                   width: 'auto', 
                   objectFit: 'contain' 
                 }} 
               />
               <div>
                 <h1 style={{ 
-                  fontSize: paperFormat === 'A5' ? '1.02rem' : '1.55rem', 
+                  fontSize: paperFormat === 'A5' ? '1.25rem' : '1.65rem', 
                   fontWeight: '900', 
                   margin: 0, 
                   textTransform: 'uppercase', 
-                  color: '#000000',
-                  lineHeight: '1.05',
-                  letterSpacing: '0.2px'
+                  color: '#0f172a',
+                  lineHeight: '1.1',
+                  letterSpacing: '0.5px'
                 }}>
                   {business?.name || 'JAI MAA SHARDEY ENTERPRISES'}
                 </h1>
-                {business?.address && (
-                  <p style={{ margin: '0', fontSize: paperFormat === 'A5' ? '0.65rem' : '0.78rem', color: '#1e293b', fontWeight: '500', lineHeight: 1.1 }}>
-                    {business.address}
-                  </p>
-                )}
-                <div style={{ fontSize: paperFormat === 'A5' ? '0.63rem' : '0.75rem', fontWeight: '600', color: '#334155', marginTop: '0', lineHeight: 1.1 }}>
-                  {business?.phone ? `Ph: ${business.phone}` : ''}
-                  {business?.phone && business?.email ? '  |  ' : ''}
-                  {business?.email ? `Email: ${business.email}` : ''}
+                <p style={{ margin: '2px 0 0 0', fontSize: paperFormat === 'A5' ? '0.70rem' : '0.82rem', color: '#334155', fontWeight: '500', lineHeight: 1.25 }}>
+                  {business?.address || 'K-6/73A, Gali No.8, Near Vikrant Chowk, Mohan Garden, Uttam Nagar, New Delhi - 110059'}
+                </p>
+                <div style={{ fontSize: paperFormat === 'A5' ? '0.68rem' : '0.78rem', fontWeight: '600', color: '#475569', marginTop: '1px' }}>
+                  {business?.phone ? <span>Ph: <strong>{business.phone}</strong></span> : ''}
+                  {business?.phone && business?.email ? '  •  ' : ''}
+                  {business?.email ? <span>Email: <strong>{business.email}</strong></span> : ''}
+                  {business?.proprietor ? <span>  •  Proprietor: <strong>{business.proprietor}</strong></span> : ''}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* SECTION 2: MAIN INVOICE METADATA BOX */}
-          <div style={{ border: '1.2px solid #000000', marginBottom: paperFormat === 'A5' ? '2px' : '6px' }}>
+          {/* ========================================================= */}
+          {/* SECTION 2: STATUTORY INVOICE HEADER & 2-COLUMN METADATA */}
+          {/* ========================================================= */}
+          <div style={{ 
+            border: '1px solid #1e293b', 
+            marginBottom: paperFormat === 'A5' ? '4px' : '8px',
+            background: '#ffffff'
+          }}>
             
-            {/* Header Banner: GSTIN | TAX INVOICE | ORIGINAL FOR RECIPIENT */}
+            {/* Top Bar: GSTIN | TAX INVOICE | ORIGINAL FOR RECIPIENT */}
             <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1.2fr 1fr 1.1fr', 
-              borderBottom: '1.2px solid #000000', 
-              background: '#f1f5f9', 
-              padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', 
-              alignItems: 'center' 
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid #1e293b', 
+              background: '#f8fafc', 
+              padding: paperFormat === 'A5' ? '3px 8px' : '4px 10px'
             }}>
-              <div style={{ fontWeight: '800', fontSize: paperFormat === 'A5' ? '0.68rem' : '0.86rem' }}>
-                {!isNonGst && business?.gstin ? `GSTIN : ${business.gstin}` : (business?.phone ? `Ph : ${business.phone}` : '')}
+              <div style={{ fontWeight: '800', fontSize: paperFormat === 'A5' ? '0.74rem' : '0.88rem', color: '#0f172a' }}>
+                {!isNonGst && business?.gstin ? <span>GSTIN: <strong>{business.gstin}</strong></span> : (business?.phone ? <span>Ph: {business.phone}</span> : '')}
               </div>
-              <div style={{ textAlign: 'center', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.82rem' : '1.15rem', letterSpacing: '0.4px' }}>
+              <div style={{ 
+                textAlign: 'center', 
+                fontWeight: '900', 
+                fontSize: paperFormat === 'A5' ? '0.90rem' : '1.15rem', 
+                letterSpacing: '0.8px', 
+                color: '#0f172a' 
+              }}>
                 {isNonGst ? 'BILL OF SUPPLY / CASH MEMO' : 'TAX INVOICE'}
               </div>
-              <div style={{ textAlign: 'right', fontWeight: '700', fontSize: paperFormat === 'A5' ? '0.62rem' : '0.75rem', textTransform: 'uppercase' }}>
+              <div style={{ textAlign: 'right', fontWeight: '700', fontSize: paperFormat === 'A5' ? '0.68rem' : '0.76rem', color: '#475569', textTransform: 'uppercase' }}>
                 ORIGINAL FOR RECIPIENT
               </div>
             </div>
 
-            {/* 3-Column Info Grid: Party Details | Invoice Numbers | Invoice Dates */}
+            {/* 2-Column Buyer & Invoice Details (prevents text wrapping!) */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: '1.35fr 1fr 0.95fr', 
-              fontSize: paperFormat === 'A5' ? '0.66rem' : '0.78rem' 
+              gridTemplateColumns: '1.25fr 1fr', 
+              fontSize: paperFormat === 'A5' ? '0.74rem' : '0.82rem' 
             }}>
               
-              {/* Col 1: Party / Buyer Info */}
-              <div style={{ padding: paperFormat === 'A5' ? '2px 6px' : '4px 8px', borderRight: '1.2px solid #000000' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '3px', marginBottom: '1px' }}>
-                  <span style={{ width: paperFormat === 'A5' ? '48px' : '58px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>M/S :</span>
-                  <strong style={{ fontSize: paperFormat === 'A5' ? '0.70rem' : '0.85rem', color: '#000' }}>{invoice.partyName}</strong>
+              {/* Left Box: Buyer (Bill to) */}
+              <div style={{ padding: paperFormat === 'A5' ? '4px 8px' : '6px 10px', borderRight: '1px solid #1e293b' }}>
+                <div style={{ fontSize: paperFormat === 'A5' ? '0.64rem' : '0.70rem', fontWeight: '800', color: '#475569', textTransform: 'uppercase', marginBottom: '2px' }}>
+                  Buyer (Bill to) / Consignee:
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '3px', marginBottom: '1px' }}>
-                  <span style={{ width: paperFormat === 'A5' ? '48px' : '58px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>Address :</span>
-                  <span style={{ color: '#000' }}>{displayAddress}</span>
+                <div style={{ fontSize: paperFormat === 'A5' ? '0.86rem' : '0.96rem', fontWeight: '800', color: '#0f172a', marginBottom: '2px' }}>
+                  {invoice.partyName || invoice.customerName}
                 </div>
-                {invoice.partyPhone && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1px' }}>
-                    <span style={{ width: paperFormat === 'A5' ? '48px' : '58px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>Phone :</span>
-                    <span style={{ color: '#000' }}>{invoice.partyPhone}</span>
-                  </div>
-                )}
-                {!isNonGst && invoice.partyGstin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <span style={{ width: paperFormat === 'A5' ? '48px' : '58px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>GSTIN :</span>
-                    <strong style={{ color: '#000' }}>{invoice.partyGstin}</strong>
-                  </div>
-                )}
-              </div>
-
-              {/* Col 2: Invoice No. & Challan No */}
-              <div style={{ padding: paperFormat === 'A5' ? '2px 6px' : '4px 8px', borderRight: '1.2px solid #000000' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1px' }}>
-                  <span style={{ width: paperFormat === 'A5' ? '68px' : '80px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>Invoice No. :</span>
-                  <strong style={{ color: '#000', fontSize: paperFormat === 'A5' ? '0.74rem' : '0.86rem' }}>{invoice.invoiceNo}</strong>
+                <div style={{ fontSize: paperFormat === 'A5' ? '0.72rem' : '0.80rem', color: '#334155', lineHeight: 1.25, marginBottom: '3px' }}>
+                  {displayAddress}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <span style={{ width: paperFormat === 'A5' ? '68px' : '80px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>Challan No :</span>
-                  <span style={{ color: '#000' }}>{invoice.challanNo || '-'}</span>
+                <div style={{ display: 'flex', gap: '12px', fontSize: paperFormat === 'A5' ? '0.72rem' : '0.80rem', color: '#1e293b', flexWrap: 'wrap' }}>
+                  {invoice.partyPhone && <span>Phone: <strong>{invoice.partyPhone}</strong></span>}
+                  {!isNonGst && invoice.partyGstin && <span>GSTIN: <strong style={{ fontFamily: 'monospace' }}>{invoice.partyGstin}</strong></span>}
                 </div>
               </div>
 
-              {/* Col 3: Invoice Date & Challan Date */}
-              <div style={{ padding: paperFormat === 'A5' ? '2px 6px' : '4px 8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '1px' }}>
-                  <span style={{ width: paperFormat === 'A5' ? '70px' : '82px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>Invoice Date :</span>
-                  <strong style={{ color: '#000', fontSize: paperFormat === 'A5' ? '0.70rem' : '0.84rem' }}>{formattedDate}</strong>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <span style={{ width: paperFormat === 'A5' ? '70px' : '82px', flexShrink: 0, fontWeight: '700', color: '#1e293b' }}>Challan Date :</span>
-                  <span style={{ color: '#000' }}>{formattedDate}</span>
-                </div>
+              {/* Right Box: Structured Invoice Numbers & Dates */}
+              <div style={{ padding: paperFormat === 'A5' ? '4px 8px' : '6px 10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'A5' ? '0.72rem' : '0.80rem', lineHeight: 1.35 }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ color: '#475569', fontWeight: '600', width: '100px', padding: '1px 0' }}>Invoice No.:</td>
+                      <td style={{ fontWeight: '800', color: '#0f172a', padding: '1px 0' }}>{invoice.invoiceNo}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#475569', fontWeight: '600', padding: '1px 0' }}>Invoice Date:</td>
+                      <td style={{ fontWeight: '800', color: '#0f172a', padding: '1px 0' }}>{formattedDate}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#475569', fontWeight: '600', padding: '1px 0' }}>Challan No.:</td>
+                      <td style={{ color: '#334155', padding: '1px 0' }}>{invoice.challanNo || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ color: '#475569', fontWeight: '600', padding: '1px 0' }}>Payment Mode:</td>
+                      <td style={{ fontWeight: '700', color: '#0f172a', padding: '1px 0' }}>{invoice.paymentMode || 'CASH'} ({invoice.paymentStatus})</td>
+                    </tr>
+                    {!isNonGst && (
+                      <tr>
+                        <td style={{ color: '#475569', fontWeight: '600', padding: '1px 0' }}>Place of Supply:</td>
+                        <td style={{ color: '#334155', padding: '1px 0' }}>{business?.state ? `${business.state} (${business.stateCode || '07'})` : 'Delhi (07)'}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
 
             </div>
 
-            {/* e-Way Bill Information Banner if present */}
+            {/* Optional e-Way Bill Banner */}
             {invoice.ewayBill && (
               <div style={{ 
-                borderTop: '1px solid #000000', 
-                padding: paperFormat === 'A5' ? '2px 8px' : '3px 8px', 
+                borderTop: '1px solid #1e293b', 
+                padding: '2.5px 8px', 
                 background: '#f8fafc', 
-                fontSize: paperFormat === 'A5' ? '0.64rem' : '0.74rem', 
+                fontSize: paperFormat === 'A5' ? '0.66rem' : '0.76rem', 
                 display: 'flex', 
-                gap: '12px', 
+                gap: '14px', 
                 fontWeight: '600',
+                color: '#334155',
                 flexWrap: 'wrap'
               }}>
                 <span><strong>e-Way Bill No:</strong> {invoice.ewayBill.ewayBillNo || ('EWB-' + (invoice.invoiceNo || '').replace(/[^0-9]/g, ''))}</span>
                 <span><strong>Vehicle No:</strong> {invoice.ewayBill.vehicleNo || 'DL-01-A-1234'}</span>
-                <span><strong>Transporter:</strong> {invoice.ewayBill.transporterName || 'Self / Road Transport'}</span>
+                <span><strong>Transporter:</strong> {invoice.ewayBill.transporterName || 'Road Transport'}</span>
                 {invoice.ewayBill.distanceKm && <span><strong>Distance:</strong> {invoice.ewayBill.distanceKm} KM</span>}
               </div>
             )}
 
           </div>
 
+          {/* ========================================================= */}
           {/* SECTION 3: ITEMS GRID TABLE */}
-          <table className={`items-table ${paperFormat === 'A5' ? 'items-table-a5' : ''}`} style={{ 
+          {/* ========================================================= */}
+          <table className="items-table" style={{ 
             width: '100%', 
             borderCollapse: 'collapse', 
-            border: '1.2px solid #000000', 
-            fontSize: paperFormat === 'A5' ? '8.2px' : '11px', 
-            marginBottom: paperFormat === 'A5' ? '2px' : '6px' 
+            border: '1px solid #1e293b', 
+            fontSize: paperFormat === 'A5' ? '8.6px' : '11px', 
+            marginBottom: paperFormat === 'A5' ? '3px' : '6px' 
           }}>
             <thead>
-              <tr style={{ borderBottom: '1.2px solid #000000', background: '#f1f5f9', fontWeight: '800', textAlign: 'left', minHeight: paperFormat === 'A5' ? '15px' : '28px' }}>
-                <th style={{ padding: paperFormat === 'A5' ? '0.6px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '5%' : '4%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Sr. No.</th>
-                <th style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderRight: '1px solid #000000', width: isNonGst ? '50%' : '44%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Name of Product / Service</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1px 2.5px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '11%' : '9%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>HSN / SAC</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center', width: isNonGst ? '11%' : '9%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Qty</th>
-                <th style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: isNonGst ? '11%' : '14%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                  Rate (₹)
-                </th>
+              <tr style={{ 
+                borderBottom: '1.2px solid #1e293b', 
+                background: '#f1f5f9', 
+                fontWeight: '800', 
+                textAlign: 'left', 
+                color: '#0f172a'
+              }}>
+                <th style={{ padding: paperFormat === 'A5' ? '2.5px 4px' : '4px 6px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '4%' }}>#</th>
+                <th style={{ padding: paperFormat === 'A5' ? '2.5px 6px' : '4px 8px', borderRight: '1px solid #cbd5e1', width: isNonGst ? '52%' : '44%' }}>Product Description</th>
+                <th style={{ padding: paperFormat === 'A5' ? '2.5px 4px' : '4px 6px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '10%' }}>HSN/SAC</th>
+                <th style={{ padding: paperFormat === 'A5' ? '2.5px 4px' : '4px 6px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '9%' }}>Qty</th>
+                <th style={{ padding: paperFormat === 'A5' ? '2.5px 6px' : '4px 8px', borderRight: '1px solid #cbd5e1', textAlign: 'right', width: '11%' }}>Rate (₹)</th>
                 {!isNonGst && (
-                  <th style={{ padding: paperFormat === 'A5' ? '1px 3px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right', width: '10%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Taxable Value</th>
+                  <th style={{ padding: paperFormat === 'A5' ? '2.5px 6px' : '4px 8px', borderRight: '1px solid #cbd5e1', textAlign: 'right', width: '11%' }}>Taxable (₹)</th>
                 )}
-                <th style={{ padding: paperFormat === 'A5' ? '1px 3px' : '3px 6px', textAlign: 'right', width: isNonGst ? '12%' : '10%', color: '#000', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>Total (₹)</th>
+                <th style={{ padding: paperFormat === 'A5' ? '2.5px 6px' : '4px 8px', textAlign: 'right', width: isNonGst ? '14%' : '11%' }}>Total (₹)</th>
               </tr>
             </thead>
             <tbody>
-              {processedItems.map((item, index) => {
-                return (
-                  <tr key={index} style={{ borderBottom: '1px solid #cbd5e1', height: paperFormat === 'A5' ? (isDense ? '11.5px' : '13px') : '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.6px 2.5px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '600', color: '#000' }}>{index + 1}</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '2.5px 6px', borderRight: '1px solid #000000', fontWeight: '700', color: '#000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isNonGst ? '360px' : '300px' }}>{item.name}</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.6px 2px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', color: '#000', fontWeight: '600' }}>{item.hsn || '1905'}</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.6px 2px' : '2.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '800', color: '#000' }}>
-                      {formatCartonStock(item.itemQty, item.pcsPerCarton)}
-                    </td>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{item.itemRate.toFixed(2)}</td>
-                    {!isNonGst && (
-                      <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '2.5px 6px', borderRight: '1px solid #000000', textAlign: 'right', color: '#000', fontWeight: '600' }}>₹{item.taxableVal.toFixed(2)}</td>
-                    )}
-                    <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '2.5px 6px', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{item.itemTotal.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-
-              {/* Grid Filler Rows - 0 for A5 to keep height strictly within half-page */}
-              {Array.from({ length: Math.max(0, (paperFormat === 'A5' || paperFormat === 'A3' ? 0 : 7) - processedItems.length) }).map((_, emptyIndex) => (
-                <tr key={`empty-${emptyIndex}`} style={{ borderBottom: '1px solid #cbd5e1', height: '24px', whiteSpace: 'nowrap', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                  <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                  <td style={{ padding: '2.5px 4px', borderRight: '1px solid #000000' }}>&nbsp;</td>
-                  <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+              {processedItems.map((item, index) => (
+                <tr key={index} style={{ 
+                  borderBottom: '1px solid #e2e8f0', 
+                  height: paperFormat === 'A5' ? '15.5px' : '24px', 
+                  pageBreakInside: 'avoid', 
+                  breakInside: 'avoid',
+                  background: index % 2 === 1 ? '#fafafa' : '#ffffff'
+                }}>
+                  <td style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569' }}>{index + 1}</td>
+                  <td style={{ padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', borderRight: '1px solid #e2e8f0', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</td>
+                  <td style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#475569', fontFamily: 'monospace' }}>{item.hsn || '1905'}</td>
+                  <td style={{ padding: paperFormat === 'A5' ? '1.5px 4px' : '3px 6px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: '800', color: '#0f172a' }}>
+                    {formatCartonStock(item.itemQty, item.pcsPerCarton)}
+                  </td>
+                  <td style={{ padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', borderRight: '1px solid #e2e8f0', textAlign: 'right', color: '#334155' }}>₹{item.itemRate.toFixed(2)}</td>
                   {!isNonGst && (
-                    <td style={{ padding: '2.5px 6px', borderRight: '1px solid #000000' }}>&nbsp;</td>
+                    <td style={{ padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', borderRight: '1px solid #e2e8f0', textAlign: 'right', color: '#334155' }}>₹{item.taxableVal.toFixed(2)}</td>
                   )}
-                  <td style={{ padding: '2.5px 6px' }}>&nbsp;</td>
+                  <td style={{ padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', textAlign: 'right', fontWeight: '800', color: '#0f172a' }}>₹{item.itemTotal.toFixed(2)}</td>
                 </tr>
               ))}
 
               {/* Summary Total Row */}
-              <tr style={{ borderTop: '1.2px solid #000000', fontWeight: '800', background: '#f8fafc', color: '#000000', height: paperFormat === 'A5' ? '15px' : '26px' }}>
-                <td colSpan={3} style={{ padding: paperFormat === 'A5' ? '1px 3px' : '3px 8px', borderRight: '1px solid #000000', textAlign: 'right' }}>Total</td>
-                <td style={{ padding: paperFormat === 'A5' ? '1px 2px' : '3px 4px', borderRight: '1px solid #000000', textAlign: 'center' }}>
+              <tr style={{ 
+                borderTop: '1.2px solid #1e293b', 
+                fontWeight: '800', 
+                background: '#f8fafc', 
+                color: '#0f172a', 
+                height: paperFormat === 'A5' ? '17px' : '26px' 
+              }}>
+                <td colSpan={3} style={{ padding: paperFormat === 'A5' ? '2px 8px' : '4px 10px', borderRight: '1px solid #cbd5e1', textAlign: 'right' }}>Total</td>
+                <td style={{ padding: paperFormat === 'A5' ? '2px 4px' : '4px 6px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>
                   {totalQtyPcs} Pcs
                 </td>
-                <td style={{ borderRight: '1px solid #000000' }}></td>
+                <td style={{ borderRight: '1px solid #cbd5e1' }}></td>
                 {!isNonGst && (
-                  <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '3px 6px', borderRight: '1px solid #000000', textAlign: 'right' }}>
+                  <td style={{ padding: paperFormat === 'A5' ? '2px 6px' : '4px 8px', borderRight: '1px solid #cbd5e1', textAlign: 'right' }}>
                     ₹{totalTaxableAmount.toFixed(2)}
                   </td>
                 )}
-                <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '3px 6px', textAlign: 'right', fontSize: '1.05em' }}>
+                <td style={{ padding: paperFormat === 'A5' ? '2px 6px' : '4px 8px', textAlign: 'right', fontSize: '1.05em' }}>
                   ₹{(Number(invoice.grandTotal) || 0).toFixed(2)}
                 </td>
               </tr>
             </tbody>
           </table>
 
-          {/* SECTION 3.5: AMOUNT CHARGEABLE IN WORDS & HSN/SAC TAXABLE SUMMARY */}
+          {/* ========================================================= */}
+          {/* SECTION 3.5: AMOUNT IN WORDS STRIP & HSN SUMMARY */}
+          {/* ========================================================= */}
+          <div style={{ 
+            border: '1px solid #1e293b', 
+            borderBottom: isNonGst ? '1px solid #1e293b' : 'none',
+            padding: paperFormat === 'A5' ? '2.5px 8px' : '4px 10px', 
+            fontSize: paperFormat === 'A5' ? '0.68rem' : '0.78rem',
+            background: '#f8fafc',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: isNonGst ? '3px' : '0'
+          }}>
+            <div>
+              <span style={{ color: '#475569', fontWeight: '600' }}>Amount in words: </span>
+              <strong style={{ color: '#0f172a' }}>{numToWordsIndian(invoice.grandTotal)}</strong>
+            </div>
+            <div style={{ fontWeight: '800', color: '#475569', fontSize: '0.9em' }}>
+              E. & O.E.
+            </div>
+          </div>
+
+          {/* HSN/SAC Tax Summary Table */}
           {!isNonGst && (
-            <div style={{ marginBottom: paperFormat === 'A5' ? '2px' : '5px', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
-              
-              {/* Amount Chargeable (in words) strip */}
-              <div style={{ 
-                border: '1.2px solid #000000', 
-                borderBottom: 'none',
-                padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 6px', 
-                fontSize: paperFormat === 'A5' ? '0.60rem' : '0.68rem',
-                background: '#ffffff',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                lineHeight: '1.1'
-              }}>
-                <div>
-                  <span style={{ color: '#475569', fontWeight: '600' }}>Amount in words: </span>
-                  <strong style={{ color: '#000000' }}>
-                    {numToWordsIndian(invoice.grandTotal)}
-                  </strong>
+            <table className="hsn-table" style={{ 
+              width: '100%', 
+              borderCollapse: 'collapse', 
+              border: '1px solid #1e293b', 
+              fontSize: paperFormat === 'A5' ? '7.5px' : '9px',
+              color: '#0f172a',
+              marginBottom: paperFormat === 'A5' ? '3px' : '6px'
+            }}>
+              <thead>
+                <tr style={{ background: '#f1f5f9', fontWeight: '800', borderBottom: '1px solid #1e293b' }}>
+                  <th rowSpan={2} style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center', verticalAlign: 'middle', width: '18%' }}>HSN/SAC</th>
+                  <th rowSpan={2} style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'middle', width: '20%' }}>Taxable Value</th>
+                  {!isInterState ? (
+                    <>
+                      <th colSpan={2} style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '23%' }}>Central Tax (CGST)</th>
+                      <th colSpan={2} style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '23%' }}>State Tax (SGST)</th>
+                    </>
+                  ) : (
+                    <th colSpan={2} style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '46%' }}>Integrated Tax (IGST)</th>
+                  )}
+                  <th rowSpan={2} style={{ padding: '2px 4px', textAlign: 'right', verticalAlign: 'middle', width: '16%' }}>Total Tax</th>
+                </tr>
+                <tr style={{ background: '#f1f5f9', fontWeight: '800', borderBottom: '1px solid #1e293b' }}>
+                  {!isInterState ? (
+                    <>
+                      <th style={{ padding: '1px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '9%' }}>Rate</th>
+                      <th style={{ padding: '1px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right', width: '14%' }}>Amt</th>
+                      <th style={{ padding: '1px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '9%' }}>Rate</th>
+                      <th style={{ padding: '1px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right', width: '14%' }}>Amt</th>
+                    </>
+                  ) : (
+                    <>
+                      <th style={{ padding: '1px 3px', borderRight: '1px solid #cbd5e1', textAlign: 'center', width: '16%' }}>Rate</th>
+                      <th style={{ padding: '1px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right', width: '30%' }}>Amt</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {hsnSummary.map((row, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', height: paperFormat === 'A5' ? '12px' : '16px' }}>
+                    <td style={{ padding: '1.5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: '700', fontFamily: 'monospace' }}>{row.hsn}</td>
+                    <td style={{ padding: '1.5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '600' }}>{formatInr(row.taxableVal)}</td>
+                    {!isInterState ? (
+                      <>
+                        <td style={{ padding: '1.5px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center' }}>{row.cgstRate.toFixed(1)}%</td>
+                        <td style={{ padding: '1.5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'right' }}>{formatInr(row.cgstAmt)}</td>
+                        <td style={{ padding: '1.5px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center' }}>{row.sgstRate.toFixed(1)}%</td>
+                        <td style={{ padding: '1.5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'right' }}>{formatInr(row.sgstAmt)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ padding: '1.5px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center' }}>{row.igstRate.toFixed(1)}%</td>
+                        <td style={{ padding: '1.5px 4px', borderRight: '1px solid #e2e8f0', textAlign: 'right' }}>{formatInr(row.igstAmt)}</td>
+                      </>
+                    )}
+                    <td style={{ padding: '1.5px 4px', textAlign: 'right', fontWeight: '700' }}>{formatInr(row.taxAmt)}</td>
+                  </tr>
+                ))}
+                <tr style={{ borderTop: '1px solid #1e293b', fontWeight: '800', background: '#f8fafc', height: paperFormat === 'A5' ? '13px' : '17px' }}>
+                  <td style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'center' }}>Total</td>
+                  <td style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right' }}>{formatInr(totalTaxableAmount)}</td>
+                  {!isInterState ? (
+                    <>
+                      <td style={{ borderRight: '1px solid #cbd5e1' }}></td>
+                      <td style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right' }}>{formatInr(totalCgst)}</td>
+                      <td style={{ borderRight: '1px solid #cbd5e1' }}></td>
+                      <td style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right' }}>{formatInr(totalSgst)}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ borderRight: '1px solid #cbd5e1' }}></td>
+                      <td style={{ padding: '2px 4px', borderRight: '1px solid #cbd5e1', textAlign: 'right' }}>{formatInr(totalIgst)}</td>
+                    </>
+                  )}
+                  <td style={{ padding: '2px 4px', textAlign: 'right' }}>{formatInr(totalTaxAmount)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+
+          {/* ========================================================= */}
+          {/* SECTION 4: FOOTER GRID (Terms, UPI QR, Totals, Signature) */}
+          {/* ========================================================= */}
+          <div style={{ 
+            border: '1px solid #1e293b', 
+            fontSize: paperFormat === 'A5' ? '0.70rem' : '0.80rem', 
+            color: '#0f172a',
+            background: '#ffffff',
+            display: 'grid', 
+            gridTemplateColumns: paperFormat === 'A5' ? '1.25fr 0.75fr 1.35fr' : '1.35fr 0.7fr 1.3fr' 
+          }}>
+            
+            {/* Box 1: Terms & Customer Signature */}
+            <div style={{ padding: paperFormat === 'A5' ? '4px 6px' : '6px 8px', borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: '800', color: '#334155', textTransform: 'uppercase', fontSize: paperFormat === 'A5' ? '0.64rem' : '0.72rem', marginBottom: '2px' }}>
+                  Terms & Conditions:
                 </div>
-                <div style={{ fontWeight: '800', color: '#000000', fontSize: '0.9em' }}>
-                  E. & O.E
+                <div style={{ fontSize: paperFormat === 'A5' ? '0.60rem' : '0.68rem', color: '#475569', lineHeight: 1.25 }}>
+                  1. Goods once sold will not be taken back.<br />
+                  2. Subject to Delhi jurisdiction only.
                 </div>
               </div>
 
-              {/* HSN/SAC Taxable Summary Table */}
-              <table className="hsn-table" style={{ 
-                width: '100%', 
-                borderCollapse: 'collapse', 
-                border: '1.2px solid #000000', 
-                fontSize: paperFormat === 'A5' ? '7.0px' : '9px',
-                color: '#000000',
-                lineHeight: '1.05'
-              }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc', fontWeight: '800', borderBottom: '1px solid #000000' }}>
-                    <th rowSpan={2} style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', width: '18%' }}>HSN/SAC</th>
-                    <th rowSpan={2} style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'right', verticalAlign: 'middle', width: '20%' }}>Taxable Value</th>
-                    {!isInterState ? (
-                      <>
-                        <th colSpan={2} style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', width: '23%' }}>CGST</th>
-                        <th colSpan={2} style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', width: '23%' }}>SGST/UTGST</th>
-                      </>
-                    ) : (
-                      <th colSpan={2} style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', width: '46%' }}>Integrated Tax (IGST)</th>
-                    )}
-                    <th rowSpan={2} style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', textAlign: 'right', verticalAlign: 'middle', width: '16%' }}>Total Tax</th>
-                  </tr>
-                  <tr style={{ background: '#f8fafc', fontWeight: '800', borderBottom: '1px solid #000000' }}>
-                    {!isInterState ? (
-                      <>
-                        <th style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', width: '9%' }}>Rate</th>
-                        <th style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', width: '14%' }}>Amt</th>
-                        <th style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', width: '9%' }}>Rate</th>
-                        <th style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', width: '14%' }}>Amt</th>
-                      </>
-                    ) : (
-                      <>
-                        <th style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center', width: '16%' }}>Rate</th>
-                        <th style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', width: '30%' }}>Amt</th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {hsnSummary.map((row, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', height: paperFormat === 'A5' ? '11px' : '17px' }}>
-                      <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'center', fontWeight: '700' }}>{row.hsn}</td>
-                      <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', fontWeight: '600' }}>{formatInr(row.taxableVal)}</td>
-                      {!isInterState ? (
-                        <>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.5px 1px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center' }}>{row.cgstRate.toFixed(1)}%</td>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', fontWeight: '600' }}>{formatInr(row.cgstAmt)}</td>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.5px 1px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center' }}>{row.sgstRate.toFixed(1)}%</td>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', fontWeight: '600' }}>{formatInr(row.sgstAmt)}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.5px 1px' : '1.5px 3px', borderRight: '1px solid #000000', textAlign: 'center' }}>{row.igstRate.toFixed(1)}%</td>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', borderRight: '1px solid #000000', textAlign: 'right', fontWeight: '600' }}>{formatInr(row.igstAmt)}</td>
-                        </>
-                      )}
-                      <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '1.5px 4px', textAlign: 'right', fontWeight: '700' }}>{formatInr(row.taxAmt)}</td>
-                    </tr>
-                  ))}
+              <div style={{ marginTop: paperFormat === 'A5' ? '10px' : '18px' }}>
+                <div style={{ 
+                  borderTop: '1px solid #000000', 
+                  display: 'inline-block', 
+                  paddingTop: '2px', 
+                  paddingRight: '12px',
+                  fontWeight: '700',
+                  color: '#0f172a',
+                  fontSize: paperFormat === 'A5' ? '0.62rem' : '0.70rem'
+                }}>
+                  Customer's Signature
+                </div>
+              </div>
+            </div>
 
-                  {/* Summary Totals Row */}
-                  <tr style={{ borderTop: '1.2px solid #000000', fontWeight: '800', background: '#f8fafc', height: paperFormat === 'A5' ? '12px' : '18px' }}>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'center' }}>Total</td>
-                    <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'right' }}>{formatInr(totalTaxableAmount)}</td>
-                    {!isInterState ? (
-                      <>
-                        <td style={{ borderRight: '1px solid #000000' }}></td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'right' }}>{formatInr(totalCgst)}</td>
-                        <td style={{ borderRight: '1px solid #000000' }}></td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'right' }}>{formatInr(totalSgst)}</td>
-                      </>
-                    ) : (
-                      <>
-                        <td style={{ borderRight: '1px solid #000000' }}></td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', borderRight: '1px solid #000000', textAlign: 'right' }}>{formatInr(totalIgst)}</td>
-                      </>
-                    )}
-                    <td style={{ padding: paperFormat === 'A5' ? '0.5px 2px' : '2px 4px', textAlign: 'right' }}>{formatInr(totalTaxAmount)}</td>
+            {/* Box 2: UPI QR Code (Enlarged, Sharp, Centered) */}
+            <div style={{ padding: '4px', borderRight: '1px solid #1e293b', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
+              {upiQrUrl ? (
+                <img 
+                  src={upiQrUrl} 
+                  alt="UPI QR Code" 
+                  style={{ 
+                    width: paperFormat === 'A5' ? '64px' : '88px', 
+                    height: paperFormat === 'A5' ? '64px' : '88px', 
+                    objectFit: 'contain', 
+                    background: '#ffffff', 
+                    padding: '2px', 
+                    borderRadius: '4px', 
+                    border: '1px solid #cbd5e1' 
+                  }} 
+                />
+              ) : (
+                <div style={{ width: '64px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', border: '1px dashed #cbd5e1' }}>
+                  UPI QR
+                </div>
+              )}
+              <div style={{ fontWeight: '800', marginTop: '3px', fontSize: paperFormat === 'A5' ? '0.60rem' : '0.68rem', color: '#0f172a', letterSpacing: '0.2px' }}>
+                Scan & Pay UPI
+              </div>
+            </div>
+
+            {/* Box 3: Totals & Authorized Signatory */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'A5' ? '0.70rem' : '0.78rem' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>
+                      {isNonGst ? 'Subtotal' : 'Taxable Amount'}
+                    </td>
+                    <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>
+                      ₹{(isNonGst ? (Number(invoice.subTotal || invoice.subtotal) || totalTaxableAmount) : totalTaxableAmount).toFixed(2)}
+                    </td>
+                  </tr>
+                  {!isNonGst && !isInterState && (
+                    <>
+                      <tr>
+                        <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>CGST</td>
+                        <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>₹{totalCgst.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>SGST</td>
+                        <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>₹{totalSgst.toFixed(2)}</td>
+                      </tr>
+                    </>
+                  )}
+                  {!isNonGst && isInterState && (
+                    <tr>
+                      <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>IGST</td>
+                      <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>₹{totalIgst.toFixed(2)}</td>
+                    </tr>
+                  )}
+                  {Number(invoice.discount || 0) > 0 && (
+                    <tr>
+                      <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', color: '#059669', fontWeight: '600' }}>Discount</td>
+                      <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '700', color: '#059669' }}>-₹{Number(invoice.discount).toFixed(2)}</td>
+                    </tr>
+                  )}
+                  {Number(invoice.roundOff || 0) !== 0 && (
+                    <tr>
+                      <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: '600' }}>Round Off</td>
+                      <td style={{ padding: '1.5px 6px', borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>
+                        {Number(invoice.roundOff) > 0 ? `+₹${Number(invoice.roundOff).toFixed(2)}` : `-₹${Math.abs(Number(invoice.roundOff)).toFixed(2)}`}
+                      </td>
+                    </tr>
+                  )}
+                  <tr style={{ background: '#f1f5f9', borderTop: '1px solid #1e293b' }}>
+                    <td style={{ padding: '3px 6px', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.82rem' : '0.94rem', color: '#0f172a' }}>
+                      TOTAL AMOUNT
+                    </td>
+                    <td style={{ padding: '3px 6px', textAlign: 'right', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.92rem' : '1.05rem', color: '#0f172a' }}>
+                      ₹{(Number(invoice.grandTotal) || 0).toFixed(2)}
+                    </td>
                   </tr>
                 </tbody>
               </table>
 
-            </div>
-          )}
-
-          {/* SECTION 4: BOTTOM FOOTER GRID (Words, QR Code, Amounts, Signatures, Bank) */}
-          <div style={{ border: '1.2px solid #000000', fontSize: paperFormat === 'A5' ? '0.60rem' : '0.76rem', color: '#000000' }}>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: paperFormat === 'A5' ? '1.25fr 0.8fr 1.35fr' : '1.45fr 0.62fr 1.25fr' }}>
-              
-              {/* BLOCK 1: Total in Words, Terms, Customer Signature */}
-              <div style={{ padding: paperFormat === 'A5' ? '2px 4px' : '6px', borderRight: '1.2px solid #000000', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  {isNonGst && (
-                    <div style={{ borderBottom: '1px solid #cbd5e1', paddingBottom: '1px', marginBottom: '1px', fontWeight: '800', lineHeight: '1.1' }}>
-                      Total in words : <span style={{ textTransform: 'uppercase' }}>{numToWords(invoice.grandTotal)}</span>
-                    </div>
-                  )}
-                  <div style={{ fontSize: paperFormat === 'A5' ? '0.55rem' : '0.68rem', color: '#1e293b', lineHeight: '1.1' }}>
-                    <strong>Terms :</strong> {business?.terms || 'Subject to Local Jurisdiction. Goods once sold will not be taken back.'}
-                  </div>
+              <div style={{ padding: '4px 6px', textAlign: 'right' }}>
+                <div style={{ fontSize: paperFormat === 'A5' ? '0.62rem' : '0.70rem', fontWeight: '700', color: '#334155' }}>
+                  For {business?.name || 'JAI MAA SHARDEY ENTERPRISES'}
                 </div>
-
-                <div style={{ marginTop: paperFormat === 'A5' ? '6px' : '22px' }}>
-                  <div style={{ 
-                    borderTop: '1.2px solid #000000', 
-                    display: 'inline-block', 
-                    paddingTop: '1px', 
-                    paddingRight: '8px',
-                    fontWeight: '800',
-                    color: '#000000',
-                    fontSize: paperFormat === 'A5' ? '0.56rem' : '0.70rem'
-                  }}>
-                    Customer Signature
-                  </div>
+                <div style={{ height: paperFormat === 'A5' ? '12px' : '20px' }}></div>
+                <div style={{ 
+                  borderTop: '1px solid #000000', 
+                  display: 'inline-block', 
+                  paddingTop: '2px', 
+                  paddingLeft: '12px',
+                  fontWeight: '800',
+                  color: '#0f172a',
+                  fontSize: paperFormat === 'A5' ? '0.64rem' : '0.72rem'
+                }}>
+                  Authorized Signatory
                 </div>
-              </div>
-
-              {/* BLOCK 2: Pay using UPI QR Code */}
-              <div style={{ padding: '2px', borderRight: '1.2px solid #000000', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff' }}>
-                {upiQrUrl ? (
-                  <img 
-                    src={upiQrUrl} 
-                    alt="UPI QR Code" 
-                    style={{ width: paperFormat === 'A5' ? '56px' : '96px', height: paperFormat === 'A5' ? '56px' : '96px', objectFit: 'contain' }} 
-                  />
-                ) : (
-                  <div style={{ width: paperFormat === 'A5' ? '30px' : '96px', height: paperFormat === 'A5' ? '30px' : '96px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.52rem' }}>
-                    UPI QR
-                  </div>
-                )}
-                <div style={{ fontWeight: '800', marginTop: '1px', fontSize: paperFormat === 'A5' ? '0.54rem' : '0.72rem', color: '#000000' }}>
-                  Scan & Pay UPI
-                </div>
-              </div>
-
-              {/* BLOCK 3: Taxable Amount / Subtotal, Total Tax, Grand Total, Authorized Signatory */}
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <table className="totals-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: paperFormat === 'A5' ? '0.62rem' : '0.76rem' }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>
-                        {isNonGst ? 'Subtotal' : 'Taxable Amount'}
-                      </td>
-                      <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>
-                        ₹{(isNonGst ? (Number(invoice.subTotal || invoice.subtotal) || totalTaxableAmount) : totalTaxableAmount).toFixed(2)}
-                      </td>
-                    </tr>
-                    {!isNonGst && !isInterState && (
-                      <>
-                        <tr>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>CGST</td>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalCgst.toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>SGST</td>
-                          <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalSgst.toFixed(2)}</td>
-                        </tr>
-                      </>
-                    )}
-                    {!isNonGst && isInterState && (
-                      <tr>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>IGST</td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalIgst.toFixed(2)}</td>
-                      </tr>
-                    )}
-                    {!isNonGst && (
-                      <tr>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>Total Tax</td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>₹{totalTaxAmount.toFixed(2)}</td>
-                      </tr>
-                    )}
-                    {Number(invoice.discount || 0) > 0 && (
-                      <tr>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#059669' }}>Discount</td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#059669' }}>-₹{Number(invoice.discount).toFixed(2)}</td>
-                      </tr>
-                    )}
-                    {Number(invoice.roundOff || 0) !== 0 && (
-                      <tr>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', fontWeight: '700', color: '#000' }}>Round Off</td>
-                        <td style={{ padding: paperFormat === 'A5' ? '0.6px 3px' : '3px 6px', borderBottom: '1px solid #cbd5e1', textAlign: 'right', fontWeight: '800', color: '#000' }}>
-                          {Number(invoice.roundOff) > 0 ? `+₹${Number(invoice.roundOff).toFixed(2)}` : `-₹${Math.abs(Number(invoice.roundOff)).toFixed(2)}`}
-                        </td>
-                      </tr>
-                    )}
-                    <tr style={{ background: '#f8fafc' }}>
-                      <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '4px 6px', borderBottom: '1px solid #000000', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.74rem' : '0.85rem', color: '#000' }}>
-                        {isNonGst ? 'Grand Total' : 'Total Amount'}
-                      </td>
-                      <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '4px 6px', borderBottom: '1px solid #000000', textAlign: 'right', fontWeight: '900', fontSize: paperFormat === 'A5' ? '0.78rem' : '0.96rem', color: '#000' }}>₹{(Number(invoice.grandTotal) || 0).toFixed(2)}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={2} style={{ padding: paperFormat === 'A5' ? '1px 3px' : '3px 6px', fontWeight: '800', fontSize: paperFormat === 'A5' ? '0.52rem' : '0.72rem', color: '#000' }}>
-                        For {business?.name || 'JAI MAA SHARDEY ENTERPRISES'} <span style={{ float: 'right', color: '#475569', fontWeight: '600' }}>(E & O.E.)</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div style={{ padding: paperFormat === 'A5' ? '1px 3px' : '6px', textAlign: 'right' }}>
-                  <div style={{ height: paperFormat === 'A5' ? '2px' : '18px' }}></div>
-                  <div style={{ 
-                    borderTop: '1.2px solid #000000', 
-                    display: 'inline-block', 
-                    paddingTop: '1px', 
-                    paddingLeft: '8px',
-                    fontWeight: '800',
-                    color: '#000000',
-                    fontSize: paperFormat === 'A5' ? '0.54rem' : '0.70rem'
-                  }}>
-                    Authorized Signatory
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
-            {/* BLOCK 4: Bank Details Footer Bar */}
-            <div style={{ 
-              borderTop: '1.2px solid #000000', 
-              padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', 
-              fontWeight: '700', 
-              background: '#f8fafc', 
-              fontSize: paperFormat === 'A5' ? '0.56rem' : '0.74rem', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center' 
-            }}>
-              <div>
-                Bank: <strong>{business?.bankName || 'State Bank of India'}</strong> | A/c No: <strong>{business?.accountNo || '389201009823'}</strong> | IFSC: <strong>{business?.ifscCode || 'SBIN0001420'}</strong>
-              </div>
-              <div style={{ fontStyle: 'italic', fontWeight: '600', color: '#334155' }}>
-                Thank you for shopping with us!
               </div>
             </div>
 
+          </div>
+
+          {/* ========================================================= */}
+          {/* SECTION 5: STATUTORY BANK DETAILS & VISIT AGAIN FOOTER */}
+          {/* ========================================================= */}
+          <div style={{ 
+            marginTop: '3px',
+            border: '1px solid #1e293b', 
+            background: '#f8fafc', 
+            padding: paperFormat === 'A5' ? '2px 8px' : '4px 10px', 
+            fontSize: paperFormat === 'A5' ? '0.64rem' : '0.74rem',
+            color: '#334155',
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center' 
+          }}>
+            <div>
+              Bank: <strong>{business?.bankName || 'State Bank of India'}</strong> | A/c No: <strong>{business?.accountNo || '389201009823'}</strong> | IFSC: <strong>{business?.ifscCode || 'SBIN0001420'}</strong>
+            </div>
+            <div style={{ fontStyle: 'italic', fontWeight: '700', color: '#0f172a' }}>
+              Thank you for shopping with us!
+            </div>
           </div>
 
         </div>
