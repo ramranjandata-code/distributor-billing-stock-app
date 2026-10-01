@@ -28,7 +28,7 @@ import {
   Percent,
   LayoutGrid
 } from 'lucide-react';
-import { getProductStockValuation } from '../utils/storage';
+import { getProductStockValuation, compareInvoicesDesc } from '../utils/storage';
 
 export default function Dashboard({ products = [], parties = [], invoices = [], business, setActiveTab, handlePrintInvoice, t = (k) => k }) {
   const [timeRange, setTimeRange] = useState('7d'); // 'today', '7d', '30d', 'all'
@@ -316,7 +316,7 @@ export default function Dashboard({ products = [], parties = [], invoices = [], 
   }, [filteredInvoices]);
 
   const recentInvoices = useMemo(() => {
-    return [...invoices].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    return [...invoices].sort(compareInvoicesDesc).slice(0, 5);
   }, [invoices]);
 
   return (

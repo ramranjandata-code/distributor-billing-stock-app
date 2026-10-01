@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   FileText, 
   Search, 
@@ -19,7 +19,7 @@ import {
   Send,
   Layers
 } from 'lucide-react';
-import { deleteInvoice, formatDateDDMMYY } from '../utils/storage';
+import { deleteInvoice, formatDateDDMMYY, compareInvoicesDesc, extractInvoiceNumericValue } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
 
 export default function InvoiceHistory({ 
@@ -34,6 +34,17 @@ export default function InvoiceHistory({
   const [searchTerm, setSearchTerm] = useState('');
   const [odooStatusFilter, setOdooStatusFilter] = useState('ALL'); // 'ALL', 'draft', 'posted', 'in_payment', 'paid', 'credit_note', 'cancel'
   const [selectedInvoiceForEdit, setSelectedInvoiceForEdit] = useState(null); // holds invoice object or {} for new
+  const [sortField, setSortField] = useState('date'); // 'date', 'invoiceNo', 'partyName', 'grandTotal', 'amountDue'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
 
   // Normalize state for legacy invoices
   const normalizedInvoices = invoices.map(inv => {
@@ -74,7 +85,47 @@ export default function InvoiceHistory({
     return matchesSearch && matchesStatus;
   });
 
-  const sortedInvoices = [...filteredInvoices].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Robust sort: Date desc, with same-day bills sorted by Invoice Number descending (e.g. 109 before 108)
+  const sortedInvoices = useMemo(() => {
+    return [...filteredInvoices].sort((a, b) => {
+      if (sortField === 'invoiceNo') {
+        const numA = extractInvoiceNumericValue(a.invoiceNo);
+        const numB = extractInvoiceNumericValue(b.invoiceNo);
+        if (numA !== null && numB !== null && numA !== numB) {
+          return sortOrder === 'desc' ? numB - numA : numA - numB;
+        }
+        const strA = String(a.invoiceNo || '');
+        const strB = String(b.invoiceNo || '');
+        return sortOrder === 'desc'
+          ? strB.localeCompare(strA, undefined, { numeric: true })
+          : strA.localeCompare(strB, undefined, { numeric: true });
+      }
+
+      if (sortField === 'partyName') {
+        const nameA = String(a.partyName || a.customerName || '');
+        const nameB = String(b.partyName || b.customerName || '');
+        return sortOrder === 'desc'
+          ? nameB.localeCompare(nameA)
+          : nameA.localeCompare(nameB);
+      }
+
+      if (sortField === 'grandTotal') {
+        const totA = Number(a.grandTotal) || 0;
+        const totB = Number(b.grandTotal) || 0;
+        return sortOrder === 'desc' ? totB - totA : totA - totB;
+      }
+
+      if (sortField === 'amountDue') {
+        const dueA = Number(a.amountDue) || 0;
+        const dueB = Number(b.amountDue) || 0;
+        return sortOrder === 'desc' ? dueB - dueA : dueA - dueB;
+      }
+
+      // Default: Date sort (with secondary sort by invoice number on same day)
+      const res = compareInvoicesDesc(a, b);
+      return sortOrder === 'desc' ? res : -res;
+    });
+  }, [filteredInvoices, sortField, sortOrder]);
 
   // Compute Odoo KPI Summaries
   const draftCount = normalizedInvoices.filter(i => i.state === 'draft').length;
@@ -334,13 +385,23 @@ export default function InvoiceHistory({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left', color: '#475569' }}>
-                  <th style={{ padding: '10px 14px' }}>Number</th>
-                  <th style={{ padding: '10px 14px' }}>Customer / Partner</th>
-                  <th style={{ padding: '10px 14px' }}>Invoice Date</th>
+                  <th onClick={() => handleSort('invoiceNo')} style={{ padding: '10px 14px', cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Invoice Number">
+                    Number {sortField === 'invoiceNo' ? (sortOrder === 'desc' ? '▼' : '▲') : ''}
+                  </th>
+                  <th onClick={() => handleSort('partyName')} style={{ padding: '10px 14px', cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Customer">
+                    Customer / Partner {sortField === 'partyName' ? (sortOrder === 'desc' ? '▼' : '▲') : ''}
+                  </th>
+                  <th onClick={() => handleSort('date')} style={{ padding: '10px 14px', cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Date">
+                    Invoice Date {sortField === 'date' ? (sortOrder === 'desc' ? '▼' : '▲') : ''}
+                  </th>
                   <th style={{ padding: '10px 14px' }}>Due Date</th>
                   <th style={{ padding: '10px 14px', textAlign: 'right' }}>Tax Excluded (₹)</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Total (₹)</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right' }}>Amount Due (₹)</th>
+                  <th onClick={() => handleSort('grandTotal')} style={{ padding: '10px 14px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Total">
+                    Total (₹) {sortField === 'grandTotal' ? (sortOrder === 'desc' ? '▼' : '▲') : ''}
+                  </th>
+                  <th onClick={() => handleSort('amountDue')} style={{ padding: '10px 14px', textAlign: 'right', cursor: 'pointer', userSelect: 'none' }} title="Click to sort by Amount Due">
+                    Amount Due (₹) {sortField === 'amountDue' ? (sortOrder === 'desc' ? '▼' : '▲') : ''}
+                  </th>
                   <th style={{ padding: '10px 14px', textAlign: 'center' }}>Status</th>
                   <th style={{ padding: '10px 14px', textAlign: 'right' }}>Actions</th>
                 </tr>

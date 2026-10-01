@@ -1930,10 +1930,61 @@ export const fetchInvoiceHistory = (invoiceId) => {
   return InvoiceHistoryLogger.getLogs(invoiceId);
 };
 
+// Extract numeric value from invoice string (e.g. "109" -> 109, "INV-109" -> 109)
+export const extractInvoiceNumericValue = (invNo) => {
+  if (invNo === undefined || invNo === null) return null;
+  const str = String(invNo).trim();
+  if (!str) return null;
+  const match = str.match(/(\d+)(?!.*\d)/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return null;
+};
+
+// Robust descending comparator: Sorts by Date descending, and on same date by Invoice Number descending
+export const compareInvoicesDesc = (a, b) => {
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+
+  // 1. Primary: Compare calendar date (YYYY-MM-DD)
+  const dayA = (a.date || '').split('T')[0] || (a.createdAt || '').split('T')[0] || '';
+  const dayB = (b.date || '').split('T')[0] || (b.createdAt || '').split('T')[0] || '';
+
+  if (dayA && dayB && dayA !== dayB) {
+    return dayB.localeCompare(dayA);
+  }
+
+  // 2. Secondary: If on same date (or dates missing), sort by Invoice Number descending
+  const numA = extractInvoiceNumericValue(a.invoiceNo);
+  const numB = extractInvoiceNumericValue(b.invoiceNo);
+
+  if (numA !== null && numB !== null && numA !== numB) {
+    return numB - numA;
+  }
+
+  // Fallback alphanumeric comparison
+  if (a.invoiceNo && b.invoiceNo && a.invoiceNo !== b.invoiceNo) {
+    return String(b.invoiceNo).localeCompare(String(a.invoiceNo), undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  // 3. Fallback: Full ISO timestamp or id
+  const timeA = new Date(a.date || a.createdAt || 0).getTime();
+  const timeB = new Date(b.date || b.createdAt || 0).getTime();
+  if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) {
+    return timeB - timeA;
+  }
+
+  return String(b.id || '').localeCompare(String(a.id || ''));
+};
+
 // Operations: Invoices
 export const fetchInvoices = () => {
   const delSet = new Set(getDeletedIds());
-  return getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !SAMPLE_IDS.includes(i.id) && !delSet.has(i.id));
+  return getStorageData(STORAGE_KEYS.INVOICES, [])
+    .filter(i => i && !SAMPLE_IDS.includes(i.id) && !delSet.has(i.id))
+    .sort(compareInvoicesDesc);
 };
 
 // Calculate Due Date from Invoice Date + Payment Terms
