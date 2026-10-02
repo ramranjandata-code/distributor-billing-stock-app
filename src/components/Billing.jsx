@@ -78,6 +78,25 @@ export default function Billing({ products, parties, business, invoices, refresh
   const todayStr = new Date().toISOString().split('T')[0];
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || todayStr);
   const [customInvoiceNo, setCustomInvoiceNo] = useState(() => initialDraft?.customInvoiceNo || '');
+  const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business, invoices]);
+  const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
+  const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
+  const isPastDate = invoiceDate && invoiceDate < todayStr;
+
+  // e-Way Bill & Transport State
+  const [ewayBillOpen, setEwayBillOpen] = useState(() => !!initialDraft?.ewayBillOpen);
+  const [ewayBillData, setEwayBillData] = useState(() => initialDraft?.ewayBillData || {
+    transporterName: '',
+    vehicleNo: '',
+    distanceKm: '',
+    ewayBillNo: ''
+  });
+
+  // Track draft invoice reference so saving updates instead of duplicating
+  const [activeDraftId, setActiveDraftId] = useState(() => initialDraft?.draftInvoiceId || null);
+  const [activeDraftNo, setActiveDraftNo] = useState(() => initialDraft?.draftInvoiceNo || null);
+  const [showDraftNotice, setShowDraftNotice] = useState(() => !!(initialDraft && initialDraft.cart?.length > 0));
+
   // Duplicate Invoice Number Security Guard State
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [matchedExistingInvoice, setMatchedExistingInvoice] = useState(null);
@@ -124,25 +143,6 @@ export default function Billing({ products, parties, business, invoices, refresh
       handleCustomInvoiceBlur();
     }
   };
-
-  const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business, invoices]);
-  const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
-  const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
-  const isPastDate = invoiceDate && invoiceDate < todayStr;
-
-  // e-Way Bill & Transport State
-  const [ewayBillOpen, setEwayBillOpen] = useState(() => !!initialDraft?.ewayBillOpen);
-  const [ewayBillData, setEwayBillData] = useState(() => initialDraft?.ewayBillData || {
-    transporterName: '',
-    vehicleNo: '',
-    distanceKm: '',
-    ewayBillNo: ''
-  });
-
-  // Track draft invoice reference so saving updates instead of duplicating
-  const [activeDraftId, setActiveDraftId] = useState(() => initialDraft?.draftInvoiceId || null);
-  const [activeDraftNo, setActiveDraftNo] = useState(() => initialDraft?.draftInvoiceNo || null);
-  const [showDraftNotice, setShowDraftNotice] = useState(() => !!(initialDraft && initialDraft.cart?.length > 0));
 
   // Digital Payments & Instant Share Modal
   const [checkoutModal, setCheckoutModal] = useState(null); // holds { invoice, upiQrUrl }
