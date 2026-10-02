@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { saveInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate, getNextInvoiceNumber } from '../utils/storage';
+import { saveInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate, getNextInvoiceNumber, findInvoiceByNumber } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
-import { 
-  Search, 
+import {
+  Search,
+  ShieldAlert,
+  AlertTriangle, 
   Plus, 
   Minus, 
   Trash2, 
@@ -76,6 +78,53 @@ export default function Billing({ products, parties, business, invoices, refresh
   const todayStr = new Date().toISOString().split('T')[0];
   const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || todayStr);
   const [customInvoiceNo, setCustomInvoiceNo] = useState(() => initialDraft?.customInvoiceNo || '');
+  // Duplicate Invoice Number Security Guard State
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+  const [matchedExistingInvoice, setMatchedExistingInvoice] = useState(null);
+  const customInvInputRef = useRef(null);
+
+  // Security Helper: Check if custom invoice number already exists
+  const checkDuplicateInvoice = (billNo) => {
+    if (!billNo || !String(billNo).trim()) return null;
+    const cleanNo = String(billNo).trim().toLowerCase();
+    return (invoices || []).find(inv => {
+      if (!inv || !inv.invoiceNo) return false;
+      if (activeDraftId && inv.id === activeDraftId) return false;
+      if (activeDraftNo && String(inv.invoiceNo).trim().toLowerCase() === String(activeDraftNo).trim().toLowerCase()) return false;
+      return String(inv.invoiceNo).trim().toLowerCase() === cleanNo;
+    }) || null;
+  };
+
+  const existingDuplicate = useMemo(() => {
+    return checkDuplicateInvoice(customInvoiceNo);
+  }, [customInvoiceNo, invoices, activeDraftId, activeDraftNo]);
+
+  const handleCustomInvoiceChange = (e) => {
+    const val = e.target.value;
+    setCustomInvoiceNo(val);
+    const dup = checkDuplicateInvoice(val);
+    if (dup) {
+      setMatchedExistingInvoice(dup);
+      setDuplicateModalOpen(true);
+    }
+  };
+
+  const handleCustomInvoiceBlur = () => {
+    if (!customInvoiceNo || !customInvoiceNo.trim()) return;
+    const dup = checkDuplicateInvoice(customInvoiceNo);
+    if (dup) {
+      setMatchedExistingInvoice(dup);
+      setDuplicateModalOpen(true);
+    }
+  };
+
+  const handleCustomInvoiceKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleCustomInvoiceBlur();
+    }
+  };
+
   const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business, invoices]);
   const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
   const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
@@ -580,6 +629,16 @@ export default function Billing({ products, parties, business, invoices, refresh
   };
 
   const handleSaveAndPrintBill = (asDraft = false, silent = false) => {
+    // 0. Security Guard: Prevent saving with duplicate invoice number!
+    if (customInvoiceNo && customInvoiceNo.trim()) {
+      const dup = checkDuplicateInvoice(customInvoiceNo);
+      if (dup) {
+        setMatchedExistingInvoice(dup);
+        setDuplicateModalOpen(true);
+        return null;
+      }
+    }
+
     if (cart.length === 0) {
       if (!silent) alert('⚠️ Please add at least 1 product to the bill!');
       return null;
@@ -1313,42 +1372,83 @@ export default function Billing({ products, parties, business, invoices, refresh
                   )}
                 </div>
 
-                {/* Custom / Auto Invoice Number Input */}
+                {/* Custom / Auto Invoice Number Input with Duplicate Security Alert */}
                 <div style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '5px', 
-                  background: customInvoiceNo ? '#fffbeb' : '#f8fafc', 
+                  background: existingDuplicate ? '#fef2f2' : (customInvoiceNo ? '#fffbeb' : '#f8fafc'), 
                   padding: '3px 8px', 
                   borderRadius: '6px', 
-                  border: customInvoiceNo ? '1.5px solid #f59e0b' : '1px solid #cbd5e1',
-                  boxShadow: customInvoiceNo ? '0 1px 3px rgba(245, 158, 11, 0.15)' : 'none',
+                  border: existingDuplicate ? '1.5px solid #ef4444' : (customInvoiceNo ? '1.5px solid #f59e0b' : '1px solid #cbd5e1'),
+                  boxShadow: existingDuplicate ? '0 1px 4px rgba(239, 68, 68, 0.25)' : (customInvoiceNo ? '0 1px 3px rgba(245, 158, 11, 0.15)' : 'none'),
                   transition: 'all 0.2s ease',
                   height: '28px'
                 }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: customInvoiceNo ? '#b45309' : '#475569', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <Receipt size={12} color={customInvoiceNo ? '#b45309' : '#64748b'} />
+                  <span style={{ fontSize: '0.72rem', fontWeight: '700', color: existingDuplicate ? '#dc2626' : (customInvoiceNo ? '#b45309' : '#475569'), display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    {existingDuplicate ? (
+                      <AlertTriangle size={13} color="#dc2626" />
+                    ) : (
+                      <Receipt size={12} color={customInvoiceNo ? '#b45309' : '#64748b'} />
+                    )}
                     Inv No:
                   </span>
                   <input 
+                    ref={customInvInputRef}
                     type="text"
                     placeholder={autoInvoiceNo || "155"}
                     value={customInvoiceNo}
-                    onChange={e => setCustomInvoiceNo(e.target.value)}
+                    onChange={handleCustomInvoiceChange}
+                    onBlur={handleCustomInvoiceBlur}
+                    onKeyDown={handleCustomInvoiceKeyDown}
                     style={{
                       border: 'none',
                       background: 'transparent',
                       fontSize: '0.76rem',
                       fontWeight: '800',
-                      color: customInvoiceNo ? '#b45309' : '#0f172a',
+                      color: existingDuplicate ? '#dc2626' : (customInvoiceNo ? '#b45309' : '#0f172a'),
                       outline: 'none',
                       width: '120px',
                       fontFamily: 'inherit',
                       padding: 0
                     }}
-                    title="Enter custom invoice number or leave blank to auto-generate"
+                    title={existingDuplicate ? "⚠️ Duplicate bill number! Click duplicate badge to view details" : "Enter custom invoice number or leave blank to auto-generate"}
                   />
-                  {customInvoiceNo ? (
+                  {existingDuplicate ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMatchedExistingInvoice(existingDuplicate);
+                          setDuplicateModalOpen(true);
+                        }}
+                        style={{
+                          fontSize: '0.62rem',
+                          fontWeight: '800',
+                          background: '#fee2e2',
+                          color: '#dc2626',
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                          border: '1px solid #fecaca',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '2px'
+                        }}
+                        title="Click to view existing bill details"
+                      >
+                        ⚠️ Duplicate
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomInvoiceNo('')}
+                        style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                        title="Reset to Auto Invoice Number"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : customInvoiceNo ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
                       <span style={{ fontSize: '0.6rem', fontWeight: '800', background: '#fef3c7', color: '#b45309', padding: '1px 4px', borderRadius: '3px', border: '1px solid #fde68a' }}>
                         Custom
@@ -1370,7 +1470,6 @@ export default function Billing({ products, parties, business, invoices, refresh
                 </div>
               </div>
             </div>
-
 
             {/* Customer Search Bar (matching reference UI in user image) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>

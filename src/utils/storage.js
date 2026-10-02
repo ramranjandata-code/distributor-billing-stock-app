@@ -2004,6 +2004,18 @@ export const calculateDueDate = (invoiceDateStr, terms = 'immediate') => {
   return base.toISOString().split('T')[0];
 };
 
+// Find existing invoice by number (Security helper to prevent duplicate bills)
+export const findInvoiceByNumber = (invNo, excludeId = null) => {
+  if (!invNo || !String(invNo).trim()) return null;
+  const clean = String(invNo).trim().toLowerCase();
+  const invoices = fetchInvoices();
+  return invoices.find(i => {
+    if (!i || !i.invoiceNo) return false;
+    if (excludeId && i.id === excludeId) return false;
+    return String(i.invoiceNo).trim().toLowerCase() === clean;
+  }) || null;
+};
+
 export const getNextInvoiceNumber = () => {
   const invoices = fetchInvoices();
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
