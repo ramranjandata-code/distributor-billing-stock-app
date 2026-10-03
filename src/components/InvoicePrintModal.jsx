@@ -1141,7 +1141,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             color: '#000000',
             background: '#ffffff',
             display: 'grid', 
-            gridTemplateColumns: paperFormat === 'A5' ? '1.2fr 0.7fr 1.4fr' : '1.3fr 0.7fr 1.35fr' 
+            gridTemplateColumns: paperFormat === 'A5' ? '1.05fr 0.95fr 1.35fr' : '1.15fr 0.95fr 1.3fr' 
           }}>
             
             {/* Box 1: Terms & Customer Signature */}
@@ -1172,27 +1172,28 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             </div>
 
             {/* Box 2: UPI QR Code (Enlarged, Sharp, Centered) */}
-            <div style={{ padding: '3px', borderRight: '1px solid #000000', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
+            <div style={{ padding: '4px 2px', borderRight: '1px solid #000000', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
               {upiQrUrl ? (
                 <img 
                   src={upiQrUrl} 
                   alt="UPI QR Code" 
                   style={{ 
-                    width: paperFormat === 'A5' ? '54px' : '76px', 
-                    height: paperFormat === 'A5' ? '54px' : '76px', 
+                    width: paperFormat === 'A5' ? '82px' : '98px', 
+                    height: paperFormat === 'A5' ? '82px' : '98px', 
                     objectFit: 'contain', 
                     background: '#ffffff', 
                     padding: '2px', 
-                    borderRadius: '3px', 
-                    border: '1px solid #cbd5e1' 
+                    borderRadius: '4px', 
+                    border: '1.2px solid #000000',
+                    display: 'block'
                   }} 
                 />
               ) : (
-                <div style={{ width: '54px', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', border: '1px dashed #cbd5e1' }}>
+                <div style={{ width: '82px', height: '82px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', border: '1px dashed #cbd5e1' }}>
                   UPI QR
                 </div>
               )}
-              <div style={{ fontWeight: '800', marginTop: '2px', fontSize: paperFormat === 'A5' ? '0.58rem' : '0.66rem', color: '#000000', letterSpacing: '0.2px' }}>
+              <div style={{ fontWeight: '900', marginTop: '3px', fontSize: paperFormat === 'A5' ? '0.68rem' : '0.76rem', color: '#000000', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
                 Scan & Pay UPI
               </div>
             </div>

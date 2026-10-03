@@ -20,10 +20,10 @@ export const generateUpiQrDataUrl = async (vpa, payeeName, amount, invoiceNo = '
   const url = buildUpiPaymentUrl(vpa, payeeName, amount, invoiceNo);
   try {
     return await QRCode.toDataURL(url, {
-      width: 260,
-      margin: 2,
+      width: 360,
+      margin: 1,
       color: {
-        dark: '#0f172a',
+        dark: '#000000',
         light: '#ffffff'
       }
     });
