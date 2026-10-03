@@ -340,7 +340,7 @@ input[type=number] {
 /* Printable Bill & Report Styling for A4 / A5 / POS and PDF Exports */
 @media print {
   @page {
-    margin: 2mm 4mm 0mm 4mm !important;
+    margin: 3.5mm 4mm 0mm 4mm !important;
     size: auto !important;
   }
   

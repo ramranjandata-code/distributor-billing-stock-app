@@ -394,7 +394,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
         @media print {
           @page {
             size: ${paperFormat === 'A3' ? 'A3 portrait' : 'auto'} !important;
-            margin: ${paperFormat === 'A3' ? '8mm 10mm' : '2mm 4mm 0mm 4mm'} !important;
+            margin: ${paperFormat === 'A3' ? '8mm 10mm' : '3.5mm 4mm 0mm 4mm'} !important;
           }
           html, body {
             margin: 0 !important;
@@ -783,28 +783,29 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             justifyContent: 'space-between', 
             alignItems: 'center', 
             borderBottom: '2px solid #000000',
-            paddingBottom: paperFormat === 'A5' ? '3px' : '6px',
-            marginBottom: paperFormat === 'A5' ? '3px' : '6px'
+            paddingTop: paperFormat === 'A5' ? '4px' : '8px',
+            paddingBottom: paperFormat === 'A5' ? '3px' : '5px',
+            marginBottom: paperFormat === 'A5' ? '3px' : '5px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: paperFormat === 'A5' ? '10px' : '14px' }}>
               <img 
                 src={firmLogo} 
                 alt="Logo" 
                 style={{ 
-                  height: paperFormat === 'A5' ? '38px' : '52px', 
+                  height: paperFormat === 'A5' ? '32px' : '46px', 
                   width: 'auto', 
                   objectFit: 'contain' 
                 }} 
               />
               <div>
                 <h1 style={{ 
-                  fontSize: paperFormat === 'A5' ? '1.18rem' : '1.55rem', 
-                  fontWeight: '900', 
+                  fontSize: paperFormat === 'A5' ? '1.02rem' : '1.38rem', 
+                  fontWeight: '800', 
                   margin: 0, 
                   textTransform: 'uppercase', 
                   color: '#000000',
-                  lineHeight: '1.1',
-                  letterSpacing: '0.4px'
+                  lineHeight: '1.15',
+                  letterSpacing: '0.3px'
                 }}>
                   {business?.name || 'JAI MAA SHARDEY ENTERPRISES'}
                 </h1>
