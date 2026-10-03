@@ -488,13 +488,36 @@ input[type=number] {
   }
 
   .print-area.print-area-a5 table th,
-  .print-area.print-area-a5 table td,
+  .print-area.print-area-a5 table th,
+  .print-area.print-area-a5 table td:not(.grand-total-label):not(.grand-total-val),
   .print-area-a5 table th,
-  .print-area-a5 table td {
+  .print-area-a5 table td:not(.grand-total-label):not(.grand-total-val) {
     padding: 1.5px 3.5px !important;
     font-size: 8.0px !important;
     line-height: 1.2 !important;
     color: #000000 !important;
+  }
+
+  /* Large Bold TOTAL AMOUNT for Print */
+  .print-area.print-area-a5 .grand-total-label,
+  .print-area-a5 .grand-total-label,
+  .grand-total-label {
+    font-size: 13.5px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    padding: 4px 6px !important;
+    line-height: 1.2 !important;
+  }
+
+  .print-area.print-area-a5 .grand-total-val,
+  .print-area-a5 .grand-total-val,
+  .grand-total-val {
+    font-size: 19px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    letter-spacing: 0.5px !important;
+    padding: 4px 6px !important;
+    line-height: 1.2 !important;
   }
 
   .print-area.print-area-a5 .items-table tr,

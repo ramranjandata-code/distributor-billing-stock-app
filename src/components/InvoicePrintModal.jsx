@@ -101,6 +101,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   const [editNotes, setEditNotes] = useState('');
   const [editProductSearch, setEditProductSearch] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showOverflowWarning, setShowOverflowWarning] = useState(false);
 
   const changePaperFormat = (fmt) => {
     setPaperFormat(fmt);
@@ -139,7 +140,11 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       .then(url => setEInvoiceQrUrl(url));
   }, [invoice, business]);
 
-  const handlePrint = () => {
+  const handlePrint = (force = false) => {
+    if (!force && paperFormat === 'A5' && processedItems.length > 10) {
+      setShowOverflowWarning(true);
+      return;
+    }
     window.print();
   };
 
@@ -420,6 +425,17 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             page-break-after: avoid !important;
             break-after: avoid !important;
           }
+          .grand-total-label {
+            font-size: 13.5px !important;
+            font-weight: 900 !important;
+            color: #000000 !important;
+          }
+          .grand-total-val {
+            font-size: 19px !important;
+            font-weight: 900 !important;
+            color: #000000 !important;
+            letter-spacing: 0.5px !important;
+          }
           .print-area-a5 table,
           .print-area-a5 tr {
             page-break-inside: avoid !important;
@@ -513,9 +529,14 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 <span>⚡ A3 Large Page: 12+ Items Fit Guarantee</span>
               </span>
             )}
+            {paperFormat === 'A5' && processedItems.length > 10 && (
+              <span style={{ fontSize: '0.72rem', color: '#b91c1c', background: '#fef2f2', padding: '3px 8px', borderRadius: '4px', fontWeight: '800', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span>⚠️ {processedItems.length} Items: Not Fit on Half Sheet! A4 Select Karein</span>
+              </span>
+            )}
             {paperFormat === 'A5' && (
               <span style={{ fontSize: '0.72rem', color: '#047857', background: '#ecfdf5', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>⚡ A4 Sheet Beech se Phad kar Print karein: 100% Top Half Fit</span>
+                <span>⚡ A4 Sheet Beech se Phad kar Print: 10 Boxes Fixed</span>
               </span>
             )}
 
@@ -967,6 +988,28 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                 </tr>
               ))}
 
+              {/* Fixed 10 Rows Box Form: pad empty rows up to 10 rows */}
+              {paperFormat === 'A5' && Array.from({ length: Math.max(0, 10 - processedItems.length) }).map((_, idx) => {
+                const rowNum = processedItems.length + idx + 1;
+                return (
+                  <tr key={`empty-${idx}`} style={{ 
+                    borderBottom: '1px solid #e2e8f0', 
+                    height: '15px', 
+                    background: (processedItems.length + idx) % 2 === 1 ? '#fafafa' : '#ffffff'
+                  }}>
+                    <td style={{ padding: '1px 3px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#94a3b8' }}>{rowNum}</td>
+                    <td style={{ padding: '1px 5px', borderRight: '1px solid #e2e8f0' }}>&nbsp;</td>
+                    <td style={{ padding: '1px 3px', borderRight: '1px solid #e2e8f0' }}>&nbsp;</td>
+                    <td style={{ padding: '1px 3px', borderRight: '1px solid #e2e8f0' }}>&nbsp;</td>
+                    <td style={{ padding: '1px 5px', borderRight: '1px solid #e2e8f0' }}>&nbsp;</td>
+                    {!isNonGst && (
+                      <td style={{ padding: '1px 5px', borderRight: '1px solid #e2e8f0' }}>&nbsp;</td>
+                    )}
+                    <td style={{ padding: '1px 5px' }}>&nbsp;</td>
+                  </tr>
+                );
+              })}
+
               {/* Summary Total Row */}
               <tr style={{ 
                 borderTop: '1px solid #000000', 
@@ -1198,22 +1241,22 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                     </tr>
                   )}
                   {/* PROMINENT BOLD TOTAL AMOUNT ROW */}
-                  <tr style={{ background: '#f1f5f9', borderTop: '2px solid #000000', borderBottom: '2px solid #000000' }}>
-                    <td style={{ 
-                      padding: paperFormat === 'A5' ? '3px 6px' : '5px 8px', 
+                  <tr className="grand-total-row" style={{ background: '#f1f5f9', borderTop: '2.5px solid #000000', borderBottom: '2.5px solid #000000' }}>
+                    <td className="grand-total-label" style={{ 
+                      padding: '4px 6px', 
                       fontWeight: '900', 
-                      fontSize: paperFormat === 'A5' ? '0.88rem' : '1.05rem', 
+                      fontSize: '13.5px', 
                       color: '#000000',
-                      letterSpacing: '0.3px',
+                      letterSpacing: '0.5px',
                       textTransform: 'uppercase'
                     }}>
                       TOTAL AMOUNT
                     </td>
-                    <td style={{ 
-                      padding: paperFormat === 'A5' ? '3px 6px' : '5px 8px', 
+                    <td className="grand-total-val" style={{ 
+                      padding: '4px 6px', 
                       textAlign: 'right', 
                       fontWeight: '900', 
-                      fontSize: paperFormat === 'A5' ? '1.15rem' : '1.35rem', 
+                      fontSize: '19px', 
                       color: '#000000',
                       letterSpacing: '0.5px'
                     }}>
@@ -1509,6 +1552,110 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
         </div>
       </div>
     )}
+    
+    {/* Warning Modal: Not Fit on Half Sheet */}
+    {showOverflowWarning && (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.75)',
+        zIndex: 10000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}>
+        <div style={{
+          background: '#ffffff',
+          borderRadius: '14px',
+          maxWidth: '480px',
+          width: '100%',
+          padding: '24px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          textAlign: 'center',
+          border: '2px solid #ef4444'
+        }}>
+          <div style={{
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: '#fee2e2',
+            color: '#dc2626',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 14px auto',
+            fontSize: '28px'
+          }}>
+            ⚠️
+          </div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '900', color: '#991b1b', margin: '0 0 10px 0' }}>
+            Warning: Not Fit on Half Sheet!
+          </h3>
+          <p style={{ fontSize: '0.92rem', color: '#374151', lineHeight: '1.5', margin: '0 0 18px 0' }}>
+            Is invoice mein <strong>{processedItems.length} items</strong> hain (10 se zyada).<br />
+            A4 sheet ko beech se phad kar (Half Page) par print karne par ye <strong>cut ho jayega aur fit nahi aayega</strong>!
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button
+              onClick={() => {
+                setShowOverflowWarning(false);
+                changePaperFormat('A4');
+                setTimeout(() => window.print(), 250);
+              }}
+              style={{
+                background: '#1d4ed8',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 18px',
+                fontWeight: '800',
+                fontSize: '0.95rem',
+                cursor: 'pointer'
+              }}
+            >
+              📄 Switch to "A4 Full Page" & Print (Recommended)
+            </button>
+            <button
+              onClick={() => {
+                setShowOverflowWarning(false);
+                handlePrint(true);
+              }}
+              style={{
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                padding: '10px 16px',
+                fontWeight: '700',
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              ⚠️ Print Anyway on Half Sheet (Risk of Cut-off)
+            </button>
+            <button
+              onClick={() => setShowOverflowWarning(false)}
+              style={{
+                background: 'transparent',
+                color: '#6b7280',
+                border: 'none',
+                padding: '8px',
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                textDecoration: 'underline'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     </>
   );
 }
