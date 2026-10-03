@@ -388,8 +388,8 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       <style>{`
         @media print {
           @page {
-            size: ${paperFormat === 'A3' ? 'A3 portrait' : paperFormat === 'A5' ? 'A5 portrait' : paperFormat === 'A4' ? 'A4 portrait' : 'auto'} !important;
-            margin: ${paperFormat === 'A3' ? '8mm 10mm' : paperFormat === 'A5' ? '2.5mm 3.5mm' : '4mm 6mm'} !important;
+            size: ${paperFormat === 'A3' ? 'A3 portrait' : 'auto'} !important;
+            margin: ${paperFormat === 'A3' ? '8mm 10mm' : '2mm 4mm 0mm 4mm'} !important;
           }
           html, body {
             margin: 0 !important;
@@ -398,8 +398,23 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
+          body.has-printable-modal,
+          body.has-printable-modal .app-container,
+          body.has-printable-modal .modal-overlay,
+          body.has-printable-modal .printable-modal-content,
+          body.has-printable-modal .print-area {
+            margin: 0 !important;
+            padding: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+            position: static !important;
+          }
           .print-area-a5 {
-            max-height: 144mm !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            max-height: 138mm !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
             page-break-after: avoid !important;
@@ -461,7 +476,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   cursor: 'pointer'
                 }}
               >
-                A5 Half Page
+                A5 Half Page (A4 Cut)
               </button>
               <button
                 onClick={() => changePaperFormat('A3')}
@@ -500,7 +515,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
             )}
             {paperFormat === 'A5' && (
               <span style={{ fontSize: '0.72rem', color: '#047857', background: '#ecfdf5', padding: '3px 8px', borderRadius: '4px', fontWeight: '700', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span>⚡ A5 Half Page: 12 Items Fit Guarantee</span>
+                <span>⚡ A4 Sheet Beech se Phad kar Print karein: 100% Top Half Fit</span>
               </span>
             )}
 
