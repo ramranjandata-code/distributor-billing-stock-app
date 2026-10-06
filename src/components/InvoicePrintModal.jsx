@@ -372,7 +372,17 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     }
   }
 
-  const totalQtyPcs = processedItems.reduce((sum, item) => sum + item.itemQty, 0);
+  const totalBilledQty = processedItems.reduce((sum, item) => {
+    const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
+    const rateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
+    const itemPcsPerBox = Number(item.pcsPerBox) || 12;
+    if (isChainPouch && (rateMode === 'CHAIN_POUCH' || !item.rateMode)) {
+      return sum + (item.itemQty / itemPcsPerBox);
+    }
+    return sum + item.itemQty;
+  }, 0);
+  const formattedTotalQty = Number.isInteger(totalBilledQty) ? totalBilledQty : Number(totalBilledQty.toFixed(2));
+  const totalQtyPcs = formattedTotalQty;
   const isDense = (paperFormat === "A5" && processedItems.length >= 10);
 
   // Statutory HSN/SAC Tax Summary computation
@@ -724,7 +734,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
             <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px', borderBottom: '1px dashed #000', paddingBottom: '6px', marginBottom: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Subtotal ({totalQtyPcs} Pcs):</span>
+                <span>Subtotal ({formattedTotalQty}):</span>
                 <span>₹{(isNonGst ? (Number(invoice.subTotal || invoice.subtotal) || totalTaxableAmount) : totalTaxableAmount).toFixed(2)}</span>
               </div>
               {!isNonGst && (
@@ -1042,7 +1052,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               }}>
                 <td colSpan={3} style={{ padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', borderRight: '1px solid #000000', textAlign: 'right' }}>Total</td>
                 <td style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 5px', borderRight: '1px solid #000000', textAlign: 'center' }}>
-                  {totalQtyPcs} {processedItems.length > 0 && processedItems.every(i => i.unit === 'Chain Pouch' || i.unit === 'C. Pouch' || i.unit === 'c. pouch') ? 'C. Pouch' : 'Pcs'}
+                  {formattedTotalQty}
                 </td>
                 <td style={{ borderRight: '1px solid #000000' }}></td>
                 {!isNonGst && (
