@@ -383,11 +383,12 @@ export default function Billing({ products, parties, business, invoices, refresh
           brand: product.brand || 'General',
           hsn: product.hsn,
           pcsPerCarton: pcsPerCtn,
-          pcsPerBox: product.pcsPerBox || 1,
+          pcsPerBox: Number(product.pcsPerBox) > 1 ? Number(product.pcsPerBox) : (pcsPerCtn % 12 === 0 ? 12 : 12),
           cartonQty: 0,
           looseQty: 1,
           qty: 1,
           unit: product.unit,
+          rateMode: (product.unit === 'Chain Pouch' || product.unit === 'C. Pouch' || product.unit === 'c. pouch') ? 'CHAIN_POUCH' : 'POUCH',
           price: product.salePrice,
           mrp: product.mrp,
           gstRate: product.gstRate,
@@ -544,6 +545,32 @@ export default function Billing({ products, parties, business, invoices, refresh
 
     item.looseQty = loose;
     item.qty = newTotal;
+    setCart(updated);
+  };
+
+  const handleToggleRateMode = (index) => {
+    const updated = [...cart];
+    const item = updated[index];
+    const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
+    if (!isChainPouch) return;
+
+    const pouchesPerChain = Number(item.pcsPerBox) > 1 
+      ? Number(item.pcsPerBox) 
+      : (item.pcsPerCarton && item.packsPerCarton && Number(item.packsPerCarton) > 0 
+          ? Math.round(Number(item.pcsPerCarton) / Number(item.packsPerCarton)) 
+          : (item.pcsPerCarton && Number(item.pcsPerCarton) % 12 === 0 ? 12 : 12));
+
+    const currentMode = item.rateMode || 'CHAIN_POUCH';
+    const nextMode = currentMode === 'CHAIN_POUCH' ? 'POUCH' : 'CHAIN_POUCH';
+
+    const currentPrice = Number(item.price) || 0;
+    if (nextMode === 'POUCH' && currentPrice > 0 && pouchesPerChain > 1) {
+      item.price = Number((currentPrice / pouchesPerChain).toFixed(2));
+    } else if (nextMode === 'CHAIN_POUCH' && currentPrice > 0 && pouchesPerChain > 1) {
+      item.price = Number((currentPrice * pouchesPerChain).toFixed(2));
+    }
+
+    item.rateMode = nextMode;
     setCart(updated);
   };
 
@@ -1922,19 +1949,50 @@ export default function Billing({ products, parties, business, invoices, refresh
                             {/* Total base pcs inline badge */}
                             <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: '800', background: '#ecfdf5', padding: '1px 4px', borderRadius: '3px', border: '1px solid #a7f3d0', marginLeft: '2px', whiteSpace: 'nowrap' }} title="Total Pieces">
                               ={item.qty}
+                              {(item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch') ? ` (${(item.qty / (Number(item.pcsPerBox) || 12)).toFixed(1).replace(/\.0$/, '')} C.Pouch)` : ''}
                             </span>
                           </div>
                         </td>
 
                         <td style={{ padding: '3px 4px', textAlign: 'right' }}>
-                          <input 
-                            type="number"
-                            step="0.01"
-                            style={{ width: '58px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
-                            className="input-field"
-                            value={item.price}
-                            onChange={e => handleItemPriceChange(index, e.target.value)}
-                          />
+                          {(() => {
+                            const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
+                            const currentRateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
+                            return (
+                              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                                <input 
+                                  type="number"
+                                  step="0.01"
+                                  style={{ width: '62px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
+                                  className="input-field"
+                                  value={item.price}
+                                  onChange={e => handleItemPriceChange(index, e.target.value)}
+                                  placeholder="Rate"
+                                />
+                                {isChainPouch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleRateMode(index)}
+                                    title={currentRateMode === 'POUCH' ? 'Currently: Rate per Pouch (Click to change to Rate per Chain Pouch)' : 'Currently: Rate per Chain Pouch (Click to change to Rate per Pouch)'}
+                                    style={{
+                                      fontSize: '0.62rem',
+                                      fontWeight: '800',
+                                      padding: '1px 5px',
+                                      borderRadius: '3px',
+                                      border: '1px solid ' + (currentRateMode === 'POUCH' ? '#f59e0b' : '#10b981'),
+                                      background: currentRateMode === 'POUCH' ? '#fffbeb' : '#ecfdf5',
+                                      color: currentRateMode === 'POUCH' ? '#b45309' : '#047857',
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                      lineHeight: '1.2'
+                                    }}
+                                  >
+                                    {currentRateMode === 'POUCH' ? '/Pouch' : '/C. Pouch (Default)'}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
 
                         {/* Item-wise Discount (% / ₹ Toggle) */}

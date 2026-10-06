@@ -314,14 +314,25 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     totalSgstCalculated += sgstAmt;
     totalIgstCalculated += igstAmt;
 
+    const isChainPouch = itemUnit === 'Chain Pouch' || itemUnit === 'C. Pouch' || itemUnit === 'c. pouch';
+    const rateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
+    
+    // For chain pouch with rate per chain pouch, calculate exact itemTotal if needed
+    let finalItemTotal = itemTotal;
+    if (isChainPouch && rateMode === 'CHAIN_POUCH' && (!item.total || Number(item.total) === 0 || Number(item.total) === (itemQty * itemRate))) {
+      finalItemTotal = (itemQty / itemPcsPerBox) * itemRate;
+    }
+
     return {
       ...item,
       unit: itemUnit,
       pcsPerBox: itemPcsPerBox,
       pcsPerCarton: itemPcsPerCarton,
+      rateMode,
+      isChainPouch,
       itemQty,
       itemRate,
-      itemTotal,
+      itemTotal: finalItemTotal,
       gstRateNum,
       gstAmt,
       taxableVal,
@@ -985,7 +996,11 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   <td style={{ padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 7px', borderRight: '1px solid #e2e8f0', fontWeight: '700', color: '#000000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 5px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#334155', fontFamily: 'monospace' }}>{item.hsn || '1905'}</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 5px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: '800', color: '#000000' }}>
-                    {formatCartonStock(item.itemQty, item.pcsPerCarton, item.pcsPerBox, item.unit)}
+                    {item.isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode)
+                      ? (item.itemQty % (item.pcsPerBox || 12) === 0 
+                          ? `${item.itemQty / (item.pcsPerBox || 12)} C. Pouch`
+                          : `${Math.floor(item.itemQty / (item.pcsPerBox || 12))} C. Pouch + ${item.itemQty % (item.pcsPerBox || 12)} Pcs`)
+                      : formatCartonStock(item.itemQty, item.pcsPerCarton, item.pcsPerBox, item.unit)}
                   </td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 7px', borderRight: '1px solid #e2e8f0', textAlign: 'right', color: '#334155' }}>₹{item.itemRate.toFixed(2)}</td>
                   {!isNonGst && (
