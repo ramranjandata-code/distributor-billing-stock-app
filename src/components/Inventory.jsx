@@ -270,7 +270,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
   const handleOpenEditModal = (prod) => {
     setEditingProduct(prod);
     const pcsPerCtn = Number(prod.pcsPerCarton) || 24;
-    const isBoxOrPack = prod.unit === 'Box' || prod.unit === 'Pack';
+    const isBoxOrPack = prod.unit === 'Box' || prod.unit === 'Pack' || prod.unit === 'Chain Pouch';
     const pcsPerBox = prod.pcsPerBox !== undefined && prod.pcsPerBox !== '' ? prod.pcsPerBox : (isBoxOrPack ? 1 : '');
     const packsPerCtn = prod.packsPerCarton !== undefined && prod.packsPerCarton !== '' 
       ? prod.packsPerCarton 
@@ -301,7 +301,7 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
 
   const handleSaveProductForm = (e) => {
     e.preventDefault();
-    const isBoxOrPack = formData.unit === 'Box' || formData.unit === 'Pack';
+    const isBoxOrPack = formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch';
     const pcsPerBoxNum = Number(formData.pcsPerBox) || 1;
     const packsPerCtnNum = Number(formData.packsPerCarton) || 1;
     
@@ -2245,7 +2245,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     value={formData.unit}
                     onChange={e => {
                       const newUnit = e.target.value;
-                      const isBoxOrPack = newUnit === 'Box' || newUnit === 'Pack';
+                      const isBoxOrPack = newUnit === 'Box' || newUnit === 'Pack' || newUnit === 'Chain Pouch';
                       setFormData(prev => {
                         const currentPcs = Number(prev.pcsPerCarton) || 24;
                         const pcsPerBox = isBoxOrPack ? (prev.pcsPerBox || 1) : '';
@@ -2271,6 +2271,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     <option value="Pcs">Pcs (Pieces)</option>
                     <option value="Pack">Pack</option>
                     <option value="Box">Box</option>
+                    <option value="Chain Pouch">Chain Pouch</option>
                     <option value="Carton">Carton</option>
                     <option value="Kg">Kg</option>
                     <option value="Litre">Litre</option>
@@ -2278,7 +2279,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 </div>
 
                 {/* Packaging Setup: Single Box if Pcs, or Multi-Box hierarchy if Box / Pack */}
-                {formData.unit === 'Box' || formData.unit === 'Pack' ? (
+                {formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch' ? (
                   <div className="form-group" style={{ gridColumn: '1 / -1', background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
                       <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#166534' }}>
@@ -2407,11 +2408,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 {/* Carton & Loose Pieces Stock Input Section */}
                 <div className="form-group" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                   <label className="form-label" style={{ fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>
-                    📦 Initial Stock Details ({formData.unit === 'Box' || formData.unit === 'Pack' ? `Carton, ${formData.unit} & Loose Pieces` : 'Carton & Loose Pieces'})
+                    📦 Initial Stock Details ({formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch' ? `Carton, ${formData.unit} & Loose Pieces` : 'Carton & Loose Pieces'})
                   </label>
                   <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: formData.unit === 'Box' || formData.unit === 'Pack' ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr 1fr', 
+                    gridTemplateColumns: formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch' ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr 1fr', 
                     gap: '12px', 
                     marginTop: '8px' 
                   }}>
@@ -2427,7 +2428,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           const val = e.target.value;
                           const ctn = val === '' ? '' : val;
                           const ctnNum = Number(val) || 0;
-                          const isBoxOrPack = formData.unit === 'Box' || formData.unit === 'Pack';
+                          const isBoxOrPack = formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch';
                           const pcsPerBoxNum = Number(formData.pcsPerBox) || 1;
                           const totalPcsPerCtn = isBoxOrPack && Number(formData.packsPerCarton) > 0 && Number(formData.pcsPerBox) > 0
                             ? (Number(formData.packsPerCarton) * pcsPerBoxNum)
@@ -2444,7 +2445,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     </div>
 
                     {/* EXTRA STOCK BOX FOR BOX / PACK */}
-                    {(formData.unit === 'Box' || formData.unit === 'Pack') && (
+                    {(formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch') && (
                       <div>
                         <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{formData.unit}s Count (Loose)</label>
                         <input 
@@ -2485,7 +2486,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           const val = e.target.value;
                           const loose = val === '' ? '' : val;
                           const looseNum = Number(val) || 0;
-                          const isBoxOrPack = formData.unit === 'Box' || formData.unit === 'Pack';
+                          const isBoxOrPack = formData.unit === 'Box' || formData.unit === 'Pack' || formData.unit === 'Chain Pouch';
                           const pcsPerBoxNum = Number(formData.pcsPerBox) || 1;
                           const totalPcsPerCtn = isBoxOrPack && Number(formData.packsPerCarton) > 0 && Number(formData.pcsPerBox) > 0
                             ? (Number(formData.packsPerCarton) * pcsPerBoxNum)

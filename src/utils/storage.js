@@ -103,29 +103,32 @@ export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24, pcsPerBox =
   const stock = Number(totalStock) || 0;
   const boxPcs = Number(pcsPerBox) || 1;
   
+  const isChainPouch = (unit === 'Chain Pouch' || unit === 'C. Pouch' || unit === 'c. pouch');
+  const unitLabel = isChainPouch ? 'C. Pouch' : (unit || 'Pcs');
+
   if (pcs <= 1) {
-    return `${stock} ${unit || 'Pcs'}`;
+    return `${stock} ${unitLabel}`;
   }
 
   const cartons = Math.floor(stock / pcs);
   const remPcs = stock % pcs;
 
-  if (boxPcs > 1 && (unit === 'Box' || unit === 'Pack')) {
+  if (boxPcs > 1 && (unit === 'Box' || unit === 'Pack' || isChainPouch)) {
     const boxes = Math.floor(remPcs / boxPcs);
     const loose = remPcs % boxPcs;
     const parts = [];
     if (cartons > 0) parts.push(`${cartons} Ctn`);
-    if (boxes > 0) parts.push(`${boxes} ${unit}`);
+    if (boxes > 0) parts.push(`${boxes} ${unitLabel}`);
     if (loose > 0) parts.push(`${loose} Pcs`);
-    return parts.length > 0 ? parts.join(' + ') : `0 ${unit}`;
+    return parts.length > 0 ? parts.join(' + ') : `0 ${unitLabel}`;
   }
 
   if (cartons > 0 && remPcs > 0) {
-    return `${cartons} Ctn + ${remPcs} Pcs`;
+    return `${cartons} Ctn + ${remPcs} ${unitLabel}`;
   } else if (cartons > 0) {
-    return `${cartons} Ctn (${stock} Pcs)`;
+    return `${cartons} Ctn (${stock} ${unitLabel})`;
   } else {
-    return `${remPcs} Pcs`;
+    return `${remPcs} ${unitLabel}`;
   }
 };
 

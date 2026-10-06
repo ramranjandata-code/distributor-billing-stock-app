@@ -248,7 +248,15 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   let totalSgstCalculated = 0;
   let totalIgstCalculated = 0;
 
+  const allProductsList = useMemo(() => {
+    try { return fetchProducts() || []; } catch { return []; }
+  }, []);
+
   const processedItems = (invoice.items || []).map((item) => {
+    const matchedProduct = allProductsList.find(p => p.id === item.productId || p.name === item.name);
+    const itemUnit = item.unit || matchedProduct?.unit || 'Pcs';
+    const itemPcsPerBox = Number(item.pcsPerBox) || Number(matchedProduct?.pcsPerBox) || 1;
+    const itemPcsPerCarton = Number(item.pcsPerCarton) || Number(matchedProduct?.pcsPerCarton) || 24;
     const itemQty = Number(item.qty) || 0;
     const itemRate = Number(item.price) || 0;
     const itemTotal = Number(item.total) || (itemQty * itemRate);
@@ -308,6 +316,9 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
     return {
       ...item,
+      unit: itemUnit,
+      pcsPerBox: itemPcsPerBox,
+      pcsPerCarton: itemPcsPerCarton,
       itemQty,
       itemRate,
       itemTotal,
@@ -974,7 +985,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   <td style={{ padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 7px', borderRight: '1px solid #e2e8f0', fontWeight: '700', color: '#000000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 5px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#334155', fontFamily: 'monospace' }}>{item.hsn || '1905'}</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 5px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: '800', color: '#000000' }}>
-                    {formatCartonStock(item.itemQty, item.pcsPerCarton)}
+                    {formatCartonStock(item.itemQty, item.pcsPerCarton, item.pcsPerBox, item.unit)}
                   </td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 7px', borderRight: '1px solid #e2e8f0', textAlign: 'right', color: '#334155' }}>₹{item.itemRate.toFixed(2)}</td>
                   {!isNonGst && (
@@ -1016,7 +1027,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               }}>
                 <td colSpan={3} style={{ padding: paperFormat === 'A5' ? '1.5px 6px' : '3px 8px', borderRight: '1px solid #000000', textAlign: 'right' }}>Total</td>
                 <td style={{ padding: paperFormat === 'A5' ? '1.5px 3px' : '3px 5px', borderRight: '1px solid #000000', textAlign: 'center' }}>
-                  {totalQtyPcs} Pcs
+                  {totalQtyPcs} {processedItems.length > 0 && processedItems.every(i => i.unit === 'Chain Pouch' || i.unit === 'C. Pouch' || i.unit === 'c. pouch') ? 'C. Pouch' : 'Pcs'}
                 </td>
                 <td style={{ borderRight: '1px solid #000000' }}></td>
                 {!isNonGst && (

@@ -383,6 +383,7 @@ export default function Billing({ products, parties, business, invoices, refresh
           brand: product.brand || 'General',
           hsn: product.hsn,
           pcsPerCarton: pcsPerCtn,
+          pcsPerBox: product.pcsPerBox || 1,
           cartonQty: 0,
           looseQty: 1,
           qty: 1,
@@ -2605,6 +2606,7 @@ export default function Billing({ products, parties, business, invoices, refresh
                     onChange={e => setNewProductData({...newProductData, unit: e.target.value})}
                   >
                     <option value="Pcs">Pcs</option>
+                    <option value="Chain Pouch">Chain Pouch</option>
                     <option value="Box">Box</option>
                     <option value="Kg">Kg</option>
                     <option value="Gm">Gm</option>

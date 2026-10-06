@@ -96,7 +96,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
   const handleOpenEditProduct = (prod) => {
     setEditingProd(prod);
     const pcsPerCtn = Number(prod.pcsPerCarton) || 24;
-    const isBoxOrPack = prod.unit === 'Box' || prod.unit === 'Pack';
+    const isBoxOrPack = prod.unit === 'Box' || prod.unit === 'Pack' || prod.unit === 'Chain Pouch';
     const pcsPerBox = prod.pcsPerBox !== undefined && prod.pcsPerBox !== '' ? prod.pcsPerBox : (isBoxOrPack ? 1 : '');
     const packsPerCtn = prod.packsPerCarton !== undefined && prod.packsPerCarton !== '' 
       ? prod.packsPerCarton 
@@ -127,7 +127,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
 
   const handleSaveProductForm = (e) => {
     e.preventDefault();
-    const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack';
+    const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch';
     const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
     const packsPerCtnNum = Number(prodFormData.packsPerCarton) || 1;
     
@@ -1156,7 +1156,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     value={prodFormData.unit}
                     onChange={e => {
                       const newUnit = e.target.value;
-                      const isBoxOrPack = newUnit === 'Box' || newUnit === 'Pack';
+                      const isBoxOrPack = newUnit === 'Box' || newUnit === 'Pack' || newUnit === 'Chain Pouch';
                       setProdFormData(prev => {
                         const currentPcs = Number(prev.pcsPerCarton) || 24;
                         const pcsPerBox = isBoxOrPack ? (prev.pcsPerBox || 1) : '';
@@ -1182,13 +1182,14 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     <option value="Pcs">Pcs (Pieces)</option>
                     <option value="Pack">Pack</option>
                     <option value="Box">Box</option>
+                    <option value="Chain Pouch">Chain Pouch</option>
                     <option value="Carton">Carton / Case</option>
                     <option value="Kg">Kg (Kilograms)</option>
                   </select>
                 </div>
 
                 {/* Packaging Setup: Single Box if Pcs, or Multi-Box hierarchy if Box / Pack */}
-                {prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' ? (
+                {prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch' ? (
                   <div className="form-group" style={{ gridColumn: '1 / -1', background: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '4px' }}>
                       <span style={{ fontWeight: '700', fontSize: '0.82rem', color: '#166534' }}>
@@ -1317,11 +1318,11 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 {/* Carton & Loose Pieces Input Section */}
                 <div className="form-group" style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                   <label className="form-label" style={{ fontWeight: '700', color: 'var(--primary)', marginBottom: '4px' }}>
-                    📦 Initial Stock Entry ({prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' ? `Cartons, ${prodFormData.unit}s & Loose Pieces` : 'Cartons & Loose Pieces'})
+                    📦 Initial Stock Entry ({prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch' ? `Cartons, ${prodFormData.unit}s & Loose Pieces` : 'Cartons & Loose Pieces'})
                   </label>
                   <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr 1fr', 
+                    gridTemplateColumns: prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch' ? 'repeat(auto-fit, minmax(130px, 1fr))' : '1fr 1fr 1fr', 
                     gap: '12px', 
                     marginTop: '8px' 
                   }}>
@@ -1337,7 +1338,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                           const val = e.target.value;
                           const ctn = val === '' ? '' : val;
                           const ctnNum = Number(val) || 0;
-                          const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack';
+                          const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch';
                           const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
                           const totalPcsPerCtn = isBoxOrPack && Number(prodFormData.packsPerCarton) > 0 && Number(prodFormData.pcsPerBox) > 0
                             ? (Number(prodFormData.packsPerCarton) * pcsPerBoxNum)
@@ -1354,7 +1355,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                     </div>
 
                     {/* EXTRA STOCK BOX FOR BOX / PACK */}
-                    {(prodFormData.unit === 'Box' || prodFormData.unit === 'Pack') && (
+                    {(prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch') && (
                       <div>
                         <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{prodFormData.unit}s Count (Loose)</label>
                         <input 
@@ -1395,7 +1396,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                           const val = e.target.value;
                           const loose = val === '' ? '' : val;
                           const looseNum = Number(val) || 0;
-                          const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack';
+                          const isBoxOrPack = prodFormData.unit === 'Box' || prodFormData.unit === 'Pack' || prodFormData.unit === 'Chain Pouch';
                           const pcsPerBoxNum = Number(prodFormData.pcsPerBox) || 1;
                           const totalPcsPerCtn = isBoxOrPack && Number(prodFormData.packsPerCarton) > 0 && Number(prodFormData.pcsPerBox) > 0
                             ? (Number(prodFormData.packsPerCarton) * pcsPerBoxNum)
