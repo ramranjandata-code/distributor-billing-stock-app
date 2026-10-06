@@ -816,7 +816,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   {business?.phone ? <span>Ph: <strong>{business.phone}</strong></span> : ''}
                   {business?.phone && business?.email ? '  •  ' : ''}
                   {business?.email ? <span>Email: <strong>{business.email}</strong></span> : ''}
-                  {business?.proprietor ? <span>  •  Proprietor: <strong>{business.proprietor}</strong></span> : ''}
                 </div>
               </div>
             </div>
