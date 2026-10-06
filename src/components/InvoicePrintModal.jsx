@@ -893,10 +893,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                       <td style={{ color: '#475569', fontWeight: '600', padding: '0.8px 0' }}>Invoice Date:</td>
                       <td style={{ fontWeight: '800', color: '#000000', padding: '0.8px 0' }}>{formattedDate}</td>
                     </tr>
-                    <tr>
-                      <td style={{ color: '#475569', fontWeight: '600', padding: '0.8px 0' }}>Payment Mode:</td>
-                      <td style={{ fontWeight: '700', color: '#000000', padding: '0.8px 0' }}>{invoice.paymentMode || 'CASH'} ({invoice.paymentStatus})</td>
-                    </tr>
                     {!isNonGst && (
                       <tr>
                         <td style={{ color: '#475569', fontWeight: '600', padding: '0.8px 0' }}>Place of Supply:</td>
