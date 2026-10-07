@@ -432,7 +432,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 <input 
                   type="text" 
                   className="input-field"
-                  placeholder="e.g. BILL/ (leave blank for plain numbers: 155, 156...)"
+                  placeholder="e.g. BILL/ (leave blank for plain numbers: 206, 207...)"
                   value={formData.invoicePrefix || ''} 
                   onChange={e => setFormData({...formData, invoicePrefix: e.target.value})}
                 />
@@ -443,12 +443,12 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 <input 
                   type="number" 
                   className="input-field"
-                  placeholder="e.g. 155"
+                  placeholder="e.g. 206"
                   value={formData.nextInvoiceNumber || ''} 
                   onChange={e => setFormData({...formData, nextInvoiceNumber: e.target.value})}
                 />
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Series Preview: <strong style={{ color: 'var(--primary)' }}>{(formData.invoicePrefix || '')}{(formData.nextInvoiceNumber || '155')}</strong>
+                  Series Preview: <strong style={{ color: 'var(--primary)' }}>{(formData.invoicePrefix || '')}{(formData.nextInvoiceNumber || '206')}</strong>
                 </div>
               </div>
 

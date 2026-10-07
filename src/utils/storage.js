@@ -218,8 +218,8 @@ export const initDataStorage = () => {
       patchedBiz.invoicePrefix = '';
       bizUpdated = true;
     }
-    if (!patchedBiz.nextInvoiceNumber || Number(patchedBiz.nextInvoiceNumber) === 1001) {
-      patchedBiz.nextInvoiceNumber = 155;
+    if (!patchedBiz.nextInvoiceNumber || Number(patchedBiz.nextInvoiceNumber) === 1001 || Number(patchedBiz.nextInvoiceNumber) === 155) {
+      patchedBiz.nextInvoiceNumber = 206;
       bizUpdated = true;
     }
     if (bizUpdated) {
@@ -240,6 +240,224 @@ export const initDataStorage = () => {
     });
     if (invsUpdated) {
       setStorageData(STORAGE_KEYS.INVOICES, patchedInvs);
+    }
+  }
+
+  // One-time automatic migration: Shift invoice series starting from 155 to 206 (+51 offset)
+  // 155 becomes 206, 156 becomes 207, 157 becomes 208, and so on.
+  const MIGRATION_KEY_155_TO_206 = 'distro_migrated_inv_155_to_206_v1';
+  if (!localStorage.getItem(MIGRATION_KEY_155_TO_206)) {
+    try {
+      const OFFSET = 51; // 206 - 155 = 51
+      const currentInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
+      let hasDataChanged = false;
+
+      const shiftInvNo = (str) => {
+        if (!str || typeof str !== 'string') return str;
+        const trimmed = str.trim();
+        if (trimmed.toUpperCase().startsWith('DRAFT')) return str;
+        const match = trimmed.match(/^(\D*)(\d+)$/);
+        if (match) {
+          const prefix = match[1];
+          const num = parseInt(match[2], 10);
+          if (num >= 155 && num < 1000) {
+            const padLen = match[2].length;
+            return `${prefix}${String(num + OFFSET).padStart(padLen, '0')}`;
+          }
+        }
+        return str;
+      };
+
+      const invoiceNoMap = {}; // oldNo -> newNo
+
+      if (Array.isArray(currentInvoices) && currentInvoices.length > 0) {
+        let invoicesChanged = false;
+        const updatedInvoices = currentInvoices.map(inv => {
+          if (!inv || !inv.invoiceNo) return inv;
+          const oldNo = String(inv.invoiceNo).trim();
+          const newNo = shiftInvNo(oldNo);
+          if (newNo !== oldNo) {
+            invoicesChanged = true;
+            invoiceNoMap[oldNo] = newNo;
+
+            const updatedPayments = Array.isArray(inv.payments)
+              ? inv.payments.map(p => ({
+                  ...p,
+                  memo: (p && p.memo) ? p.memo.replace(oldNo, newNo) : (p ? p.memo : undefined)
+                }))
+              : inv.payments;
+
+            const updatedChatter = Array.isArray(inv.chatter)
+              ? inv.chatter.map(c => ({
+                  ...c,
+                  text: (c && c.text) ? c.text.replace(oldNo, newNo) : (c ? c.text : undefined)
+                }))
+              : inv.chatter;
+
+            return {
+              ...inv,
+              invoiceNo: newNo,
+              payments: updatedPayments,
+              chatter: updatedChatter
+            };
+          }
+          return inv;
+        });
+
+        if (invoicesChanged) {
+          setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+          hasDataChanged = true;
+        }
+      }
+
+      // Shift business nextInvoiceNumber
+      const biz = getStorageData(STORAGE_KEYS.BUSINESS, null);
+      if (biz) {
+        let bizChanged = false;
+        const curNext = Number(biz.nextInvoiceNumber);
+        if (!isNaN(curNext) && curNext >= 155 && curNext < 1000) {
+          biz.nextInvoiceNumber = curNext + OFFSET;
+          bizChanged = true;
+        } else if (!curNext || curNext < 206) {
+          biz.nextInvoiceNumber = 206;
+          bizChanged = true;
+        }
+        if (bizChanged) {
+          setStorageData(STORAGE_KEYS.BUSINESS, biz);
+          hasDataChanged = true;
+        }
+      }
+
+      // Update payment receipts
+      const receipts = getStorageData(STORAGE_KEYS.PAYMENT_RECEIPTS, null);
+      if (Array.isArray(receipts) && receipts.length > 0) {
+        let receiptsChanged = false;
+        const updatedReceipts = receipts.map(r => {
+          if (!r) return r;
+          let rChanged = false;
+          let newInvNo = r.invoiceNo;
+          if (r.invoiceNo && invoiceNoMap[r.invoiceNo]) {
+            newInvNo = invoiceNoMap[r.invoiceNo];
+            rChanged = true;
+          } else if (r.invoiceNo) {
+            const shifted = shiftInvNo(String(r.invoiceNo));
+            if (shifted !== r.invoiceNo) {
+              newInvNo = shifted;
+              rChanged = true;
+            }
+          }
+
+          let newNotes = r.notes;
+          if (newNotes && typeof newNotes === 'string') {
+            Object.keys(invoiceNoMap).forEach(oldNo => {
+              if (newNotes.includes(oldNo)) {
+                newNotes = newNotes.replaceAll(oldNo, invoiceNoMap[oldNo]);
+                rChanged = true;
+              }
+            });
+          }
+
+          if (rChanged) {
+            receiptsChanged = true;
+            return {
+              ...r,
+              invoiceNo: newInvNo,
+              notes: newNotes
+            };
+          }
+          return r;
+        });
+
+        if (receiptsChanged) {
+          setStorageData(STORAGE_KEYS.PAYMENT_RECEIPTS, updatedReceipts);
+          hasDataChanged = true;
+        }
+      }
+
+      // Update sales returns
+      const returns = getStorageData(STORAGE_KEYS.RETURNS, null);
+      if (Array.isArray(returns) && returns.length > 0) {
+        let returnsChanged = false;
+        const updatedReturns = returns.map(ret => {
+          if (!ret) return ret;
+          let retChanged = false;
+          let newInvNo = ret.invoiceNo;
+          if (ret.invoiceNo && invoiceNoMap[ret.invoiceNo]) {
+            newInvNo = invoiceNoMap[ret.invoiceNo];
+            retChanged = true;
+          } else if (ret.invoiceNo) {
+            const shifted = shiftInvNo(String(ret.invoiceNo));
+            if (shifted !== ret.invoiceNo) {
+              newInvNo = shifted;
+              retChanged = true;
+            }
+          }
+
+          let newReplNo = ret.replacementInvoiceNo;
+          if (ret.replacementInvoiceNo && invoiceNoMap[ret.replacementInvoiceNo]) {
+            newReplNo = invoiceNoMap[ret.replacementInvoiceNo];
+            retChanged = true;
+          } else if (ret.replacementInvoiceNo) {
+            const shifted = shiftInvNo(String(ret.replacementInvoiceNo));
+            if (shifted !== ret.replacementInvoiceNo) {
+              newReplNo = shifted;
+              retChanged = true;
+            }
+          }
+
+          if (retChanged) {
+            returnsChanged = true;
+            return {
+              ...ret,
+              invoiceNo: newInvNo,
+              replacementInvoiceNo: newReplNo
+            };
+          }
+          return ret;
+        });
+
+        if (returnsChanged) {
+          setStorageData(STORAGE_KEYS.RETURNS, updatedReturns);
+          hasDataChanged = true;
+        }
+      }
+
+      // Update bank transactions notes
+      const bankTxns = getStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, null);
+      if (Array.isArray(bankTxns) && bankTxns.length > 0 && Object.keys(invoiceNoMap).length > 0) {
+        let txnsChanged = false;
+        const updatedTxns = bankTxns.map(txn => {
+          if (!txn || !txn.notes || typeof txn.notes !== 'string') return txn;
+          let newNotes = txn.notes;
+          Object.keys(invoiceNoMap).forEach(oldNo => {
+            if (newNotes.includes(oldNo)) {
+              newNotes = newNotes.replaceAll(oldNo, invoiceNoMap[oldNo]);
+            }
+          });
+          if (newNotes !== txn.notes) {
+            txnsChanged = true;
+            return { ...txn, notes: newNotes };
+          }
+          return txn;
+        });
+        if (txnsChanged) {
+          setStorageData(STORAGE_KEYS.BANK_TRANSACTIONS, updatedTxns);
+          hasDataChanged = true;
+        }
+      }
+
+      localStorage.setItem(MIGRATION_KEY_155_TO_206, 'true');
+      console.log('[Migration] Successfully shifted invoice numbers >= 155 to >= 206 (+51 offset)');
+
+      if (hasDataChanged) {
+        try {
+          autoCloudSync();
+        } catch (e) {
+          // ignore sync error during init
+        }
+      }
+    } catch (migErr) {
+      console.warn('[Migration Error] Could not shift invoice numbers:', migErr);
     }
   }
 
@@ -2023,7 +2241,7 @@ export const getNextInvoiceNumber = () => {
   const invoices = fetchInvoices();
   const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
   const configuredStart = Number(business.nextInvoiceNumber);
-  const baseStart = (!isNaN(configuredStart) && configuredStart > 0) ? configuredStart : 155;
+  const baseStart = (!isNaN(configuredStart) && configuredStart > 0) ? configuredStart : 206;
   const rawPrefix = (business.invoicePrefix && business.invoicePrefix !== 'INV/26-27/') ? business.invoicePrefix.trim() : '';
 
   let maxFound = baseStart - 1;

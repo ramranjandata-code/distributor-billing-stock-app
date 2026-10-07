@@ -12,7 +12,7 @@ export const DEFAULT_BUSINESS = {
   "ifsc": "",
   "upiId": "",
   "invoicePrefix": "",
-  "nextInvoiceNumber": 155,
+  "nextInvoiceNumber": 206,
   "terms": "1. Goods once sold will not be taken back.\n2. Subject to local jurisdiction."
 };
 

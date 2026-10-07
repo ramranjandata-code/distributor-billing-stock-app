@@ -1424,7 +1424,7 @@ export default function Billing({ products, parties, business, invoices, refresh
                   <input 
                     ref={customInvInputRef}
                     type="text"
-                    placeholder={autoInvoiceNo || "155"}
+                    placeholder={autoInvoiceNo || "206"}
                     value={customInvoiceNo}
                     onChange={handleCustomInvoiceChange}
                     onBlur={handleCustomInvoiceBlur}
