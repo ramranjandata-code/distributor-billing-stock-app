@@ -593,8 +593,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       });
     }
 
-    const rawUnit = item.unit || matchedProd?.unit || 'Pcs';
-    const isChainPouch = rawUnit === 'Chain Pouch' || rawUnit === 'C. Pouch' || rawUnit === 'c. pouch';
+    const prodUnit = matchedProd?.unit || '';
+    const itemUnit = item.unit || '';
+    const isChainPouch = prodUnit === 'Chain Pouch' || prodUnit === 'C. Pouch' || prodUnit === 'c. pouch' ||
+                         itemUnit === 'Chain Pouch' || itemUnit === 'C. Pouch' || itemUnit === 'c. pouch';
+
+    const rawUnit = isChainPouch ? 'C. Pouch' : (prodUnit || itemUnit || 'Pcs');
     const pouchesPerChain = Number(matchedProd?.pcsPerBox) > 1 
       ? Number(matchedProd.pcsPerBox) 
       : (matchedProd?.pcsPerCarton && matchedProd?.packsPerCarton && Number(matchedProd.packsPerCarton) > 0 

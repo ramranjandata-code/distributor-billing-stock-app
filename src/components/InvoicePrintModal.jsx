@@ -314,7 +314,10 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     totalSgstCalculated += sgstAmt;
     totalIgstCalculated += igstAmt;
 
-    const isChainPouch = itemUnit === 'Chain Pouch' || itemUnit === 'C. Pouch' || itemUnit === 'c. pouch';
+    const prodUnit = matchedProduct?.unit || '';
+    const isChainPouch = prodUnit === 'Chain Pouch' || prodUnit === 'C. Pouch' || prodUnit === 'c. pouch' ||
+                         itemUnit === 'Chain Pouch' || itemUnit === 'C. Pouch' || itemUnit === 'c. pouch';
+    const finalUnit = isChainPouch ? 'C. Pouch' : itemUnit;
     const rateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
     
     let finalItemTotal = (item.total !== undefined && item.total !== null && Number(item.total) > 0)
@@ -323,7 +326,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
 
     return {
       ...item,
-      unit: itemUnit,
+      unit: finalUnit,
       pcsPerBox: itemPcsPerBox,
       pcsPerCarton: itemPcsPerCarton,
       rateMode,

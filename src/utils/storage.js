@@ -553,6 +553,72 @@ export const initDataStorage = () => {
     }
   }
 
+  // One-time automatic migration V2: Sync Chain Pouch unit from Inventory products to stored invoices
+  // If a product was updated in Inventory to Chain Pouch, ensure its line items reflect C. Pouch
+  const MIGRATION_KEY_CHAIN_POUCH_SYNC_V2 = 'distro_migrated_chain_pouch_sync_v2';
+  if (!localStorage.getItem(MIGRATION_KEY_CHAIN_POUCH_SYNC_V2)) {
+    try {
+      const currentInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
+      const currentProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+      let hasDataChanged = false;
+
+      if (Array.isArray(currentInvoices) && currentInvoices.length > 0 && Array.isArray(currentProducts)) {
+        const updatedInvoices = currentInvoices.map(inv => {
+          if (!inv || !Array.isArray(inv.items)) return inv;
+          let invChanged = false;
+
+          const updatedItems = inv.items.map(item => {
+            if (!item || item.isSection || item.isNote) return item;
+
+            let matchedProd = null;
+            if (item.productId) {
+              matchedProd = currentProducts.find(p => p && p.id === item.productId);
+            }
+            if (!matchedProd && item.sku && item.sku.trim()) {
+              matchedProd = currentProducts.find(p => p && p.sku && p.sku.trim().toLowerCase() === item.sku.trim().toLowerCase());
+            }
+            if (!matchedProd && item.name) {
+              const iname = item.name.trim().toLowerCase();
+              matchedProd = currentProducts.find(p => p && p.name && p.name.trim().toLowerCase() === iname);
+            }
+
+            const isProdChain = matchedProd && (matchedProd.unit === 'Chain Pouch' || matchedProd.unit === 'C. Pouch' || matchedProd.unit === 'c. pouch');
+            if (isProdChain && item.unit !== 'C. Pouch') {
+              invChanged = true;
+              return {
+                ...item,
+                unit: 'C. Pouch',
+                rateMode: 'CHAIN_POUCH'
+              };
+            }
+            return item;
+          });
+
+          if (invChanged) {
+            hasDataChanged = true;
+            return {
+              ...inv,
+              items: updatedItems
+            };
+          }
+          return inv;
+        });
+
+        if (hasDataChanged) {
+          setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+          console.log('[Migration V2] Synced Chain Pouch unit from Inventory to stored invoices.');
+          try {
+            autoCloudSync();
+          } catch (e) {}
+        }
+      }
+
+      localStorage.setItem(MIGRATION_KEY_CHAIN_POUCH_SYNC_V2, 'true');
+    } catch (migErr) {
+      console.warn('[Migration Error V2]:', migErr);
+    }
+  }
+
   // Clean warehouses if dummy locations exist
   const existingWh = getStorageData(STORAGE_KEYS.WAREHOUSES, []);
   const cleanedWh = existingWh.filter(w => 
