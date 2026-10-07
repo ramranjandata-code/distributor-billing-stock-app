@@ -604,7 +604,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                       </td>
                       <td style={{ padding: '10px', textAlign: 'center' }}>
                         <span className={`badge ${prod.currentStock <= prod.minStockLimit ? 'badge-danger' : 'badge-success'}`}>
-                          {formatCartonStock(prod.currentStock, prod.pcsPerCarton)}
+                          {formatCartonStock(prod.currentStock, prod.pcsPerCarton, prod.pcsPerBox, prod.unit)}
                         </span>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                           ({prod.currentStock} Pcs • {prod.pcsPerCarton || 24} Pcs/Ctn)

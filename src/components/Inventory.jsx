@@ -1626,9 +1626,30 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                         <span className={`badge ${isLow ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '0.70rem', padding: '2px 5px' }}>
                           {formatCartonStock(prod.currentStock, prod.pcsPerCarton, prod.pcsPerBox, prod.unit)}
                         </span>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
-                          Total: {prod.currentStock} {prod.unit || 'Pcs'} ({prod.pcsPerCarton || 24} Pcs/Ctn{Number(prod.pcsPerBox) > 1 ? ` • ${prod.pcsPerBox} Pcs/${prod.unit}` : ''})
-                        </div>
+                        {(() => {
+                          const isChain = prod.unit === 'Chain Pouch' || prod.unit === 'C. Pouch' || prod.unit === 'c. pouch';
+                          const isSub = isChain || prod.unit === 'Box' || prod.unit === 'Pack';
+                          const subPcs = Number(prod.pcsPerBox) > 1 ? Number(prod.pcsPerBox) : (isChain ? 12 : 1);
+                          const subName = isChain ? 'Chain Pouch' : (prod.unit || 'Pcs');
+                          const cStock = Number(prod.currentStock) || 0;
+
+                          if (isSub && subPcs > 1) {
+                            const subCount = Math.floor(cStock / subPcs);
+                            const remPcs = cStock % subPcs;
+                            const subDisplay = remPcs > 0 ? `${subCount} ${subName} + ${remPcs} Pcs` : `${subCount} ${subName}`;
+                            return (
+                              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+                                Total: <strong style={{ color: 'var(--text-main)', fontWeight: '700' }}>{subDisplay}</strong> ({cStock} Pcs • {prod.pcsPerCarton || 24} Pcs/Ctn • {subPcs} Pcs/{subName})
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+                              Total: {cStock} {prod.unit || 'Pcs'} ({prod.pcsPerCarton || 24} Pcs/Ctn)
+                            </div>
+                          );
+                        })()}
                         {isLow && (
                           <div style={{ fontSize: '0.66rem', color: '#f87171', marginTop: '1px', fontWeight: '700' }}>Low Warning</div>
                         )}

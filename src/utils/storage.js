@@ -101,21 +101,33 @@ const DEFAULT_EXPENSES = [];
 export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24, pcsPerBox = 1, unit = 'Pcs') => {
   const pcs = Number(pcsPerCarton) || 1;
   const stock = Number(totalStock) || 0;
-  const boxPcs = Number(pcsPerBox) || 1;
-  
   const isChainPouch = (unit === 'Chain Pouch' || unit === 'C. Pouch' || unit === 'c. pouch');
+  const isBoxOrPack = isChainPouch || unit === 'Box' || unit === 'Pack';
+  const boxPcs = Number(pcsPerBox) > 1 ? Number(pcsPerBox) : (isChainPouch ? 12 : 1);
   const unitLabel = isChainPouch ? 'C. Pouch' : (unit || 'Pcs');
 
   if (pcs <= 1) {
+    if (boxPcs > 1 && isBoxOrPack) {
+      const boxes = Math.floor(stock / boxPcs);
+      const loose = stock % boxPcs;
+      if (loose > 0) return `${boxes} ${unitLabel} + ${loose} Pcs`;
+      return `${boxes} ${unitLabel}`;
+    }
     return `${stock} ${unitLabel}`;
   }
 
   const cartons = Math.floor(stock / pcs);
   const remPcs = stock % pcs;
 
-  if (boxPcs > 1 && (unit === 'Box' || unit === 'Pack' || isChainPouch)) {
+  if (boxPcs > 1 && isBoxOrPack) {
     const boxes = Math.floor(remPcs / boxPcs);
     const loose = remPcs % boxPcs;
+    const totalSubUnits = Math.floor(stock / boxPcs);
+
+    if (cartons > 0 && boxes === 0 && loose === 0) {
+      return `${cartons} Ctn (${totalSubUnits} ${unitLabel})`;
+    }
+
     const parts = [];
     if (cartons > 0) parts.push(`${cartons} Ctn`);
     if (boxes > 0) parts.push(`${boxes} ${unitLabel}`);
