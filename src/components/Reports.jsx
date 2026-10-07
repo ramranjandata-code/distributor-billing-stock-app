@@ -339,20 +339,54 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const regularInvoices = useMemo(() => filteredInvoices.filter(inv => !isDocCreditNote(inv)), [filteredInvoices]);
   const creditNotesInPeriod = useMemo(() => filteredInvoices.filter(inv => isDocCreditNote(inv)), [filteredInvoices]);
 
+  // Accurate Credit Note Base & Tax Extractor (works with legacy and new credit notes)
+  const getCreditNoteBreakdown = (cn) => {
+    const grand = Number(cn.grandTotal) || 0;
+    const explicitTax = Number(cn.cgst || 0) + Number(cn.sgst || 0) + Number(cn.igst || 0);
+    if (explicitTax > 0) {
+      const tx = Number(cn.taxableAmount || (grand - explicitTax)) || 0;
+      return {
+        taxable: tx,
+        cgst: Number(cn.cgst || 0),
+        sgst: Number(cn.sgst || 0),
+        igst: Number(cn.igst || 0),
+        taxTotal: explicitTax
+      };
+    }
+    // Fallback if credit note was stored as lump sum: reverse compute tax using parent bill rate or 5% GST
+    let rate = 5;
+    if (cn.reversalOf) {
+      const orig = regularInvoices.find(i => i.invoiceNo === cn.reversalOf || i.id === cn.reversalOf);
+      if (orig && orig.items?.[0]?.gstRate !== undefined) {
+        rate = Number(orig.items[0].gstRate);
+      }
+    }
+    const taxable = Number((grand / (1 + rate / 100)).toFixed(2));
+    const taxTotal = Number((grand - taxable).toFixed(2));
+    const halfTax = Number((taxTotal / 2).toFixed(2));
+    return {
+      taxable,
+      cgst: halfTax,
+      sgst: halfTax,
+      igst: 0,
+      taxTotal
+    };
+  };
+
   // Aggregate Sales & Tax Metrics (Net of Credit Notes / Sales Returns)
   const grossSales = regularInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
   const totalReturnsAmount = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
   const totalSales = Math.max(0, grossSales - totalReturnsAmount); // Net Sales Revenue
-  const totalCollected = regularInvoices.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0);
+  const totalCollected = Math.max(0, regularInvoices.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0) - totalReturnsAmount); // Net Cash Received
   const totalUdhar = regularInvoices.reduce((sum, inv) => sum + (Number(inv.balanceAmount) || 0), 0);
 
   const regularCgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
   const regularSgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
   const regularIgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
 
-  const returnCgst = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
-  const returnSgst = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
-  const returnIgst = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
+  const returnCgst = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).cgst, 0);
+  const returnSgst = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).sgst, 0);
+  const returnIgst = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).igst, 0);
 
   const totalCgst = Math.max(0, regularCgst - returnCgst);
   const totalSgst = Math.max(0, regularSgst - returnSgst);
@@ -361,9 +395,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   // Explicitly define totalTax
   const totalTax = totalCgst + totalSgst + totalIgst;
 
-  const getInvTaxable = (inv) => Number(inv.taxableAmount || inv.taxableSubtotal || inv.subTotal || inv.subtotal || (Number(inv.grandTotal || 0) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)))) || 0;
+  const getInvTaxable = (inv) => {
+    if (isDocCreditNote(inv)) {
+      return getCreditNoteBreakdown(inv).taxable;
+    }
+    return Number(inv.taxableAmount || inv.taxableSubtotal || inv.subTotal || inv.subtotal || (Number(inv.grandTotal || 0) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)))) || 0;
+  };
   const grossTaxable = regularInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
-  const returnTaxable = creditNotesInPeriod.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
+  const returnTaxable = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).taxable, 0);
   const netTaxableRevenue = Math.max(0, grossTaxable - returnTaxable);
 
   // Filter Expenses by selected Period
@@ -1331,7 +1370,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   ₹{totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                  {filteredInvoices.length} Invoices Issued (Gross)
+                  {regularInvoices.length} Invoices Issued{creditNotesInPeriod.length > 0 ? ` (${creditNotesInPeriod.length} Return CN)` : ''}
                 </p>
               </div>
 

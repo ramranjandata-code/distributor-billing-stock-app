@@ -3291,8 +3291,39 @@ export const issueReturnCreditNote = (returnId) => {
       salePrice: it.unitPrice,
       total: it.amount
     })),
+    taxableAmount: (function() {
+      let rate = 5;
+      if (parentInvoice?.items?.[0]?.gstRate !== undefined) {
+        rate = Number(parentInvoice.items[0].gstRate) || 0;
+      }
+      return rate > 0 ? Number((creditAmount / (1 + rate / 100)).toFixed(2)) : creditAmount;
+    })(),
+    taxTotal: (function() {
+      let rate = 5;
+      if (parentInvoice?.items?.[0]?.gstRate !== undefined) {
+        rate = Number(parentInvoice.items[0].gstRate) || 0;
+      }
+      const tx = rate > 0 ? Number((creditAmount / (1 + rate / 100)).toFixed(2)) : creditAmount;
+      return Number((creditAmount - tx).toFixed(2));
+    })(),
+    cgst: (function() {
+      let rate = 5;
+      if (parentInvoice?.items?.[0]?.gstRate !== undefined) {
+        rate = Number(parentInvoice.items[0].gstRate) || 0;
+      }
+      const tx = rate > 0 ? Number((creditAmount / (1 + rate / 100)).toFixed(2)) : creditAmount;
+      return Number(((creditAmount - tx) / 2).toFixed(2));
+    })(),
+    sgst: (function() {
+      let rate = 5;
+      if (parentInvoice?.items?.[0]?.gstRate !== undefined) {
+        rate = Number(parentInvoice.items[0].gstRate) || 0;
+      }
+      const tx = rate > 0 ? Number((creditAmount / (1 + rate / 100)).toFixed(2)) : creditAmount;
+      return Number(((creditAmount - tx) / 2).toFixed(2));
+    })(),
+    igst: 0,
     subtotal: creditAmount,
-    taxTotal: 0,
     grandTotal: creditAmount,
     paidAmount: creditAmount,
     amountDue: 0,
