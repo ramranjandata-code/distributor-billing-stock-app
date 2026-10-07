@@ -317,11 +317,9 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     const isChainPouch = itemUnit === 'Chain Pouch' || itemUnit === 'C. Pouch' || itemUnit === 'c. pouch';
     const rateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
     
-    // For chain pouch with rate per chain pouch, calculate exact itemTotal if needed
-    let finalItemTotal = itemTotal;
-    if (isChainPouch && rateMode === 'CHAIN_POUCH' && (!item.total || Number(item.total) === 0 || Number(item.total) === (itemQty * itemRate))) {
-      finalItemTotal = (itemQty / itemPcsPerBox) * itemRate;
-    }
+    let finalItemTotal = (item.total !== undefined && item.total !== null && Number(item.total) > 0)
+      ? Number(item.total)
+      : (itemQty * itemRate);
 
     return {
       ...item,
@@ -373,13 +371,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   }
 
   const totalBilledQty = processedItems.reduce((sum, item) => {
-    const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
-    const rateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
-    const itemPcsPerBox = Number(item.pcsPerBox) || 12;
-    if (isChainPouch && (rateMode === 'CHAIN_POUCH' || !item.rateMode)) {
-      return sum + (item.itemQty / itemPcsPerBox);
-    }
-    return sum + item.itemQty;
+    return sum + (Number(item.itemQty) || 0);
   }, 0);
   const formattedTotalQty = Number.isInteger(totalBilledQty) ? totalBilledQty : Number(totalBilledQty.toFixed(2));
   const totalQtyPcs = formattedTotalQty;
@@ -1006,10 +998,8 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
                   <td style={{ padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 7px', borderRight: '1px solid #e2e8f0', fontWeight: '700', color: '#000000', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 5px', borderRight: '1px solid #e2e8f0', textAlign: 'center', color: '#334155', fontFamily: 'monospace' }}>{item.hsn || '1905'}</td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 3px' : '2.5px 5px', borderRight: '1px solid #e2e8f0', textAlign: 'center', fontWeight: '800', color: '#000000' }}>
-                    {item.isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode)
-                      ? (item.itemQty % (item.pcsPerBox || 12) === 0 
-                          ? `${item.itemQty / (item.pcsPerBox || 12)} C. Pouch`
-                          : `${Math.floor(item.itemQty / (item.pcsPerBox || 12))} C. Pouch + ${item.itemQty % (item.pcsPerBox || 12)} Pcs`)
+                    {item.isChainPouch
+                      ? (item.rateMode === 'POUCH' ? `${item.itemQty} Pouch` : `${item.itemQty} C. Pouch`)
                       : formatCartonStock(item.itemQty, item.pcsPerCarton, item.pcsPerBox, item.unit)}
                   </td>
                   <td style={{ padding: paperFormat === 'A5' ? '1px 5px' : '2.5px 7px', borderRight: '1px solid #e2e8f0', textAlign: 'right', color: '#334155' }}>₹{item.itemRate.toFixed(2)}</td>

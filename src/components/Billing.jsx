@@ -352,26 +352,67 @@ export default function Billing({ products, parties, business, invoices, refresh
     );
   }, [products, searchTerm]);
 
+  const getItemPackaging = (item) => {
+    const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
+    const pcsPerCtn = Number(item.pcsPerCarton) || 24;
+    const pouchesPerChain = Number(item.pcsPerBox) > 1 
+      ? Number(item.pcsPerBox) 
+      : (item.packsPerCarton && Number(item.packsPerCarton) > 0 
+          ? Math.round(pcsPerCtn / Number(item.packsPerCarton)) 
+          : (pcsPerCtn % 12 === 0 ? 12 : 12));
+
+    let chainsPerCarton = pcsPerCtn;
+    if (isChainPouch) {
+      if (item.packsPerCarton && Number(item.packsPerCarton) > 0) {
+        chainsPerCarton = Number(item.packsPerCarton);
+      } else if (pouchesPerChain > 0) {
+        chainsPerCarton = Math.max(1, Math.floor(pcsPerCtn / pouchesPerChain));
+      }
+    }
+
+    return {
+      isChainPouch,
+      pcsPerCtn,
+      pouchesPerChain,
+      chainsPerCarton
+    };
+  };
+
   const handleAddToCart = (product) => {
     if (product.currentStock <= 0) {
       alert(`⚠️ '${product.name}' is out of stock!`);
       return;
     }
 
+    const isChainPouch = (product.unit === 'Chain Pouch' || product.unit === 'C. Pouch' || product.unit === 'c. pouch');
     const pcsPerCtn = Number(product.pcsPerCarton) || 24;
+    const pouchesPerChain = Number(product.pcsPerBox) > 1 
+      ? Number(product.pcsPerBox) 
+      : (product.packsPerCarton && Number(product.packsPerCarton) > 0 
+          ? Math.round(pcsPerCtn / Number(product.packsPerCarton)) 
+          : (pcsPerCtn % 12 === 0 ? 12 : 12));
+    const chainsPerCarton = isChainPouch
+      ? (product.packsPerCarton && Number(product.packsPerCarton) > 0 
+          ? Number(product.packsPerCarton) 
+          : Math.max(1, Math.floor(pcsPerCtn / pouchesPerChain)))
+      : pcsPerCtn;
+
     const existingIndex = cart.findIndex(item => item.productId === product.id);
 
     if (existingIndex > -1) {
       const existing = cart[existingIndex];
+      const factor = (isChainPouch && (existing.rateMode === 'CHAIN_POUCH' || !existing.rateMode))
+        ? chainsPerCarton
+        : pcsPerCtn;
       const newQty = existing.qty + 1;
-      if (newQty > product.currentStock) {
-        alert(`⚠️ Maximum stock limit (${formatCartonStock(product.currentStock, pcsPerCtn)}) reached!`);
+      if (existing.maxStock !== undefined && existing.maxStock > 0 && newQty > existing.maxStock) {
+        alert(`⚠️ Maximum stock limit reached!`);
         return;
       }
       const updated = [...cart];
       updated[existingIndex].qty = newQty;
-      updated[existingIndex].cartonQty = Math.floor(newQty / pcsPerCtn);
-      updated[existingIndex].looseQty = newQty % pcsPerCtn;
+      updated[existingIndex].cartonQty = Math.floor(newQty / factor);
+      updated[existingIndex].looseQty = newQty % factor;
       setCart(updated);
     } else {
       setCart([
@@ -383,12 +424,13 @@ export default function Billing({ products, parties, business, invoices, refresh
           brand: product.brand || 'General',
           hsn: product.hsn,
           pcsPerCarton: pcsPerCtn,
-          pcsPerBox: Number(product.pcsPerBox) > 1 ? Number(product.pcsPerBox) : (pcsPerCtn % 12 === 0 ? 12 : 12),
+          pcsPerBox: pouchesPerChain,
+          packsPerCarton: product.packsPerCarton || (isChainPouch ? chainsPerCarton : ''),
           cartonQty: 0,
           looseQty: 1,
           qty: 1,
           unit: product.unit,
-          rateMode: (product.unit === 'Chain Pouch' || product.unit === 'C. Pouch' || product.unit === 'c. pouch') ? 'CHAIN_POUCH' : 'POUCH',
+          rateMode: isChainPouch ? 'CHAIN_POUCH' : 'POUCH',
           price: product.salePrice,
           mrp: product.mrp,
           gstRate: product.gstRate,
@@ -495,33 +537,40 @@ export default function Billing({ products, parties, business, invoices, refresh
     const updated = [...cart];
     const item = updated[index];
     if (!item) return;
-    const pcsPerCtn = Number(item.pcsPerCarton) || 24;
+    const pkg = getItemPackaging(item);
+    const factor = (pkg.isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode))
+      ? pkg.chainsPerCarton
+      : pkg.pcsPerCtn;
     const newQty = item.qty + delta;
 
     if (newQty < 1) {
       return; // Do not delete on minus, minimum is 1
     }
     if (item.maxStock !== undefined && item.maxStock > 0 && newQty > item.maxStock) {
-      alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
+      alert(`⚠️ Maximum available stock reached!`);
       return;
     }
 
     item.qty = newQty;
-    item.cartonQty = Math.floor(newQty / pcsPerCtn);
-    item.looseQty = newQty % pcsPerCtn;
+    item.cartonQty = Math.floor(newQty / factor);
+    item.looseQty = newQty % factor;
     setCart(updated);
   };
 
   const handleCartonQtyChange = (index, cartonVal) => {
     const updated = [...cart];
     const item = updated[index];
+    if (!item) return;
+    const pkg = getItemPackaging(item);
+    const factor = (pkg.isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode))
+      ? pkg.chainsPerCarton
+      : pkg.pcsPerCtn;
     const ctn = Math.max(0, parseInt(cartonVal) || 0);
-    const pcsPerCtn = Number(item.pcsPerCarton) || 24;
     const loose = Number(item.looseQty) || 0;
-    const newTotal = (ctn * pcsPerCtn) + loose;
+    const newTotal = (ctn * factor) + loose;
 
-    if (newTotal > item.maxStock) {
-      alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
+    if (item.maxStock !== undefined && item.maxStock > 0 && newTotal > item.maxStock) {
+      alert(`⚠️ Maximum available stock reached!`);
       return;
     }
 
@@ -533,13 +582,17 @@ export default function Billing({ products, parties, business, invoices, refresh
   const handleLooseQtyChange = (index, looseVal) => {
     const updated = [...cart];
     const item = updated[index];
+    if (!item) return;
+    const pkg = getItemPackaging(item);
+    const factor = (pkg.isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode))
+      ? pkg.chainsPerCarton
+      : pkg.pcsPerCtn;
     const loose = Math.max(0, parseInt(looseVal) || 0);
-    const pcsPerCtn = Number(item.pcsPerCarton) || 24;
     const ctn = Number(item.cartonQty) || 0;
-    const newTotal = (ctn * pcsPerCtn) + loose;
+    const newTotal = (ctn * factor) + loose;
 
-    if (newTotal > item.maxStock) {
-      alert(`⚠️ Maximum available stock is ${formatCartonStock(item.maxStock, pcsPerCtn)} (${item.maxStock} Pcs)!`);
+    if (item.maxStock !== undefined && item.maxStock > 0 && newTotal > item.maxStock) {
+      alert(`⚠️ Maximum available stock reached!`);
       return;
     }
 
@@ -551,23 +604,28 @@ export default function Billing({ products, parties, business, invoices, refresh
   const handleToggleRateMode = (index) => {
     const updated = [...cart];
     const item = updated[index];
-    const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
-    if (!isChainPouch) return;
-
-    const pouchesPerChain = Number(item.pcsPerBox) > 1 
-      ? Number(item.pcsPerBox) 
-      : (item.pcsPerCarton && item.packsPerCarton && Number(item.packsPerCarton) > 0 
-          ? Math.round(Number(item.pcsPerCarton) / Number(item.packsPerCarton)) 
-          : (item.pcsPerCarton && Number(item.pcsPerCarton) % 12 === 0 ? 12 : 12));
+    const pkg = getItemPackaging(item);
+    if (!pkg.isChainPouch) return;
 
     const currentMode = item.rateMode || 'CHAIN_POUCH';
     const nextMode = currentMode === 'CHAIN_POUCH' ? 'POUCH' : 'CHAIN_POUCH';
-
     const currentPrice = Number(item.price) || 0;
-    if (nextMode === 'POUCH' && currentPrice > 0 && pouchesPerChain > 1) {
-      item.price = Number((currentPrice / pouchesPerChain).toFixed(2));
-    } else if (nextMode === 'CHAIN_POUCH' && currentPrice > 0 && pouchesPerChain > 1) {
-      item.price = Number((currentPrice * pouchesPerChain).toFixed(2));
+    const pouchesPerChain = pkg.pouchesPerChain || 12;
+
+    if (nextMode === 'POUCH') {
+      if (currentPrice > 0 && pouchesPerChain > 1) {
+        item.price = Number((currentPrice / pouchesPerChain).toFixed(2));
+      }
+      item.qty = Math.max(1, (Number(item.qty) || 1) * pouchesPerChain);
+      item.cartonQty = Math.floor(item.qty / pkg.pcsPerCtn);
+      item.looseQty = item.qty % pkg.pcsPerCtn;
+    } else {
+      if (currentPrice > 0 && pouchesPerChain > 1) {
+        item.price = Number((currentPrice * pouchesPerChain).toFixed(2));
+      }
+      item.qty = Math.max(1, Math.round((Number(item.qty) || 1) / pouchesPerChain));
+      item.cartonQty = Math.floor(item.qty / pkg.chainsPerCarton);
+      item.looseQty = item.qty % pkg.chainsPerCarton;
     }
 
     item.rateMode = nextMode;
@@ -1850,6 +1908,11 @@ export default function Billing({ products, parties, business, invoices, refresh
                 <tbody>
                   {cart.map((item, index) => {
                     const calc = getItemDetails(item);
+                    const pkg = getItemPackaging(item);
+                    const isChainPouch = pkg.isChainPouch;
+                    const currentRateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
+                    const isChainMode = isChainPouch && currentRateMode === 'CHAIN_POUCH';
+                    const cartonFactor = isChainMode ? pkg.chainsPerCarton : pkg.pcsPerCtn;
 
                     return (
                       <tr key={item.productId} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -1872,7 +1935,7 @@ export default function Billing({ products, parties, business, invoices, refresh
                               title="Cartons"
                               style={{ width: '34px', padding: '2px 2px', textAlign: 'center', fontSize: '0.8rem', fontWeight: '800', borderRadius: '4px', height: '24px' }}
                               className="input-field"
-                              value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / (item.pcsPerCarton || 24))}
+                              value={item.cartonQty !== undefined ? item.cartonQty : Math.floor(item.qty / cartonFactor)}
                               onChange={e => handleCartonQtyChange(index, e.target.value)}
                             />
                             <span style={{ fontSize: '0.66rem', color: 'var(--primary)', fontWeight: '800' }}>C</span>
@@ -1904,7 +1967,7 @@ export default function Billing({ products, parties, business, invoices, refresh
                                 type="number"
                                 min="0"
                                 placeholder="0"
-                                title="Loose Pcs"
+                                title={isChainMode ? "Chain Pouches" : "Loose Pcs"}
                                 style={{ 
                                   width: '32px', 
                                   padding: '2px 2px', 
@@ -1919,7 +1982,7 @@ export default function Billing({ products, parties, business, invoices, refresh
                                   background: '#ffffff'
                                 }}
                                 className="input-field"
-                                value={item.looseQty !== undefined ? item.looseQty : item.qty % (item.pcsPerCarton || 24)}
+                                value={item.looseQty !== undefined ? item.looseQty : item.qty % cartonFactor}
                                 onChange={e => handleLooseQtyChange(index, e.target.value)}
                               />
 
@@ -1944,55 +2007,50 @@ export default function Billing({ products, parties, business, invoices, refresh
                               </button>
                             </div>
 
-                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>P</span>
+                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>
+                              {isChainMode ? 'CP' : 'P'}
+                            </span>
 
                             {/* Total base pcs inline badge */}
-                            <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: '800', background: '#ecfdf5', padding: '1px 4px', borderRadius: '3px', border: '1px solid #a7f3d0', marginLeft: '2px', whiteSpace: 'nowrap' }} title="Total Pieces">
-                              ={item.qty}
-                              {(item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch') ? ` (${(item.qty / (Number(item.pcsPerBox) || 12)).toFixed(1).replace(/\.0$/, '')} C.Pouch)` : ''}
+                            <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: '800', background: '#ecfdf5', padding: '1px 4px', borderRadius: '3px', border: '1px solid #a7f3d0', marginLeft: '2px', whiteSpace: 'nowrap' }} title="Total Quantity">
+                              ={item.qty}{isChainMode ? ' C.Pouch' : ''}
                             </span>
                           </div>
                         </td>
 
                         <td style={{ padding: '3px 4px', textAlign: 'right' }}>
-                          {(() => {
-                            const isChainPouch = item.unit === 'Chain Pouch' || item.unit === 'C. Pouch' || item.unit === 'c. pouch';
-                            const currentRateMode = item.rateMode || (isChainPouch ? 'CHAIN_POUCH' : 'POUCH');
-                            return (
-                              <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                                <input 
-                                  type="number"
-                                  step="0.01"
-                                  style={{ width: '62px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
-                                  className="input-field"
-                                  value={item.price}
-                                  onChange={e => handleItemPriceChange(index, e.target.value)}
-                                  placeholder="Rate"
-                                />
-                                {isChainPouch && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleRateMode(index)}
-                                    title={currentRateMode === 'POUCH' ? 'Currently: Rate per Pouch (Click to change to Rate per Chain Pouch)' : 'Currently: Rate per Chain Pouch (Click to change to Rate per Pouch)'}
-                                    style={{
-                                      fontSize: '0.62rem',
-                                      fontWeight: '800',
-                                      padding: '1px 5px',
-                                      borderRadius: '3px',
-                                      border: '1px solid ' + (currentRateMode === 'POUCH' ? '#f59e0b' : '#10b981'),
-                                      background: currentRateMode === 'POUCH' ? '#fffbeb' : '#ecfdf5',
-                                      color: currentRateMode === 'POUCH' ? '#b45309' : '#047857',
-                                      cursor: 'pointer',
-                                      whiteSpace: 'nowrap',
-                                      lineHeight: '1.2'
-                                    }}
-                                  >
-                                    {currentRateMode === 'POUCH' ? '/Pouch' : '/C. Pouch (Default)'}
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                            <input 
+                              type="number"
+                              step="0.01"
+                              style={{ width: '62px', padding: '2px 4px', textAlign: 'right', fontSize: '0.8rem', fontWeight: '700', borderRadius: '4px', height: '24px' }}
+                              className="input-field"
+                              value={item.price}
+                              onChange={e => handleItemPriceChange(index, e.target.value)}
+                              placeholder="Rate"
+                            />
+                            {isChainPouch && (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleRateMode(index)}
+                                title={currentRateMode === 'POUCH' ? 'Currently: Rate per Pouch (Click to change to Rate per Chain Pouch)' : 'Currently: Rate per Chain Pouch (Click to change to Rate per Pouch)'}
+                                style={{
+                                  fontSize: '0.62rem',
+                                  fontWeight: '800',
+                                  padding: '1px 5px',
+                                  borderRadius: '3px',
+                                  border: '1px solid ' + (currentRateMode === 'POUCH' ? '#f59e0b' : '#10b981'),
+                                  background: currentRateMode === 'POUCH' ? '#fffbeb' : '#ecfdf5',
+                                  color: currentRateMode === 'POUCH' ? '#b45309' : '#047857',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  lineHeight: '1.2'
+                                }}
+                              >
+                                {currentRateMode === 'POUCH' ? '/Pouch' : '/C. Pouch (Default)'}
+                              </button>
+                            )}
+                          </div>
                         </td>
 
                         {/* Item-wise Discount (% / ₹ Toggle) */}

@@ -48,19 +48,8 @@ export const calculateItemTax = (item, taxType = 'INCLUSIVE', supplyType = 'INTR
         ? Math.round(Number(item.pcsPerCarton) / Number(item.packsPerCarton)) 
         : (item.pcsPerCarton && Number(item.pcsPerCarton) % 12 === 0 ? 12 : 12));
 
-  let grossAmount = 0;
+  let grossAmount = price * qty;
   let effectiveUnitPrice = price;
-
-  if (isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode)) {
-    // Rate is Per Chain Pouch (DEFAULT)
-    const chainQty = qty / pouchesPerChain;
-    grossAmount = price * chainQty;
-    effectiveUnitPrice = price / pouchesPerChain;
-  } else {
-    // Rate is Per Pouch / Piece
-    grossAmount = price * qty;
-    effectiveUnitPrice = price;
-  }
 
   // Item discount calculation
   let itemDiscountAmount = 0;
@@ -70,11 +59,7 @@ export const calculateItemTax = (item, taxType = 'INCLUSIVE', supplyType = 'INTR
   if (discType === 'PERCENT') {
     itemDiscountAmount = (grossAmount * discVal) / 100;
   } else {
-    if (isChainPouch && (item.rateMode === 'CHAIN_POUCH' || !item.rateMode)) {
-      itemDiscountAmount = discVal * (qty / pouchesPerChain);
-    } else {
-      itemDiscountAmount = discVal * qty;
-    }
+    itemDiscountAmount = discVal * qty;
   }
   itemDiscountAmount = Math.min(grossAmount, Math.max(0, itemDiscountAmount));
 
