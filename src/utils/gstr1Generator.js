@@ -76,14 +76,32 @@ export const generateGstr1Payload = ({
   curGrossTurnover = 0,
   currentPeriodTurnover = 0
 }) => {
-  const allReturns = salesReturns.length > 0 ? salesReturns : creditNotes;
+  const isDocCreditNote = (i) => i && (
+    i.documentType === 'out_refund' || 
+    i.isCreditNote === true || 
+    (typeof i.invoiceNo === 'string' && (i.invoiceNo.startsWith('CN') || i.invoiceNo.startsWith('RINV'))) ||
+    i.paymentMode === 'CREDIT_NOTE'
+  );
+
+  const invoiceCreditNotes = invoices.filter(i => isDocCreditNote(i));
+  const rawReturns = [...(salesReturns || []), ...(creditNotes || []), ...invoiceCreditNotes];
+  const seenNoteKeys = new Set();
+  const allReturns = [];
+  rawReturns.forEach(r => {
+    const k = r.id || r.creditNoteNo || r.invoiceNo;
+    if (k && !seenNoteKeys.has(k)) {
+      seenNoteKeys.add(k);
+      allReturns.push(r);
+    }
+  });
+
   const supplierGstin = (business?.gstin || businessGstin || '').trim().toUpperCase();
   const fp = formatGstnReturnPeriod(returnPeriod || filingPeriod);
   const supplierStateCode = getGstinStateCode(supplierGstin) || '07';
   // fp already initialized
 
-  // Active, non-cancelled tax invoices
-  const validInvoices = invoices.filter(i => i && i.status !== 'CANCELLED');
+  // Active, non-cancelled tax invoices (excluding credit notes)
+  const validInvoices = invoices.filter(i => i && i.status !== 'CANCELLED' && !isDocCreditNote(i));
 
   // --- 1. B2B SUPPLIES (Registered Buyers) ---
   // Grouped by Buyer GSTIN (ctin)
@@ -203,12 +221,12 @@ export const generateGstr1Payload = ({
   const cdnrMap = new Map();
   const cdnurList = [];
 
-  (salesReturns || []).forEach(ret => {
-    const ntNum = ret.creditNoteNo || ret.returnNo || ret.id;
-    const ntDt = formatGstnDate(ret.creditNoteDate || ret.returnDate || ret.createdAt);
-    const origInum = ret.originalInvoiceNo || ret.invoiceNo || 'INV-000';
-    const origIdt = formatGstnDate(ret.originalInvoiceDate || ret.createdAt);
-    const totalVal = round2(ret.totalCreditAmount || ret.totalAmount || 0);
+  (allReturns || []).forEach(ret => {
+    const ntNum = ret.creditNoteNo || ret.invoiceNo || ret.returnNo || ret.id;
+    const ntDt = formatGstnDate(ret.creditNoteDate || ret.returnDate || ret.date || ret.createdAt);
+    const origInum = ret.reversalOf || ret.originalInvoiceNo || (ret.invoiceNo && !ret.invoiceNo.startsWith('CN') ? ret.invoiceNo : 'INV-000');
+    const origIdt = formatGstnDate(ret.originalInvoiceDate || ret.date || ret.createdAt);
+    const totalVal = round2(ret.totalCreditAmount || ret.grandTotal || ret.totalAmount || 0);
     const buyerGstin = (ret.partyGstin || '').trim().toUpperCase();
     const buyerState = getGstinStateCode(buyerGstin) || supplierStateCode;
     const pos = buyerState.padStart(2, '0');

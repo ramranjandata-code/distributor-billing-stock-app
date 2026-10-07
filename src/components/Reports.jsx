@@ -327,20 +327,44 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
   const filteredInvoices = useMemo(() => filterInvoicesByPeriod(), [invoices, period, startDate, endDate]);
 
-  // Aggregate Sales & Tax Metrics
-  const totalSales = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
-  const totalCollected = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0);
-  const totalUdhar = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.balanceAmount) || 0), 0);
+  // Helper to identify Credit Notes / Sales Returns
+  const isDocCreditNote = (inv) => {
+    if (!inv) return false;
+    return inv.documentType === 'out_refund' || 
+           inv.isCreditNote === true || 
+           (typeof inv.invoiceNo === 'string' && (inv.invoiceNo.startsWith('CN') || inv.invoiceNo.startsWith('RINV'))) ||
+           inv.paymentMode === 'CREDIT_NOTE';
+  };
 
-  const totalCgst = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
-  const totalSgst = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
-  const totalIgst = filteredInvoices.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
+  const regularInvoices = useMemo(() => filteredInvoices.filter(inv => !isDocCreditNote(inv)), [filteredInvoices]);
+  const creditNotesInPeriod = useMemo(() => filteredInvoices.filter(inv => isDocCreditNote(inv)), [filteredInvoices]);
+
+  // Aggregate Sales & Tax Metrics (Net of Credit Notes / Sales Returns)
+  const grossSales = regularInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+  const totalReturnsAmount = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+  const totalSales = Math.max(0, grossSales - totalReturnsAmount); // Net Sales Revenue
+  const totalCollected = regularInvoices.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0);
+  const totalUdhar = regularInvoices.reduce((sum, inv) => sum + (Number(inv.balanceAmount) || 0), 0);
+
+  const regularCgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
+  const regularSgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
+  const regularIgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
+
+  const returnCgst = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
+  const returnSgst = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
+  const returnIgst = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
+
+  const totalCgst = Math.max(0, regularCgst - returnCgst);
+  const totalSgst = Math.max(0, regularSgst - returnSgst);
+  const totalIgst = Math.max(0, regularIgst - returnIgst);
   
-  // FIX: Explicitly define totalTax to resolve ReferenceError!
+  // Explicitly define totalTax
   const totalTax = totalCgst + totalSgst + totalIgst;
 
   const getInvTaxable = (inv) => Number(inv.taxableAmount || inv.taxableSubtotal || inv.subTotal || inv.subtotal || (Number(inv.grandTotal || 0) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)))) || 0;
-  const netTaxableRevenue = filteredInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
+  const grossTaxable = regularInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
+  const returnTaxable = creditNotesInPeriod.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
+  const netTaxableRevenue = Math.max(0, grossTaxable - returnTaxable);
 
   // Filter Expenses by selected Period
   const filteredExpenses = useMemo(() => {
@@ -744,13 +768,24 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
         phone: inv.partyPhone || matchedParty?.phone || '-',
         gstin: inv.partyGstin || matchedParty?.gstin || '-',
         billCount: 0,
+        returnsCount: 0,
+        grossSales: 0,
+        returnsAmount: 0,
         totalSales: 0,
         totalBalance: 0
       };
     }
-    partySalesMap[key].billCount += 1;
-    partySalesMap[key].totalSales += Number(inv.grandTotal) || 0;
-    partySalesMap[key].totalBalance += Number(inv.balanceAmount) || 0;
+    const isCN = isDocCreditNote(inv);
+    if (isCN) {
+      partySalesMap[key].returnsCount += 1;
+      partySalesMap[key].returnsAmount += Number(inv.grandTotal) || 0;
+      partySalesMap[key].totalSales -= Number(inv.grandTotal) || 0;
+    } else {
+      partySalesMap[key].billCount += 1;
+      partySalesMap[key].grossSales += Number(inv.grandTotal) || 0;
+      partySalesMap[key].totalSales += Number(inv.grandTotal) || 0;
+      partySalesMap[key].totalBalance += Number(inv.balanceAmount) || 0;
+    }
   });
   const partyBreakdown = Object.values(partySalesMap).sort((a, b) => b.totalSales - a.totalSales);
 
@@ -804,14 +839,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     document.body.removeChild(link);
   };
 
-  // GSTR-1 & 3B Categorization
-  const b2bInvoices = filteredInvoices.filter(inv => inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP');
-  const b2cInvoices = filteredInvoices.filter(inv => !inv.partyGstin || inv.partyGstin.trim().length < 10 || inv.partyGstin.trim().toUpperCase() === 'URP');
+  // GSTR-1 & 3B Categorization (Regular Invoices only; Credit Notes go to Table 9B)
+  const b2bInvoices = regularInvoices.filter(inv => inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP');
+  const b2cInvoices = regularInvoices.filter(inv => !inv.partyGstin || inv.partyGstin.trim().length < 10 || inv.partyGstin.trim().toUpperCase() === 'URP');
 
   // HSN Summary Map
   const hsnMap = useMemo(() => {
     const map = {};
-    filteredInvoices.forEach(inv => {
+    regularInvoices.forEach(inv => {
       (inv.items || []).forEach(item => {
         const hsn = item.hsn || '1905';
         if (!map[hsn]) {
@@ -864,6 +899,16 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       const taxable = getInvTaxable(inv);
       const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
       csvContent += `7,OE,"07-Delhi",${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
+    });
+
+    // Table 9B: Credit / Debit Notes (CDNR & CDNUR)
+    csvContent += '\n--- GSTR-1 TABLE 9B: CREDIT / DEBIT NOTES (REGISTERED & UNREGISTERED) ---\n';
+    csvContent += 'Table,Type,Note No,Note Date,Original Invoice No,Party Name,GSTIN,Note Value,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
+
+    creditNotesInPeriod.forEach(cn => {
+      const taxable = getInvTaxable(cn);
+      const rate = cn.items?.[0]?.gstRate !== undefined ? Number(cn.items[0].gstRate) : 5;
+      csvContent += `9B,C,"${cn.invoiceNo}","${cn.date?.split('T')[0]}","${cn.reversalOf || 'INV-000'}","${cn.partyName || cn.customerName}","${cn.partyGstin || 'URP'}",${Number(cn.grandTotal || 0).toFixed(2)},${rate},${taxable.toFixed(2)},${Number(cn.cgst || 0).toFixed(2)},${Number(cn.sgst || 0).toFixed(2)},${Number(cn.igst || 0).toFixed(2)},0.00\n`;
     });
 
     csvContent += '\n--- GSTR-1 TABLE 12: HSN SUMMARY OF OUTWARD SUPPLIES ---\n';
@@ -1778,14 +1823,28 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                             <td style={{ padding: '8px', fontWeight: '700', color: 'var(--text-main)' }}>{party.name}</td>
                             <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{party.phone}</td>
                             <td style={{ padding: '8px', color: 'var(--text-dim)', fontSize: '0.78rem', fontFamily: 'monospace' }}>{party.gstin}</td>
-                            <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{party.billCount}</td>
-                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
-                              ₹{party.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            <td style={{ padding: '8px', textAlign: 'center' }}>
+                              <span style={{ fontWeight: '700', color: 'var(--text-main)' }}>{party.billCount}</span>
+                              {party.returnsCount > 0 && (
+                                <div style={{ fontSize: '0.70rem', color: '#ef4444', fontWeight: '700', marginTop: '2px' }}>
+                                  ({party.returnsCount} Return CN)
+                                </div>
+                              )}
                             </td>
-                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#34d399' }}>
-                              ₹{(party.totalSales - party.totalBalance).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                              <div style={{ fontWeight: '800', color: 'var(--text-main)' }}>
+                                ₹{party.totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              </div>
+                              {party.returnsCount > 0 && (
+                                <div style={{ fontSize: '0.70rem', color: '#64748b', marginTop: '2px' }}>
+                                  Gross: ₹{party.grossSales.toFixed(2)} | Ret: -₹{party.returnsAmount.toFixed(2)}
+                                </div>
+                              )}
                             </td>
-                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: party.totalBalance > 0 ? '#fbbf24' : '#34d399' }}>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#10b981' }}>
+                              ₹{Math.max(0, party.totalSales - party.totalBalance).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: party.totalBalance > 0 ? '#f59e0b' : '#10b981' }}>
                               ₹{party.totalBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                             </td>
                           </tr>
@@ -2706,6 +2765,81 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                           ₹{b2cInvoices.reduce((s, i) => s + (Number(i.cgst || 0) + Number(i.sgst || 0) + Number(i.igst || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
                       </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* GSTR-1 Table 9B: Credit / Debit Notes (CDNR & CDNUR) */}
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
+                  ↩️ GSTR-1 Table 9B: Credit Notes & Sales Returns (CDNR / CDNUR)
+                </h3>
+                <span className="badge badge-error" style={{ fontSize: '0.74rem', background: '#fee2e2', color: '#dc2626' }}>
+                  {creditNotesInPeriod.length} Credit Notes (Tax Deducted)
+                </span>
+              </div>
+
+              {creditNotesInPeriod.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
+                  No credit notes or sales returns recorded for this period.
+                </p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                        <th style={{ padding: '8px' }}>Credit Note No</th>
+                        <th style={{ padding: '8px' }}>Original Bill Ref</th>
+                        <th style={{ padding: '8px' }}>Party Name</th>
+                        <th style={{ padding: '8px' }}>GSTIN</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Note Value (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Taxable Value (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>CGST Reversal (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>SGST Reversal (₹)</th>
+                        <th style={{ padding: '8px', textAlign: 'right' }}>Tax Deducted (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {creditNotesInPeriod.map((cn, idx) => {
+                        const taxVal = getInvTaxable(cn);
+                        const cgstVal = Number(cn.cgst || 0);
+                        const sgstVal = Number(cn.sgst || 0);
+                        const totTax = cgstVal + sgstVal + Number(cn.igst || 0);
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '8px', fontWeight: '700', color: '#dc2626', fontFamily: 'monospace' }}>
+                              {cn.invoiceNo}
+                            </td>
+                            <td style={{ padding: '8px', color: 'var(--text-muted)' }}>
+                              {cn.reversalOf || 'Direct Return'}
+                            </td>
+                            <td style={{ padding: '8px', fontWeight: '700' }}>
+                              {cn.partyName || cn.customerName}
+                            </td>
+                            <td style={{ padding: '8px', fontSize: '0.76rem', fontFamily: 'monospace' }}>
+                              {cn.partyGstin || 'URP'}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: '#dc2626' }}>
+                              -₹{Number(cn.grandTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right' }}>
+                              -₹{taxVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626' }}>
+                              -₹{cgstVal.toFixed(2)}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', color: '#dc2626' }}>
+                              -₹{sgstVal.toFixed(2)}
+                            </td>
+                            <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: '#dc2626' }}>
+                              -₹{totTax.toFixed(2)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
