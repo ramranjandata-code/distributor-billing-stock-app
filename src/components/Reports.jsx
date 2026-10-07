@@ -1220,14 +1220,27 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
               <div className="glass-card" style={{ padding: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Total Sales Revenue</span>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Total Sales Revenue (With Tax)</span>
                   <TrendingUp size={20} color="#10b981" />
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--text-main)', margin: 0 }}>
                   ₹{totalSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
-                  {filteredInvoices.length} Invoices Issued
+                  {filteredInvoices.length} Invoices Issued (Gross)
+                </p>
+              </div>
+
+              <div className="glass-card" style={{ padding: '18px', border: '1px solid #38bdf8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Total Sales Taxable Value</span>
+                  <FileText size={20} color="#0284c7" />
+                </div>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0284c7', margin: 0 }}>
+                  ₹{netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                  Without Tax (Base Value)
                 </p>
               </div>
 
