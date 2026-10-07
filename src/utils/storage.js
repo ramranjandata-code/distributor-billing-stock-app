@@ -1815,6 +1815,9 @@ export const savePurchase = (purchaseData) => {
           latestPurchasePrice: purchasePrice > 0 ? purchasePrice : (existing.latestPurchasePrice || existing.purchasePrice),
           gstRate: gstRate >= 0 ? gstRate : existing.gstRate,
           hsn: hsn || existing.hsn,
+          batchNo: item.batchNo || existing.batchNo || '',
+          mfgDate: item.mfgDate || existing.mfgDate || '',
+          expiryDate: item.expiryDate || existing.expiryDate || '',
           warehouseId: purchaseData.warehouseId || existing.warehouseId || 'wh_main'
         };
       } else {
@@ -1832,6 +1835,9 @@ export const savePurchase = (purchaseData) => {
           latestPurchasePrice: purchasePrice,
           gstRate,
           hsn,
+          batchNo: item.batchNo || '',
+          mfgDate: item.mfgDate || '',
+          expiryDate: item.expiryDate || '',
           currentStock: qtyToAdd,
           pcsPerCarton: Number(item.pcsPerCarton) || 24,
           warehouseId: purchaseData.warehouseId || 'wh_main'
@@ -1849,6 +1855,7 @@ export const savePurchase = (purchaseData) => {
         supplierName: purchaseData.partyName || 'Supplier',
         date: purchaseData.date || new Date().toISOString().split('T')[0],
         batchNo: item.batchNo || purchaseData.billNo || 'LOT-' + Date.now().toString().slice(-4),
+        mfgDate: item.mfgDate || '',
         expiryDate: item.expiryDate || '',
         purchasePrice,
         purchasePriceWithGst,
@@ -3990,6 +3997,76 @@ export const getExpiredStockLots = () => {
   });
 
   return expiredList;
+};
+
+export const getReturnableStockItems = () => {
+  const products = fetchProducts();
+  const lots = fetchStockLots();
+  const suppliers = fetchSuppliers();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const today = new Date(todayStr);
+
+  const returnableList = [];
+
+  (products || []).forEach(p => {
+    const stock = Number(p.currentStock) || 0;
+    if (stock <= 0) return;
+
+    // Check if product has specific lots
+    const prodLots = (lots || []).filter(l => l.productId === p.id && (Number(l.qtyRemaining) || 0) > 0);
+
+    if (prodLots.length > 0) {
+      prodLots.forEach(lot => {
+        const isExp = lot.expiryDate ? new Date(lot.expiryDate) <= today : false;
+        returnableList.push({
+          lotId: lot.id,
+          productId: p.id,
+          productName: lot.productName || p.name,
+          sku: p.sku || '',
+          brand: p.brand || 'General',
+          batchNo: lot.batchNo || p.batchNo || 'LOT-MAIN',
+          mfgDate: lot.mfgDate || p.mfgDate || '',
+          expiryDate: lot.expiryDate || p.expiryDate || '',
+          isExpired: isExp,
+          availableStock: Number(lot.qtyRemaining) || 0,
+          purchasePrice: Number(lot.purchasePrice) || Number(p.purchasePrice) || 0,
+          purchasePriceWithGst: Number(lot.purchasePriceWithGst) || (Number(p.purchasePrice || 0) * (1 + (p.gstRate || 5) / 100)),
+          gstRate: Number(lot.gstRate) || Number(p.gstRate) || 5,
+          supplierId: lot.supplierId || p.supplierId || (suppliers[0]?.id || null),
+          supplierName: lot.supplierName || p.supplierName || (suppliers[0]?.name || 'Primary Vendor'),
+          warehouseId: lot.warehouseId || p.warehouseId || 'wh_main',
+          pcsPerCarton: p.pcsPerCarton || 24,
+          pcsPerBox: p.pcsPerBox || 1,
+          unit: p.unit || 'Pcs'
+        });
+      });
+    } else {
+      const isExp = p.expiryDate ? new Date(p.expiryDate) <= today : false;
+      returnableList.push({
+        lotId: null,
+        productId: p.id,
+        productName: p.name,
+        sku: p.sku || '',
+        brand: p.brand || 'General',
+        batchNo: p.batchNo || 'LOT-MAIN',
+        mfgDate: p.mfgDate || '',
+        expiryDate: p.expiryDate || '',
+        isExpired: isExp,
+        availableStock: stock,
+        purchasePrice: Number(p.purchasePrice) || 0,
+        purchasePriceWithGst: Number(p.purchasePrice || 0) * (1 + (p.gstRate || 5) / 100),
+        gstRate: Number(p.gstRate) || 5,
+        supplierId: p.supplierId || (suppliers[0]?.id || null),
+        supplierName: p.supplierName || (suppliers[0]?.name || 'Primary Vendor'),
+        warehouseId: p.warehouseId || 'wh_main',
+        pcsPerCarton: p.pcsPerCarton || 24,
+        pcsPerBox: p.pcsPerBox || 1,
+        unit: p.unit || 'Pcs'
+      });
+    }
+  });
+
+  return returnableList;
 };
 
 export const createPurchaseReturnDebitNote = ({

@@ -143,6 +143,9 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
     name: '',
     mrp: '',
     hsn: '',
+    batchNo: '',
+    mfgDate: '',
+    expiryDate: '',
     salePrice: '',
     gstRate: 5,
     qty: 1,
@@ -555,6 +558,9 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
         sku: prod.sku || '',
         brand: prod.brand || '',
         category: prod.category || '',
+        batchNo: prod.batchNo || '',
+        mfgDate: prod.mfgDate || '',
+        expiryDate: prod.expiryDate || '',
         mrp: prod.mrp || '',
         hsn: prod.hsn || '',
         salePrice: prod.salePrice || '',
@@ -735,6 +741,9 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
         sku: prod.sku,
         brand: prod.brand,
         category: prod.category,
+        batchNo: updated[index]?.batchNo || prod.batchNo || '',
+        mfgDate: updated[index]?.mfgDate || prod.mfgDate || '',
+        expiryDate: updated[index]?.expiryDate || prod.expiryDate || '',
         mrp: prod.mrp || '',
         hsn: prod.hsn || '',
         salePrice: prod.salePrice || '',
@@ -3534,16 +3543,19 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                     <thead>
                       <tr style={{ background: '#f1f5f9', borderBottom: '1px solid var(--border-color)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.68rem', letterSpacing: '0.3px' }}>
                         <th style={{ padding: '6px 4px', width: '26px', textAlign: 'center' }}>#</th>
-                        <th style={{ padding: '6px 5px', minWidth: '160px' }}>PRODUCT *</th>
-                        <th style={{ padding: '6px 4px', width: '60px' }}>MRP (₹)</th>
-                        <th style={{ padding: '6px 4px', width: '60px' }}>HSN</th>
-                        <th style={{ padding: '6px 4px', width: '65px' }}>SELLING (₹)</th>
-                        <th style={{ padding: '6px 4px', width: '60px' }}>RATE OF GST</th>
-                        <th style={{ padding: '6px 4px', width: '60px' }}>QUANTITY</th>
-                        <th style={{ padding: '6px 5px', width: '95px' }}>PURCHASE PRICE W/O GST</th>
-                        <th style={{ padding: '6px 5px', width: '95px', color: '#0369a1', fontWeight: '700' }}>TOTAL W/O GST</th>
-                        <th style={{ padding: '6px 5px', width: '95px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
-                        <th style={{ padding: '6px 5px', width: '100px', color: '#059669', fontWeight: '800', textAlign: 'right' }}>TOTAL WITH GST</th>
+                        <th style={{ padding: '6px 5px', minWidth: '150px' }}>PRODUCT *</th>
+                        <th style={{ padding: '6px 4px', width: '55px' }}>MRP (₹)</th>
+                        <th style={{ padding: '6px 4px', width: '55px' }}>HSN</th>
+                        <th style={{ padding: '6px 4px', width: '75px' }}>BATCH NO</th>
+                        <th style={{ padding: '6px 4px', width: '90px' }}>MFG DATE</th>
+                        <th style={{ padding: '6px 4px', width: '90px' }}>EXPIRY DATE</th>
+                        <th style={{ padding: '6px 4px', width: '60px' }}>SELLING (₹)</th>
+                        <th style={{ padding: '6px 4px', width: '55px' }}>RATE OF GST</th>
+                        <th style={{ padding: '6px 4px', width: '55px' }}>QUANTITY</th>
+                        <th style={{ padding: '6px 5px', width: '90px' }}>PURCHASE PRICE W/O GST</th>
+                        <th style={{ padding: '6px 5px', width: '90px', color: '#0369a1', fontWeight: '700' }}>TOTAL W/O GST</th>
+                        <th style={{ padding: '6px 5px', width: '90px', color: '#047857', fontWeight: '700' }}>PURCHASE PRICE WITH GST</th>
+                        <th style={{ padding: '6px 5px', width: '95px', color: '#059669', fontWeight: '800', textAlign: 'right' }}>TOTAL WITH GST</th>
                         <th style={{ padding: '6px 2px', width: '26px', textAlign: 'center' }}></th>
                       </tr>
                     </thead>
@@ -3814,6 +3826,43 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 value={row.hsn}
                                 onChange={e => handleRowFieldChange(idx, 'hsn', e.target.value)}
                                 style={{ fontSize: '0.72rem', padding: '3px 5px', height: '27px' }}
+                              />
+                            </td>
+
+                            {/* Batch No */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="text" 
+                                className="input-field" 
+                                placeholder="Batch"
+                                value={row.batchNo || ''}
+                                onChange={e => handleRowFieldChange(idx, 'batchNo', e.target.value)}
+                                style={{ fontSize: '0.72rem', padding: '3px 4px', height: '27px', fontFamily: 'monospace' }}
+                                title="Batch Number"
+                              />
+                            </td>
+
+                            {/* MFG Date */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="date" 
+                                className="input-field" 
+                                value={row.mfgDate || ''}
+                                onChange={e => handleRowFieldChange(idx, 'mfgDate', e.target.value)}
+                                style={{ fontSize: '0.68rem', padding: '2px 3px', height: '27px' }}
+                                title="Manufacturing Date"
+                              />
+                            </td>
+
+                            {/* Expiry Date */}
+                            <td style={{ padding: '4px 3px' }}>
+                              <input 
+                                type="date" 
+                                className="input-field" 
+                                value={row.expiryDate || ''}
+                                onChange={e => handleRowFieldChange(idx, 'expiryDate', e.target.value)}
+                                style={{ fontSize: '0.68rem', padding: '2px 3px', height: '27px', borderColor: row.expiryDate ? '#fca5a5' : undefined }}
+                                title="Expiry Date"
                               />
                             </td>
 

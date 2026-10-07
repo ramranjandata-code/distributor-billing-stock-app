@@ -20,6 +20,7 @@ import {
 import { 
   fetchPurchaseReturns, 
   getExpiredStockLots, 
+  getReturnableStockItems,
   createPurchaseReturnDebitNote, 
   fetchSuppliers, 
   fetchProducts, 
@@ -27,7 +28,8 @@ import {
 } from '../utils/storage';
 
 export default function PurchaseReturns({ refreshAllData }) {
-  const [activeTab, setActiveTab] = useState('EXPIRED_CLAIMS'); // 'EXPIRED_CLAIMS' | 'DEBIT_NOTES'
+  const [activeTab, setActiveTab] = useState('ALL_RETURNABLE'); // 'ALL_RETURNABLE' | 'EXPIRED_CLAIMS' | 'DEBIT_NOTES'
+  const [returnableItems, setReturnableItems] = useState([]);
   const [expiredItems, setExpiredItems] = useState([]);
   const [debitNotes, setDebitNotes] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -39,10 +41,11 @@ export default function PurchaseReturns({ refreshAllData }) {
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [originalBillNo, setOriginalBillNo] = useState('');
   const [reverseItc, setReverseItc] = useState(true);
-  const [claimReason, setClaimReason] = useState('EXPIRED_STOCK');
+  const [claimReason, setClaimReason] = useState('OVERSTOCK_RETURN');
   const [claimNotes, setClaimNotes] = useState('');
 
   const loadData = () => {
+    setReturnableItems(getReturnableStockItems());
     setExpiredItems(getExpiredStockLots());
     setDebitNotes(fetchPurchaseReturns());
     setSuppliers(fetchSuppliers());
@@ -54,6 +57,16 @@ export default function PurchaseReturns({ refreshAllData }) {
     window.addEventListener('distro_data_changed', handleStorageChange);
     return () => window.removeEventListener('distro_data_changed', handleStorageChange);
   }, []);
+
+  // Filter returnable godown stock
+  const filteredReturnable = returnableItems.filter(item => {
+    const term = searchTerm.toLowerCase();
+    return (item.productName && item.productName.toLowerCase().includes(term)) ||
+           (item.batchNo && item.batchNo.toLowerCase().includes(term)) ||
+           (item.supplierName && item.supplierName.toLowerCase().includes(term)) ||
+           (item.brand && item.brand.toLowerCase().includes(term)) ||
+           (item.sku && item.sku.toLowerCase().includes(term));
+  });
 
   // Filter expired items
   const filteredExpired = expiredItems.filter(item => {
@@ -71,17 +84,33 @@ export default function PurchaseReturns({ refreshAllData }) {
            (dn.originalBillNo && dn.originalBillNo.toLowerCase().includes(term));
   });
 
+  const totalReturnableStockVal = returnableItems.reduce((sum, it) => sum + ((it.availableStock || 0) * (it.purchasePrice || 0)), 0);
   const totalExpiredStockLoss = expiredItems.reduce((sum, it) => sum + ((it.qtyExpired || 0) * (it.purchasePrice || 0)), 0);
   const totalDebitNotesAmount = debitNotes.reduce((sum, dn) => sum + (Number(dn.totalDebitAmount) || 0), 0);
   const totalItcReversed = debitNotes.reduce((sum, dn) => sum + (Number(dn.itcReversalAmount) || 0), 0);
 
   const handleOpenClaimModal = (item = null) => {
     if (item) {
-      setSelectedItemsForClaim([{ ...item, returnQty: item.qtyExpired }]);
+      const initQty = item.availableStock !== undefined ? item.availableStock : (item.qtyExpired || 1);
+      setSelectedItemsForClaim([{ 
+        ...item, 
+        returnQty: initQty,
+        maxStock: initQty 
+      }]);
       setSelectedSupplierId(item.supplierId || suppliers[0]?.id || '');
-    } else {
-      setSelectedItemsForClaim(expiredItems.map(it => ({ ...it, returnQty: it.qtyExpired })));
+      setClaimReason(item.isExpired ? 'EXPIRED_STOCK' : 'OVERSTOCK_RETURN');
+    } else if (activeTab === 'EXPIRED_CLAIMS' && expiredItems.length > 0) {
+      setSelectedItemsForClaim(expiredItems.map(it => ({ 
+        ...it, 
+        returnQty: it.qtyExpired || 1, 
+        maxStock: it.qtyExpired || 1 
+      })));
       setSelectedSupplierId(suppliers[0]?.id || '');
+      setClaimReason('EXPIRED_STOCK');
+    } else {
+      setSelectedItemsForClaim([]);
+      setSelectedSupplierId(suppliers[0]?.id || '');
+      setClaimReason('OVERSTOCK_RETURN');
     }
     setClaimModalOpen(true);
   };
@@ -89,7 +118,7 @@ export default function PurchaseReturns({ refreshAllData }) {
   const handleExecuteDebitNote = (e) => {
     e.preventDefault();
     if (selectedItemsForClaim.length === 0) {
-      alert('Please select at least one expired item to return.');
+      alert('Please select at least one item to return.');
       return;
     }
 
@@ -157,39 +186,53 @@ export default function PurchaseReturns({ refreshAllData }) {
           </div>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '800' }}>
-              Purchase Returns & Expired Stock Claim Engine
+              Purchase Returns & Vendor Claims Engine
             </h2>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
-              Vendor Debit Notes, Quarantine Stock Clearing & Section 17(5)(h) ITC Reversal
+              Create Vendor Debit Notes on Godown Stock, Expired Batches, and Section 17(5)(h) ITC Reversals
             </p>
           </div>
         </div>
 
-        <button
-          onClick={() => handleOpenClaimModal()}
-          disabled={expiredItems.length === 0}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            background: expiredItems.length > 0 ? '#ef4444' : '#475569',
-            border: 'none',
-            color: '#ffffff',
-            fontWeight: '700',
-            fontSize: '0.88rem',
-            cursor: expiredItems.length > 0 ? 'pointer' : 'not-allowed',
-            boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)'
-          }}
-        >
-          <RotateCcw size={16} />
-          <span>Claim All Expired Stock ({expiredItems.length})</span>
-        </button>
+        {expiredItems.length > 0 && (
+          <button
+            onClick={() => {
+              setActiveTab('EXPIRED_CLAIMS');
+              handleOpenClaimModal();
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              borderRadius: '10px',
+              background: '#ef4444',
+              border: 'none',
+              color: '#ffffff',
+              fontWeight: '700',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)'
+            }}
+          >
+            <RotateCcw size={16} />
+            <span>Claim Expired Stock ({expiredItems.length})</span>
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ padding: '18px', background: '#ffffff', border: '1.5px solid #dbeafe', borderRadius: '12px', borderLeft: '5px solid #2563eb' }}>
+          <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Godown Returnable Stock</div>
+          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e40af', margin: '4px 0' }}>
+            {returnableItems.length} Products
+          </div>
+          <div style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: '600' }}>
+            Valuation: ₹{totalReturnableStockVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+          </div>
+        </div>
+
         <div style={{ padding: '18px', background: '#ffffff', border: '1.5px solid #fee2e2', borderRadius: '12px', borderLeft: '5px solid #ef4444' }}>
           <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Expired Stock in Godown</div>
           <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#dc2626', margin: '4px 0' }}>
@@ -200,12 +243,12 @@ export default function PurchaseReturns({ refreshAllData }) {
           </div>
         </div>
 
-        <div style={{ padding: '18px', background: '#ffffff', border: '1.5px solid #dbeafe', borderRadius: '12px', borderLeft: '5px solid #3b82f6' }}>
+        <div style={{ padding: '18px', background: '#ffffff', border: '1.5px solid #e0e7ff', borderRadius: '12px', borderLeft: '5px solid #6366f1' }}>
           <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Vendor Debit Notes Issued</div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1d4ed8', margin: '4px 0' }}>
+          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#4338ca', margin: '4px 0' }}>
             {debitNotes.length} Notes
           </div>
-          <div style={{ fontSize: '0.82rem', color: '#1e40af', fontWeight: '600' }}>
+          <div style={{ fontSize: '0.82rem', color: '#4f46e5', fontWeight: '600' }}>
             Total Claimed: ₹{totalDebitNotesAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
           </div>
         </div>
@@ -223,7 +266,23 @@ export default function PurchaseReturns({ refreshAllData }) {
 
       {/* Tabs & Search Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '14px' }}>
-        <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '10px', padding: '4px', gap: '4px' }}>
+        <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '10px', padding: '4px', gap: '4px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setActiveTab('ALL_RETURNABLE')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: activeTab === 'ALL_RETURNABLE' ? '#ffffff' : 'transparent',
+              color: activeTab === 'ALL_RETURNABLE' ? '#0f172a' : '#64748b',
+              fontWeight: '700',
+              fontSize: '0.85rem',
+              cursor: 'pointer'
+            }}
+          >
+            📦 All Returnable Godown Stock ({returnableItems.length})
+          </button>
+
           <button
             onClick={() => setActiveTab('EXPIRED_CLAIMS')}
             style={{
@@ -261,7 +320,7 @@ export default function PurchaseReturns({ refreshAllData }) {
           <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Search batch, product, vendor..."
+            placeholder="Search product, batch, vendor..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{
@@ -276,7 +335,106 @@ export default function PurchaseReturns({ refreshAllData }) {
         </div>
       </div>
 
-      {/* Tab 1: Expired Stock Batches Table */}
+      {/* Tab 1: All Returnable Godown Stock Table */}
+      {activeTab === 'ALL_RETURNABLE' && (
+        <div style={{ background: '#ffffff', borderRadius: '12px', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
+          {filteredReturnable.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+              <Package size={40} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
+              <h4 style={{ margin: '0 0 6px 0', fontSize: '1.1rem', color: '#0f172a' }}>No Godown Stock Found</h4>
+              <p style={{ margin: 0, fontSize: '0.85rem' }}>Add purchase bills or inventory products to return items to suppliers.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                    <th style={{ padding: '12px 14px', width: '40px', textAlign: 'center' }}>#</th>
+                    <th style={{ padding: '12px 14px' }}>Product Details</th>
+                    <th style={{ padding: '12px 14px' }}>Batch / Dates</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Godown Stock</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Purchase Rate</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right' }}>Stock Valuation</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReturnable.map((it, idx) => {
+                    const valuation = (it.availableStock || 0) * (it.purchasePrice || 0);
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', color: '#94a3b8', fontSize: '0.80rem' }}>
+                          {idx + 1}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: '700', color: '#0f172a' }}>
+                          {it.productName}
+                          <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: '500' }}>
+                            {it.brand ? `${it.brand} • ` : ''}SKU: {it.sku || 'N/A'}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: '0.82rem' }}>
+                          <div style={{ fontFamily: 'monospace', fontWeight: '700', color: '#1e293b' }}>
+                            {it.batchNo || 'LOT-DEFAULT'}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                            {it.mfgDate ? `MFG: ${it.mfgDate} ` : ''}
+                            {it.expiryDate ? <span style={{ color: it.isExpired ? '#dc2626' : '#64748b', fontWeight: it.isExpired ? '700' : 'normal' }}>EXP: {it.expiryDate}</span> : <span style={{ color: '#94a3b8' }}>No Expiry Set</span>}
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '800', color: '#0f172a' }}>
+                          {it.availableStock} {it.unit || 'Pcs'}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.82rem' }}>
+                          <div>₹{Number(it.purchasePrice || 0).toFixed(2)} <span style={{ fontSize: '0.72rem', color: '#64748b' }}>ex. GST</span></div>
+                          <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: '600' }}>₹{Number(it.purchasePriceWithGst || 0).toFixed(2)} inc. GST</div>
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: '800', color: '#2563eb' }}>
+                          ₹{valuation.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                          {it.isExpired ? (
+                            <span style={{ padding: '3px 8px', borderRadius: '12px', background: '#fee2e2', color: '#dc2626', fontSize: '0.75rem', fontWeight: '800' }}>
+                              ⚠️ EXPIRED
+                            </span>
+                          ) : (
+                            <span style={{ padding: '3px 8px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', fontSize: '0.75rem', fontWeight: '700' }}>
+                              AVAILABLE
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => handleOpenClaimModal(it)}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              color: '#2563eb',
+                              fontSize: '0.78rem',
+                              fontWeight: '700',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <RotateCcw size={13} />
+                            <span>Return to Vendor</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Expired Stock Batches Table */}
       {activeTab === 'EXPIRED_CLAIMS' && (
         <div style={{ background: '#ffffff', borderRadius: '12px', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
           {filteredExpired.length === 0 ? (
@@ -350,7 +508,7 @@ export default function PurchaseReturns({ refreshAllData }) {
         </div>
       )}
 
-      {/* Tab 2: Vendor Debit Notes Table */}
+      {/* Tab 3: Vendor Debit Notes Table */}
       {activeTab === 'DEBIT_NOTES' && (
         <div style={{ background: '#ffffff', borderRadius: '12px', border: '1.5px solid #e2e8f0', overflow: 'hidden' }}>
           {filteredDebitNotes.length === 0 ? (
@@ -439,10 +597,10 @@ export default function PurchaseReturns({ refreshAllData }) {
             boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'
           }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>
-              Create Vendor Debit Note (Stock Claim)
+              Create Vendor Debit Note (Stock Return)
             </h3>
             <p style={{ margin: '0 0 20px 0', fontSize: '0.84rem', color: '#64748b' }}>
-              Deducts expired inventory, debits vendor account payable, and calculates GST Section 17(5)(h) ITC Reversal.
+              Deducts godown inventory, debits vendor account payable, and calculates GST Section 17(5)(h) ITC Reversal.
             </p>
 
             <form onSubmit={handleExecuteDebitNote} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -477,37 +635,59 @@ export default function PurchaseReturns({ refreshAllData }) {
                 </div>
               </div>
 
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                  Return Reason / Claim Type
+                </label>
+                <select
+                  value={claimReason}
+                  onChange={e => setClaimReason(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem' }}
+                >
+                  <option value="OVERSTOCK_RETURN">Overstock / Slow Moving Stock Return</option>
+                  <option value="EXPIRED_STOCK">Expired Stock / Outdated Product</option>
+                  <option value="DAMAGED_LEAKAGE">Damaged / Breakage / Leakage</option>
+                  <option value="QUALITY_RECALL">Quality Issue / Vendor Product Recall</option>
+                  <option value="BILLING_CORRECTION">Billing / Invoice Rate Correction</option>
+                </select>
+              </div>
+
               {/* Items List */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                  Items Being Claimed ({selectedItemsForClaim.length})
+                  Items Being Returned ({selectedItemsForClaim.length})
                 </label>
                 <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                  {selectedItemsForClaim.map((it, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '0.84rem' }}>
-                      <div>
-                        <strong>{it.productName}</strong> (Batch: {it.batchNo})
-                        <div style={{ fontSize: '0.74rem', color: '#dc2626' }}>Exp: {it.expiryDate}</div>
+                  {selectedItemsForClaim.map((it, idx) => {
+                    const maxVal = it.maxStock || it.availableStock || it.qtyExpired || 99999;
+                    return (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '0.84rem' }}>
+                        <div>
+                          <strong>{it.productName}</strong> (Batch: {it.batchNo || 'LOT-DEFAULT'})
+                          <div style={{ fontSize: '0.74rem', color: it.isExpired ? '#dc2626' : '#64748b' }}>
+                            {it.expiryDate ? `Exp: ${it.expiryDate}` : 'No Expiry Set'} • In-Stock: {maxVal}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>Qty:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max={maxVal}
+                            value={it.returnQty}
+                            onChange={e => {
+                              const val = Math.min(maxVal, Math.max(1, Number(e.target.value)));
+                              const updated = [...selectedItemsForClaim];
+                              updated[idx].returnQty = val;
+                              setSelectedItemsForClaim(updated);
+                            }}
+                            style={{ width: '70px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: '700' }}
+                          />
+                          <span style={{ fontWeight: '700' }}>₹{((Number(it.returnQty) || 0) * (Number(it.purchasePrice) || 0)).toFixed(2)}</span>
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Qty:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          max={it.qtyExpired}
-                          value={it.returnQty}
-                          onChange={e => {
-                            const val = Number(e.target.value);
-                            const updated = [...selectedItemsForClaim];
-                            updated[idx].returnQty = val;
-                            setSelectedItemsForClaim(updated);
-                          }}
-                          style={{ width: '65px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}
-                        />
-                        <span style={{ fontWeight: '700' }}>₹{((Number(it.returnQty) || 0) * (Number(it.purchasePrice) || 0)).toFixed(2)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -521,7 +701,7 @@ export default function PurchaseReturns({ refreshAllData }) {
                   style={{ marginTop: '3px' }}
                 />
                 <label htmlFor="reverseItcCheck" style={{ fontSize: '0.82rem', color: '#92400e', lineHeight: 1.4 }}>
-                  <strong>Apply Section 17(5)(h) ITC Reversal:</strong> Reverses input tax credit claimed on written-off goods according to statutory GST law. Posts an adjusting entry to the tax reversal ledger.
+                  <strong>Apply Section 17(5)(h) ITC Reversal:</strong> Reverses input tax credit claimed on written-off/expired goods according to statutory GST law.
                 </label>
               </div>
 
@@ -533,7 +713,7 @@ export default function PurchaseReturns({ refreshAllData }) {
                   rows="2"
                   value={claimNotes}
                   onChange={e => setClaimNotes(e.target.value)}
-                  placeholder="e.g. Expired stock picked up by vendor distributor representative..."
+                  placeholder="e.g. Returned to vendor representative / credit note adjustment against future invoice..."
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
                 />
               </div>
@@ -548,7 +728,7 @@ export default function PurchaseReturns({ refreshAllData }) {
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#ffffff', fontWeight: '700', cursor: 'pointer' }}
+                  style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#ffffff', fontWeight: '700', cursor: 'pointer' }}
                 >
                   Generate & Confirm Debit Note
                 </button>
