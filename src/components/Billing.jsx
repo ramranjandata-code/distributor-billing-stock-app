@@ -601,35 +601,48 @@ export default function Billing({ products, parties, business, invoices, refresh
     setCart(updated);
   };
 
-  const handleToggleRateMode = (index) => {
+  const handleSetRateMode = (index, targetMode) => {
     const updated = [...cart];
-    const item = updated[index];
-    const pkg = getItemPackaging(item);
+    const currentItem = updated[index];
+    if (!currentItem) return;
+    const pkg = getItemPackaging(currentItem);
     if (!pkg.isChainPouch) return;
 
-    const currentMode = item.rateMode || 'CHAIN_POUCH';
-    const nextMode = currentMode === 'CHAIN_POUCH' ? 'POUCH' : 'CHAIN_POUCH';
+    const currentMode = currentItem.rateMode || 'CHAIN_POUCH';
+    if (currentMode === targetMode) return;
+
+    const item = { ...currentItem };
     const currentPrice = Number(item.price) || 0;
     const pouchesPerChain = pkg.pouchesPerChain || 12;
 
-    if (nextMode === 'POUCH') {
+    if (targetMode === 'POUCH') {
       if (currentPrice > 0 && pouchesPerChain > 1) {
         item.price = Number((currentPrice / pouchesPerChain).toFixed(2));
       }
-      item.qty = Math.max(1, (Number(item.qty) || 1) * pouchesPerChain);
-      item.cartonQty = Math.floor(item.qty / pkg.pcsPerCtn);
-      item.looseQty = item.qty % pkg.pcsPerCtn;
+      item.rateMode = 'POUCH';
+      item.cartonQty = 0;
+      item.looseQty = Number(item.looseQty) || 1;
+      item.qty = item.looseQty;
     } else {
       if (currentPrice > 0 && pouchesPerChain > 1) {
         item.price = Number((currentPrice * pouchesPerChain).toFixed(2));
       }
-      item.qty = Math.max(1, Math.round((Number(item.qty) || 1) / pouchesPerChain));
-      item.cartonQty = Math.floor(item.qty / pkg.chainsPerCarton);
-      item.looseQty = item.qty % pkg.chainsPerCarton;
+      item.rateMode = 'CHAIN_POUCH';
+      item.cartonQty = 0;
+      item.looseQty = Number(item.looseQty) || 1;
+      item.qty = item.looseQty;
     }
 
-    item.rateMode = nextMode;
+    updated[index] = item;
     setCart(updated);
+  };
+
+  const handleToggleRateMode = (index) => {
+    const item = cart[index];
+    if (!item) return;
+    const currentMode = item.rateMode || 'CHAIN_POUCH';
+    const nextMode = currentMode === 'CHAIN_POUCH' ? 'POUCH' : 'CHAIN_POUCH';
+    handleSetRateMode(index, nextMode);
   };
 
   const handleItemPriceChange = (index, newPrice) => {
@@ -2007,13 +2020,39 @@ export default function Billing({ products, parties, business, invoices, refresh
                               </button>
                             </div>
 
-                            <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: '700' }}>
+                            <span 
+                              onClick={() => isChainPouch && handleToggleRateMode(index)}
+                              title={isChainPouch ? "Click to toggle between Chain Pouch and Pouch" : undefined}
+                              style={{ 
+                                fontSize: '0.66rem', 
+                                color: isChainPouch ? '#0f766e' : 'var(--text-muted)', 
+                                fontWeight: '800',
+                                cursor: isChainPouch ? 'pointer' : 'default',
+                                userSelect: 'none'
+                              }}
+                            >
                               {isChainMode ? 'CP' : 'P'}
                             </span>
 
                             {/* Total base pcs inline badge */}
-                            <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: '800', background: '#ecfdf5', padding: '1px 4px', borderRadius: '3px', border: '1px solid #a7f3d0', marginLeft: '2px', whiteSpace: 'nowrap' }} title="Total Quantity">
-                              ={item.qty}{isChainMode ? ' C.Pouch' : ''}
+                            <span 
+                              onClick={() => isChainPouch && handleToggleRateMode(index)}
+                              title={isChainPouch ? "Click to toggle between Chain Pouch and Pouch" : "Total Quantity"}
+                              style={{ 
+                                fontSize: '0.65rem', 
+                                color: currentRateMode === 'POUCH' ? '#b45309' : '#059669', 
+                                fontWeight: '800', 
+                                background: currentRateMode === 'POUCH' ? '#fffbeb' : '#ecfdf5', 
+                                padding: '1px 4px', 
+                                borderRadius: '3px', 
+                                border: '1px solid ' + (currentRateMode === 'POUCH' ? '#fcd34d' : '#a7f3d0'), 
+                                marginLeft: '2px', 
+                                whiteSpace: 'nowrap',
+                                cursor: isChainPouch ? 'pointer' : 'default',
+                                userSelect: 'none'
+                              }}
+                            >
+                              ={item.qty} {isChainPouch ? (currentRateMode === 'POUCH' ? 'Pouch' : 'C.Pouch') : ''}
                             </span>
                           </div>
                         </td>
@@ -2030,25 +2069,45 @@ export default function Billing({ products, parties, business, invoices, refresh
                               placeholder="Rate"
                             />
                             {isChainPouch && (
-                              <button
-                                type="button"
-                                onClick={() => handleToggleRateMode(index)}
-                                title={currentRateMode === 'POUCH' ? 'Currently: Rate per Pouch (Click to change to Rate per Chain Pouch)' : 'Currently: Rate per Chain Pouch (Click to change to Rate per Pouch)'}
-                                style={{
-                                  fontSize: '0.62rem',
-                                  fontWeight: '800',
-                                  padding: '1px 5px',
-                                  borderRadius: '3px',
-                                  border: '1px solid ' + (currentRateMode === 'POUCH' ? '#f59e0b' : '#10b981'),
-                                  background: currentRateMode === 'POUCH' ? '#fffbeb' : '#ecfdf5',
-                                  color: currentRateMode === 'POUCH' ? '#b45309' : '#047857',
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                  lineHeight: '1.2'
-                                }}
-                              >
-                                {currentRateMode === 'POUCH' ? '/Pouch' : '/C. Pouch (Default)'}
-                              </button>
+                              <div style={{ display: 'inline-flex', borderRadius: '4px', overflow: 'hidden', border: '1px solid #cbd5e1', marginTop: '2px' }}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleSetRateMode(index, 'CHAIN_POUCH'); }}
+                                  title="Rate per Chain Pouch (Default wholesale rate)"
+                                  style={{
+                                    fontSize: '0.62rem',
+                                    fontWeight: '800',
+                                    padding: '2px 5px',
+                                    border: 'none',
+                                    background: currentRateMode === 'CHAIN_POUCH' ? '#10b981' : '#f1f5f9',
+                                    color: currentRateMode === 'CHAIN_POUCH' ? '#ffffff' : '#64748b',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    lineHeight: '1.2'
+                                  }}
+                                >
+                                  C. Pouch
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); handleSetRateMode(index, 'POUCH'); }}
+                                  title="Rate per Single Pouch (Retail loose rate)"
+                                  style={{
+                                    fontSize: '0.62rem',
+                                    fontWeight: '800',
+                                    padding: '2px 5px',
+                                    border: 'none',
+                                    borderLeft: '1px solid #cbd5e1',
+                                    background: currentRateMode === 'POUCH' ? '#f59e0b' : '#f1f5f9',
+                                    color: currentRateMode === 'POUCH' ? '#ffffff' : '#64748b',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    lineHeight: '1.2'
+                                  }}
+                                >
+                                  Pouch
+                                </button>
+                              </div>
                             )}
                           </div>
                         </td>
