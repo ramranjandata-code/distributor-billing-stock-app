@@ -461,6 +461,86 @@ export const initDataStorage = () => {
     }
   }
 
+  // One-time automatic migration: Normalize legacy Chain Pouch quantities in invoices
+  // If an invoice item for a Chain Pouch product was stored as loose pouches (effective rate < 40 and qty >= 12),
+  // convert it to Chain Pouch count (qty / 12) with unit = 'C. Pouch' and rateMode = 'CHAIN_POUCH'.
+  const MIGRATION_KEY_CHAIN_POUCH_QTY = 'distro_migrated_chain_pouch_qty_v1';
+  if (!localStorage.getItem(MIGRATION_KEY_CHAIN_POUCH_QTY)) {
+    try {
+      const currentInvoices = getStorageData(STORAGE_KEYS.INVOICES, []);
+      const currentProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+      let hasDataChanged = false;
+
+      if (Array.isArray(currentInvoices) && currentInvoices.length > 0) {
+        const updatedInvoices = currentInvoices.map(inv => {
+          if (!inv || !Array.isArray(inv.items)) return inv;
+          let invChanged = false;
+
+          const updatedItems = inv.items.map(item => {
+            if (!item || item.isSection || item.isNote) return item;
+
+            let matchedProd = null;
+            if (item.productId && Array.isArray(currentProducts)) {
+              matchedProd = currentProducts.find(p => p && p.id === item.productId);
+            }
+            if (!matchedProd && item.name && Array.isArray(currentProducts)) {
+              const iname = item.name.trim().toLowerCase();
+              matchedProd = currentProducts.find(p => p && p.name && p.name.trim().toLowerCase() === iname);
+            }
+
+            const rawUnit = item.unit || matchedProd?.unit || '';
+            const isChainPouch = rawUnit === 'Chain Pouch' || rawUnit === 'C. Pouch' || rawUnit === 'c. pouch';
+
+            if (isChainPouch) {
+              const pouchesPerChain = Number(matchedProd?.pcsPerBox) > 1 
+                ? Number(matchedProd.pcsPerBox) 
+                : 12;
+              const rawQty = Number(item.qty) || 0;
+              const rawAmt = Number(item.total) || (Number(item.price) * rawQty) || 0;
+              const effectivePrice = rawQty > 0 ? (rawAmt / rawQty) : (Number(item.price) || 0);
+
+              // If effective unit price is < 40 and rawQty >= pouchesPerChain, it was saved in loose pouches!
+              if (effectivePrice < 40 && rawQty >= pouchesPerChain) {
+                invChanged = true;
+                const newQty = Math.round((rawQty / pouchesPerChain) * 10) / 10;
+                const newPrice = Math.round((effectivePrice * pouchesPerChain) * 100) / 100;
+                return {
+                  ...item,
+                  qty: newQty,
+                  price: newPrice,
+                  unit: 'C. Pouch',
+                  rateMode: 'CHAIN_POUCH'
+                };
+              }
+            }
+            return item;
+          });
+
+          if (invChanged) {
+            hasDataChanged = true;
+            return {
+              ...inv,
+              items: updatedItems
+            };
+          }
+          return inv;
+        });
+
+        if (hasDataChanged) {
+          setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
+          console.log('[Migration] Successfully normalized Chain Pouch items in invoices to C. Pouch counts.');
+          try {
+            autoCloudSync();
+          } catch (e) {}
+        }
+      }
+
+      localStorage.setItem(MIGRATION_KEY_CHAIN_POUCH_QTY, 'true');
+    } catch (migErr) {
+      console.warn('[Migration Error] Could not normalize Chain Pouch invoice quantities:', migErr);
+    }
+  }
+
   // Clean warehouses if dummy locations exist
   const existingWh = getStorageData(STORAGE_KEYS.WAREHOUSES, []);
   const cleanedWh = existingWh.filter(w => 

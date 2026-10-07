@@ -575,12 +575,63 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     return 'General';
   };
 
+  // Resolve item packaging unit & normalize loose pouch quantities for Chain Pouch products
+  const resolveItemUnitInfo = (item) => {
+    let matchedProd = null;
+    if (item.productId && Array.isArray(products)) {
+      matchedProd = products.find(p => p && p.id === item.productId);
+    }
+    if (!matchedProd && item.sku && item.sku.trim() && Array.isArray(products)) {
+      matchedProd = products.find(p => p && p.sku && p.sku.trim().toLowerCase() === item.sku.trim().toLowerCase());
+    }
+    if (!matchedProd && item.name && Array.isArray(products)) {
+      const n = normalizeText(item.name);
+      matchedProd = products.find(p => {
+        if (!p || !p.name) return false;
+        const pn = normalizeText(p.name);
+        return pn === n || (pn && (pn.includes(n) || n.includes(pn)));
+      });
+    }
+
+    const rawUnit = item.unit || matchedProd?.unit || 'Pcs';
+    const isChainPouch = rawUnit === 'Chain Pouch' || rawUnit === 'C. Pouch' || rawUnit === 'c. pouch';
+    const pouchesPerChain = Number(matchedProd?.pcsPerBox) > 1 
+      ? Number(matchedProd.pcsPerBox) 
+      : (matchedProd?.pcsPerCarton && matchedProd?.packsPerCarton && Number(matchedProd.packsPerCarton) > 0 
+          ? Math.round(Number(matchedProd.pcsPerCarton) / Number(matchedProd.packsPerCarton)) 
+          : 12);
+
+    const rawQty = Number(item.qty) || 0;
+    const rawAmt = Number(item.total) || (Number(item.price) * rawQty) || 0;
+    const effectiveUnitPrice = rawQty > 0 ? (rawAmt / rawQty) : (Number(item.price) || 0);
+
+    let normalizedQty = rawQty;
+    if (isChainPouch) {
+      // If effective unit price is < 40 and rawQty >= pouchesPerChain, it was stored in loose pouches!
+      if (effectiveUnitPrice < 40 && rawQty >= pouchesPerChain) {
+        normalizedQty = Math.round((rawQty / pouchesPerChain) * 10) / 10;
+      }
+    }
+
+    return {
+      isChainPouch,
+      unit: isChainPouch ? 'C. Pouch' : rawUnit,
+      qty: normalizedQty,
+      amt: rawAmt,
+      pouchesPerChain
+    };
+  };
+
   // 1. Brand Sales Breakdown with Complete Drill-Down
   const brandSalesMap = {};
   filteredInvoices.forEach(inv => {
     (inv.items || []).forEach(item => {
       if (item.isSection || item.isNote) return;
       const bName = resolveItemBrand(item);
+      const unitInfo = resolveItemUnitInfo(item);
+      const qty = unitInfo.qty;
+      const amt = unitInfo.amt;
+
       if (!brandSalesMap[bName]) {
         brandSalesMap[bName] = {
           name: bName,
@@ -590,8 +641,6 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           invoicesMap: {}
         };
       }
-      const qty = Number(item.qty) || 0;
-      const amt = Number(item.total) || (Number(item.price) * qty) || 0;
       brandSalesMap[bName].totalQty += qty;
       brandSalesMap[bName].totalAmount += amt;
 
@@ -604,7 +653,9 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           sku: item.sku || '-',
           qty: 0,
           amount: 0,
-          rate: Number(item.price) || 0
+          rate: Number(item.price) || 0,
+          unit: unitInfo.unit,
+          isChainPouch: unitInfo.isChainPouch
         };
       }
       brandSalesMap[bName].productsMap[prodKey].qty += qty;
@@ -654,22 +705,26 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     };
   }).sort((a, b) => b.totalAmount - a.totalAmount);
 
-  // 2. Product Sales Breakdown (enhanced with Brand)
+  // 2. Product Sales Breakdown (enhanced with Brand & packaging unit)
   const productSalesMap = {};
   filteredInvoices.forEach(inv => {
     (inv.items || []).forEach(item => {
+      if (item.isSection || item.isNote) return;
       const prodKey = item.productId || item.name;
+      const unitInfo = resolveItemUnitInfo(item);
       if (!productSalesMap[prodKey]) {
         productSalesMap[prodKey] = {
           name: item.name,
           brand: resolveItemBrand(item),
           sku: item.sku || '-',
           totalQty: 0,
-          totalAmount: 0
+          totalAmount: 0,
+          unit: unitInfo.unit,
+          isChainPouch: unitInfo.isChainPouch
         };
       }
-      productSalesMap[prodKey].totalQty += Number(item.qty) || 0;
-      productSalesMap[prodKey].totalAmount += Number(item.total) || (Number(item.price) * Number(item.qty)) || 0;
+      productSalesMap[prodKey].totalQty += unitInfo.qty;
+      productSalesMap[prodKey].totalAmount += unitInfo.amt;
     });
   });
   const topProducts = Object.values(productSalesMap).sort((a, b) => b.totalAmount - a.totalAmount);
@@ -1475,7 +1530,23 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                                     <td style={{ padding: '8px 10px', fontWeight: '700', color: 'var(--primary)' }}>{pIdx + 1}</td>
                                     <td style={{ padding: '8px 10px', fontWeight: '700', color: 'var(--text-main)' }}>{prod.name}</td>
                                     <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{prod.sku}</td>
-                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700' }}>{prod.qty}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: '700' }}>
+                                      <span>{prod.qty}</span>
+                                      {prod.unit && (
+                                        <span style={{ 
+                                          marginLeft: '6px', 
+                                          fontSize: '0.72rem', 
+                                          fontWeight: '700',
+                                          padding: '2px 6px',
+                                          borderRadius: '4px',
+                                          background: prod.isChainPouch ? '#ecfdf5' : '#f1f5f9',
+                                          color: prod.isChainPouch ? '#059669' : '#475569',
+                                          border: prod.isChainPouch ? '1px solid #a7f3d0' : '1px solid #cbd5e1'
+                                        }}>
+                                          {prod.unit}
+                                        </span>
+                                      )}
+                                    </td>
                                     <td style={{ padding: '8px 10px', textAlign: 'right' }}>₹{(prod.qty > 0 ? (prod.amount / prod.qty) : prod.rate).toFixed(2)}</td>
                                     <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>₹{prod.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                                     <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: '700', color: '#2563eb' }}>{prodShare}%</td>
@@ -1771,7 +1842,23 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                                 </span>
                               </td>
                               <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{prod.sku}</td>
-                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{prod.totalQty}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>
+                                <span>{prod.totalQty}</span>
+                                {prod.unit && (
+                                  <span style={{ 
+                                    marginLeft: '6px', 
+                                    fontSize: '0.72rem', 
+                                    fontWeight: '700',
+                                    padding: '2px 7px',
+                                    borderRadius: '4px',
+                                    background: prod.isChainPouch ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                                    color: prod.isChainPouch ? '#10b981' : 'var(--text-muted)',
+                                    border: prod.isChainPouch ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)'
+                                  }}>
+                                    {prod.unit}
+                                  </span>
+                                )}
+                              </td>
                               <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
                                 ₹{prod.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                               </td>
