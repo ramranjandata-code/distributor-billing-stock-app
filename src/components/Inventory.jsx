@@ -1481,6 +1481,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.80rem' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '1.5px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.76rem' }}>
+                <th style={{ padding: '7px 8px', width: '38px', textAlign: 'center' }}>#</th>
                 <th style={{ padding: '7px 8px' }}>Product Details</th>
                 <th style={{ padding: '7px 8px' }}>Brand</th>
                 <th style={{ padding: '7px 8px' }}>HSN Code</th>
@@ -1498,12 +1499,12 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={12} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                  <td colSpan={13} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                     No products found.
                   </td>
                 </tr>
               ) : (
-                filteredProducts.map(prod => {
+                filteredProducts.map((prod, idx) => {
                   const isLow = prod.currentStock <= (prod.minStockLimit || 10);
                   const expInfo = getExpiryStatus(prod.expiryDate);
                   const whObj = warehouses.find(w => w.id === prod.warehouseId) || warehouses[0];
@@ -1515,6 +1516,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
                   return (
                     <tr key={prod.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      {/* S.No */}
+                      <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: '700', color: 'var(--primary)', fontSize: '0.78rem' }}>
+                        {idx + 1}
+                      </td>
+
                       {/* 1. Product Details */}
                       <td style={{ padding: '6px 8px' }}>
                         <div style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '0.82rem', lineHeight: '1.2' }}>{prod.name}</div>
