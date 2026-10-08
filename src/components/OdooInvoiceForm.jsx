@@ -26,7 +26,8 @@ import {
   Check, 
   FileSpreadsheet,
   Zap,
-  Info
+  Info,
+  Eye
 } from 'lucide-react';
 import { 
   saveInvoice, 
@@ -565,6 +566,17 @@ export default function OdooInvoiceForm({
 
           {/* Universal Print & WhatsApp Share */}
           <button 
+            type="button"
+            onClick={() => handlePrintInvoice && handlePrintInvoice(invoice)}
+            className="btn btn-primary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '700' }}
+          >
+            <Eye size={14} />
+            <span>View Proper Bill</span>
+          </button>
+
+          <button 
+            type="button"
             onClick={() => handlePrintInvoice && handlePrintInvoice(invoice)}
             className="btn btn-secondary btn-sm"
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
