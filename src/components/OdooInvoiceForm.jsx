@@ -722,35 +722,137 @@ export default function OdooInvoiceForm({
           </div>
         )}
 
-        <div style={{ padding: '30px' }}>
+        <div style={{ padding: '24px 30px' }}>
           
-          {/* Document Title / Number */}
-          <div style={{ marginBottom: '24px' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>
-              {invoice.documentType === 'out_refund' ? 'Credit Note / Reversal' : 'Customer Invoice'}
-            </span>
-            <h1 style={{ fontSize: '1.85rem', fontWeight: '900', color: '#1e293b', margin: '4px 0 0 0' }}>
-              {invoice.state === 'draft' ? (invoice.invoiceNo || 'Draft Invoice') : invoice.invoiceNo}
-            </h1>
-            {invoice.reversalOf && (
-              <div style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: '700', marginTop: '4px' }}>
-                Reversal of Invoice: {invoice.reversalOf} ({invoice.reversalReason})
+          {/* Document Header & Quick KPI Bar */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            flexWrap: 'wrap', 
+            gap: '16px', 
+            marginBottom: '20px',
+            paddingBottom: '16px',
+            borderBottom: '1px solid #e2e8f0'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ 
+                  fontSize: '0.75rem', 
+                  color: invoice.documentType === 'out_refund' ? '#dc2626' : '#2563eb', 
+                  fontWeight: '800', 
+                  textTransform: 'uppercase',
+                  background: invoice.documentType === 'out_refund' ? '#fee2e2' : '#eff6ff',
+                  padding: '2px 8px',
+                  borderRadius: '4px'
+                }}>
+                  {invoice.documentType === 'out_refund' ? 'Credit Note / Sales Return' : 'Customer Tax Invoice'}
+                </span>
+                {invoice.reversalOf && (
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '600' }}>
+                    Reversal of #{invoice.reversalOf}
+                  </span>
+                )}
               </div>
-            )}
+              <h1 style={{ fontSize: '1.9rem', fontWeight: '900', color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
+                #{invoice.state === 'draft' ? (invoice.invoiceNo || 'Draft Invoice') : invoice.invoiceNo}
+              </h1>
+            </div>
+
+            {/* Quick KPI Metric Chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ 
+                background: '#f8fafc', 
+                border: '1px solid #e2e8f0', 
+                borderRadius: '8px', 
+                padding: '8px 14px', 
+                textAlign: 'right' 
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Invoice Total</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#0f172a' }}>
+                  ₹{Number(invoice.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              <div style={{ 
+                background: '#ecfdf5', 
+                border: '1px solid #a7f3d0', 
+                borderRadius: '8px', 
+                padding: '8px 14px', 
+                textAlign: 'right' 
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#059669', fontWeight: '700', textTransform: 'uppercase' }}>Paid Amount</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#059669' }}>
+                  ₹{Number(invoice.paidAmount || (invoice.state === 'paid' ? invoice.grandTotal : 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              <div style={{ 
+                background: amountDue > 0 ? '#fef2f2' : '#f8fafc', 
+                border: `1px solid ${amountDue > 0 ? '#fca5a5' : '#e2e8f0'}`, 
+                borderRadius: '8px', 
+                padding: '8px 14px', 
+                textAlign: 'right' 
+              }}>
+                <div style={{ fontSize: '0.7rem', color: amountDue > 0 ? '#dc2626' : '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>Balance Due</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '900', color: amountDue > 0 ? '#dc2626' : '#059669' }}>
+                  ₹{Number(amountDue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Partner & Metadata 2-Column Header */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #f1f5f9' }}>
+          {/* Organized 2-Card Top Section */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', 
+            gap: '20px', 
+            marginBottom: '24px' 
+          }}>
             
-            {/* Left Column: Customer Details */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* CARD 1: Customer & Party Information */}
+            <div style={{ 
+              background: '#f8fafc', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '12px', 
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', fontSize: '0.88rem', color: '#1e293b' }}>
+                  <User size={16} color="var(--primary)" />
+                  <span>Customer Information</span>
+                </div>
+                <span style={{ 
+                  fontSize: '0.72rem', 
+                  fontWeight: '700', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px',
+                  background: invoice.partyGstin ? '#eff6ff' : '#f1f5f9',
+                  color: invoice.partyGstin ? '#2563eb' : '#64748b'
+                }}>
+                  {invoice.partyGstin ? 'Registered (B2B)' : 'Consumer (B2C)'}
+                </span>
+              </div>
+
               <div>
-                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: '800', color: '#475569' }}>
-                  Customer *
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>
+                  Select Customer / Party <span style={{ color: '#dc2626' }}>*</span>
                 </label>
                 <select 
                   className="form-control" 
-                  style={{ fontSize: '0.92rem', padding: '8px 12px' }}
+                  style={{ 
+                    fontSize: '0.88rem', 
+                    padding: '8px 12px', 
+                    fontWeight: '700', 
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    width: '100%'
+                  }}
                   value={invoice.partyId}
                   onChange={e => handlePartySelect(e.target.value)}
                   disabled={invoice.state !== 'draft'}
@@ -764,102 +866,218 @@ export default function OdooInvoiceForm({
                 </select>
               </div>
 
-              {/* Partner Address & GSTIN Info Box */}
-              <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.82rem', color: '#334155' }}>
-                <div><strong>Address:</strong> {invoice.partyAddress || 'Local Market'}</div>
-                <div><strong>Phone:</strong> {invoice.partyPhone || 'N/A'}</div>
-                <div><strong>GSTIN / Tax ID:</strong> <span style={{ color: '#2563eb', fontWeight: '700' }}>{invoice.partyGstin || 'Unregistered (B2C)'}</span></div>
-                {selectedParty && (
-                  <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px dashed #cbd5e1', color: Number(selectedParty.balance) > 0 ? '#dc2626' : '#059669', fontWeight: '800' }}>
-                    Outstanding Khata Balance: ₹{Number(selectedParty.balance || 0).toLocaleString('en-IN')}
-                  </div>
-                )}
+              {/* Clean Customer Metadata List */}
+              <div style={{ 
+                background: '#ffffff', 
+                padding: '12px 14px', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                fontSize: '0.82rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <span style={{ color: '#64748b', minWidth: '70px', fontWeight: '600' }}>Address:</span>
+                  <span style={{ color: '#1e293b', fontWeight: '600', flex: 1 }}>{invoice.partyAddress || 'Local Market / Counter'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#64748b', minWidth: '70px', fontWeight: '600' }}>Phone:</span>
+                  <span style={{ color: '#1e293b', fontWeight: '600', fontFamily: 'monospace' }}>{invoice.partyPhone || 'N/A'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#64748b', minWidth: '70px', fontWeight: '600' }}>GSTIN:</span>
+                  <span style={{ 
+                    color: invoice.partyGstin ? '#1d4ed8' : '#64748b', 
+                    fontWeight: '700', 
+                    fontFamily: 'monospace',
+                    background: invoice.partyGstin ? '#dbeafe' : '#f1f5f9',
+                    padding: '1px 6px',
+                    borderRadius: '4px'
+                  }}>
+                    {invoice.partyGstin || 'Unregistered (B2C)'}
+                  </span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  paddingTop: '6px', 
+                  marginTop: '2px', 
+                  borderTop: '1px dashed #e2e8f0' 
+                }}>
+                  <span style={{ color: '#64748b', fontWeight: '700' }}>Khata Balance:</span>
+                  <span style={{ 
+                    fontWeight: '800', 
+                    color: Number(selectedParty?.balance || 0) > 0 ? '#dc2626' : '#059669',
+                    background: Number(selectedParty?.balance || 0) > 0 ? '#fee2e2' : '#ecfdf5',
+                    padding: '2px 8px',
+                    borderRadius: '6px'
+                  }}>
+                    ₹{Number(selectedParty?.balance || 0).toLocaleString('en-IN')} {Number(selectedParty?.balance || 0) > 0 ? '(Due)' : '(Clear)'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Right Column: Invoice Dates, Payment Terms & Warehouse */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Invoice Date
-                </label>
-                <input 
-                  type="date"
-                  className="form-control"
-                  style={{ fontSize: '0.85rem' }}
-                  value={invoice.date ? invoice.date.split('T')[0] : ''}
-                  onChange={e => handleInvoiceDateChange(e.target.value)}
-                  disabled={invoice.state !== 'draft'}
-                />
+            {/* CARD 2: Invoice & Logistics Parameters */}
+            <div style={{ 
+              background: '#f8fafc', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '12px', 
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800', fontSize: '0.88rem', color: '#1e293b' }}>
+                  <Calendar size={16} color="var(--primary)" />
+                  <span>Invoice Parameters</span>
+                </div>
+                <span style={{ 
+                  fontSize: '0.72rem', 
+                  fontWeight: '700', 
+                  padding: '2px 8px', 
+                  borderRadius: '12px',
+                  background: '#f1f5f9',
+                  color: '#475569'
+                }}>
+                  {invoice.paymentTerms === 'immediate' ? 'Immediate' : invoice.paymentTerms || 'Terms'}
+                </span>
               </div>
 
-              <div>
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Payment Terms
-                </label>
-                <select 
-                  className="form-control"
-                  style={{ fontSize: '0.85rem' }}
-                  value={invoice.paymentTerms}
-                  onChange={e => handlePaymentTermsChange(e.target.value)}
-                  disabled={invoice.state !== 'draft'}
-                >
-                  <option value="immediate">Immediate Payment</option>
-                  <option value="15_days">15 Days</option>
-                  <option value="30_days">30 Days</option>
-                  <option value="45_days">45 Days</option>
-                  <option value="end_of_month">End of Month</option>
-                </select>
+              {/* 2x2 Grid of Parameters */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Invoice Date
+                  </label>
+                  <input 
+                    type="date"
+                    style={{ 
+                      fontSize: '0.86rem', 
+                      fontWeight: '700',
+                      color: '#0f172a',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      width: '100%',
+                      padding: 0
+                    }}
+                    value={invoice.date ? invoice.date.split('T')[0] : ''}
+                    onChange={e => handleInvoiceDateChange(e.target.value)}
+                    disabled={invoice.state !== 'draft'}
+                  />
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Due Date
+                  </label>
+                  <input 
+                    type="date"
+                    style={{ 
+                      fontSize: '0.86rem', 
+                      fontWeight: '700',
+                      color: amountDue > 0 ? '#dc2626' : '#0f172a',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      width: '100%',
+                      padding: 0
+                    }}
+                    value={invoice.dueDate ? invoice.dueDate.split('T')[0] : ''}
+                    onChange={e => setInvoice({ ...invoice, dueDate: e.target.value })}
+                    disabled={invoice.state !== 'draft'}
+                  />
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Payment Terms
+                  </label>
+                  <select 
+                    style={{ 
+                      fontSize: '0.84rem', 
+                      fontWeight: '600',
+                      color: '#0f172a',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      width: '100%',
+                      padding: 0,
+                      cursor: 'pointer'
+                    }}
+                    value={invoice.paymentTerms}
+                    onChange={e => handlePaymentTermsChange(e.target.value)}
+                    disabled={invoice.state !== 'draft'}
+                  >
+                    <option value="immediate">Immediate Payment</option>
+                    <option value="15_days">15 Days</option>
+                    <option value="30_days">30 Days</option>
+                    <option value="45_days">45 Days</option>
+                    <option value="end_of_month">End of Month</option>
+                  </select>
+                </div>
+
+                <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Journal / Book
+                  </label>
+                  <select 
+                    style={{ 
+                      fontSize: '0.84rem', 
+                      fontWeight: '600',
+                      color: '#0f172a',
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      width: '100%',
+                      padding: 0,
+                      cursor: 'pointer'
+                    }}
+                    value={invoice.journal}
+                    onChange={e => setInvoice({ ...invoice, journal: e.target.value })}
+                    disabled={invoice.state !== 'draft'}
+                  >
+                    <option value="INV">Customer Invoices (INV)</option>
+                    <option value="CSH">Cash Counter Sales (CSH)</option>
+                    <option value="BNK">Bank / Digital Invoices (BNK)</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Due Date
-                </label>
-                <input 
-                  type="date"
-                  className="form-control"
-                  style={{ fontSize: '0.85rem', fontWeight: '700', color: '#dc2626' }}
-                  value={invoice.dueDate ? invoice.dueDate.split('T')[0] : ''}
-                  onChange={e => setInvoice({ ...invoice, dueDate: e.target.value })}
-                  disabled={invoice.state !== 'draft'}
-                />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
-                  Journal
-                </label>
-                <select 
-                  className="form-control"
-                  style={{ fontSize: '0.85rem' }}
-                  value={invoice.journal}
-                  onChange={e => setInvoice({ ...invoice, journal: e.target.value })}
-                  disabled={invoice.state !== 'draft'}
-                >
-                  <option value="INV">Customer Invoices (INV)</option>
-                  <option value="CSH">Cash Counter Sales (CSH)</option>
-                  <option value="BNK">Bank / Digital Invoices (BNK)</option>
-                </select>
-              </div>
-
-              <div style={{ gridColumn: 'span 2' }}>
-                <label className="form-label" style={{ fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
+              {/* Warehouse selector full width */}
+              <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
                   Warehouse / Stock Location
                 </label>
                 <select 
-                  className="form-control"
-                  style={{ fontSize: '0.85rem' }}
+                  style={{ 
+                    fontSize: '0.84rem', 
+                    fontWeight: '600',
+                    color: '#0f172a',
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    width: '100%',
+                    padding: 0,
+                    cursor: 'pointer'
+                  }}
                   value={invoice.warehouseId}
                   onChange={e => setInvoice({ ...invoice, warehouseId: e.target.value })}
                   disabled={invoice.state !== 'draft'}
                 >
                   {warehouses.map(w => (
-                    <option key={w.id} value={w.id}>{w.name} ({w.city})</option>
+                    <option key={w.id} value={w.id}>{w.name} ({w.city || 'Main Godown'})</option>
                   ))}
                 </select>
               </div>
+
             </div>
+
           </div>
 
           {/* 3. Odoo Notebook Tabs */}

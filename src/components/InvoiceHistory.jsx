@@ -415,7 +415,7 @@ export default function InvoiceHistory({
                   return (
                     <tr 
                       key={inv.id} 
-                      onClick={() => handlePrintInvoice && handlePrintInvoice(inv)}
+                      onClick={() => setSelectedInvoiceForEdit(inv)}
                       style={{ 
                         borderBottom: '1px solid #f1f5f9', 
                         cursor: 'pointer',
@@ -491,9 +491,9 @@ export default function InvoiceHistory({
                       <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
                           <button 
-                            onClick={() => handlePrintInvoice && handlePrintInvoice(inv)}
+                            onClick={() => setSelectedInvoiceForEdit(inv)}
                             className="btn btn-secondary btn-sm"
-                            title="Open Proper Bill / Tax Invoice"
+                            title="Open Invoice"
                             style={{ padding: '4px 8px', fontSize: '0.74rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '3px' }}
                           >
                             <Eye size={12} />
@@ -520,15 +520,6 @@ export default function InvoiceHistory({
                             style={{ padding: '4px 8px' }}
                           >
                             <Printer size={13} />
-                          </button>
-
-                          <button 
-                            onClick={() => setSelectedInvoiceForEdit(inv)}
-                            className="btn btn-secondary btn-sm"
-                            title="Edit Invoice / Accounting Details"
-                            style={{ padding: '4px 8px', color: '#64748b' }}
-                          >
-                            <Edit3 size={13} />
                           </button>
 
                           <button 
