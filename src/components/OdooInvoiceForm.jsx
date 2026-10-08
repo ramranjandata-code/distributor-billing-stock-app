@@ -2102,11 +2102,22 @@ export default function OdooInvoiceForm({
                 </button>
                 <button 
                   type="submit" 
-                  className="btn btn-danger" 
-                  style={{ fontWeight: '800', background: '#dc2626', borderColor: '#b91c1c', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  className="btn" 
+                  style={{ 
+                    fontWeight: '800', 
+                    background: '#dc2626', 
+                    color: '#ffffff', 
+                    border: '1px solid #b91c1c', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
                 >
-                  <Ban size={16} />
-                  <span>Confirm VOID Bill</span>
+                  <Ban size={16} color="#ffffff" />
+                  <span style={{ color: '#ffffff' }}>Confirm VOID Bill</span>
                 </button>
               </div>
             </form>
