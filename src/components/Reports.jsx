@@ -271,6 +271,8 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
     return invoices.filter(inv => {
       if (!inv || !inv.date) return false;
+      // Exclude void / cancelled invoices from all revenue and GST metrics
+      if (inv.state === 'cancel' || inv.isVoid === true) return false;
       if (period === 'ALL') return true;
 
       const invDate = parseInvoiceDate(inv.date);

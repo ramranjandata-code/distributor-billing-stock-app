@@ -18,7 +18,8 @@ import {
   ArrowRight,
   Send,
   Layers,
-  Edit3
+  Edit3,
+  Ban
 } from 'lucide-react';
 import { deleteInvoice, formatDateDDMMYY, compareInvoicesDesc, extractInvoiceNumericValue } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
@@ -409,8 +410,9 @@ export default function InvoiceHistory({
               </thead>
               <tbody>
                 {sortedInvoices.map(inv => {
-                  const isCreditNote = inv.documentType === 'out_refund' || (inv.invoiceNo && inv.invoiceNo.startsWith('RINV'));
-                  const isOverdue = inv.dueDate && new Date(inv.dueDate) < new Date() && inv.amountDue > 0;
+                  const isVoid = inv.state === 'cancel' || inv.isVoid;
+                  const isCreditNote = !isVoid && (inv.documentType === 'out_refund' || (inv.invoiceNo && inv.invoiceNo.startsWith('RINV')));
+                  const isOverdue = !isVoid && inv.dueDate && new Date(inv.dueDate) < new Date() && inv.amountDue > 0;
 
                   return (
                     <tr 
@@ -418,24 +420,52 @@ export default function InvoiceHistory({
                       onClick={() => setSelectedInvoiceForEdit(inv)}
                       style={{ 
                         borderBottom: '1px solid #f1f5f9', 
+                        borderLeft: isVoid ? '4px solid #ef4444' : '4px solid transparent',
+                        background: isVoid ? '#fff1f2' : 'transparent',
                         cursor: 'pointer',
                         transition: 'background 0.15s'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#ffffff'}
+                      onMouseEnter={e => e.currentTarget.style.background = isVoid ? '#fee2e2' : '#f8fafc'}
+                      onMouseLeave={e => e.currentTarget.style.background = isVoid ? '#fff1f2' : '#ffffff'}
                     >
                       {/* Invoice Number */}
-                      <td style={{ padding: '10px 14px', fontWeight: '800', color: isCreditNote ? '#dc2626' : 'var(--primary)' }}>
+                      <td style={{ padding: '10px 14px', fontWeight: '800', color: isVoid ? '#dc2626' : (isCreditNote ? '#dc2626' : 'var(--primary)') }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {isCreditNote ? <RotateCcw size={14} color="#dc2626" /> : <FileText size={14} color="var(--primary)" />}
-                          <span>{inv.invoiceNo}</span>
+                          {isVoid ? (
+                            <Ban size={15} color="#dc2626" />
+                          ) : isCreditNote ? (
+                            <RotateCcw size={14} color="#dc2626" />
+                          ) : (
+                            <FileText size={14} color="var(--primary)" />
+                          )}
+                          <span style={{ textDecoration: isVoid ? 'line-through' : 'none' }}>{inv.invoiceNo}</span>
+                          {isVoid && (
+                            <span style={{ 
+                              fontSize: '0.65rem', 
+                              fontWeight: '900', 
+                              background: '#ef4444', 
+                              color: '#fff', 
+                              padding: '1px 5px', 
+                              borderRadius: '4px',
+                              letterSpacing: '0.5px'
+                            }}>
+                              VOID
+                            </span>
+                          )}
                         </div>
                       </td>
 
                       {/* Partner Name & GSTIN */}
                       <td style={{ padding: '10px 14px' }}>
-                        <div style={{ fontWeight: '700', color: '#1e293b' }}>{inv.partyName || inv.customerName}</div>
-                        {inv.partyGstin && <div style={{ fontSize: '0.72rem', color: '#2563eb' }}>{inv.partyGstin}</div>}
+                        <div style={{ fontWeight: '700', color: isVoid ? '#991b1b' : '#1e293b' }}>
+                          {inv.partyName || inv.customerName}
+                        </div>
+                        {inv.partyGstin && <div style={{ fontSize: '0.72rem', color: isVoid ? '#b91c1c' : '#2563eb' }}>{inv.partyGstin}</div>}
+                        {isVoid && inv.voidReason && (
+                          <div style={{ fontSize: '0.73rem', color: '#dc2626', fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span>⚠️ Reason: {inv.voidReason}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Invoice Date */}
@@ -445,25 +475,29 @@ export default function InvoiceHistory({
 
                       {/* Due Date */}
                       <td style={{ padding: '10px 14px', fontSize: '0.82rem' }}>
-                        <span style={{ color: isOverdue ? '#dc2626' : '#64748b', fontWeight: isOverdue ? '800' : '500' }}>
-                          {inv.dueDate ? formatDateDDMMYY(inv.dueDate) : (inv.date ? formatDateDDMMYY(inv.date) : '-')}
-                          {isOverdue && ' ⚠️'}
-                        </span>
+                        {isVoid ? (
+                          <span style={{ color: '#94a3b8' }}>-</span>
+                        ) : (
+                          <span style={{ color: isOverdue ? '#dc2626' : '#64748b', fontWeight: isOverdue ? '800' : '500' }}>
+                            {inv.dueDate ? formatDateDDMMYY(inv.dueDate) : (inv.date ? formatDateDDMMYY(inv.date) : '-')}
+                            {isOverdue && ' ⚠️'}
+                          </span>
+                        )}
                       </td>
 
                       {/* Tax Excluded Subtotal */}
-                      <td style={{ padding: '10px 14px', textAlign: 'right', color: '#64748b' }}>
+                      <td style={{ padding: '10px 14px', textAlign: 'right', color: isVoid ? '#94a3b8' : '#64748b', textDecoration: isVoid ? 'line-through' : 'none' }}>
                         ₹{Number(inv.taxableSubtotal || inv.taxableAmount || inv.subTotal || inv.subtotal || 0).toFixed(2)}
                       </td>
 
                       {/* Total */}
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '800', color: '#1e293b' }}>
+                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '800', color: isVoid ? '#dc2626' : '#1e293b', textDecoration: isVoid ? 'line-through' : 'none' }}>
                         ₹{Number(inv.grandTotal || 0).toFixed(2)}
                       </td>
 
                       {/* Residual Amount Due */}
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '800', color: inv.amountDue > 0 ? '#dc2626' : '#059669' }}>
-                        ₹{Number(inv.amountDue || 0).toFixed(2)}
+                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: '800', color: isVoid ? '#64748b' : (inv.amountDue > 0 ? '#dc2626' : '#059669') }}>
+                        {isVoid ? '₹0.00' : `₹${Number(inv.amountDue || 0).toFixed(2)}`}
                       </td>
 
                       {/* Odoo State Badge */}
@@ -474,16 +508,16 @@ export default function InvoiceHistory({
                           fontSize: '0.74rem',
                           fontWeight: '800',
                           textTransform: 'uppercase',
-                          background: inv.state === 'paid' ? '#ecfdf5' :
+                          background: isVoid ? '#fee2e2' :
+                                      inv.state === 'paid' ? '#ecfdf5' :
                                       inv.state === 'in_payment' ? '#fef3c7' :
-                                      inv.state === 'posted' ? '#eff6ff' :
-                                      inv.state === 'cancel' ? '#fef2f2' : '#f1f5f9',
-                          color: inv.state === 'paid' ? '#059669' :
+                                      inv.state === 'posted' ? '#eff6ff' : '#f1f5f9',
+                          color: isVoid ? '#dc2626' :
+                                 inv.state === 'paid' ? '#059669' :
                                  inv.state === 'in_payment' ? '#d97706' :
-                                 inv.state === 'posted' ? '#2563eb' :
-                                 inv.state === 'cancel' ? '#dc2626' : '#64748b'
+                                 inv.state === 'posted' ? '#2563eb' : '#64748b'
                         }}>
-                          {inv.state}
+                          {isVoid ? 'VOID' : inv.state}
                         </span>
                       </td>
 

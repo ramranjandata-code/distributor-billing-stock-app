@@ -2978,16 +2978,16 @@ export const resetInvoiceToDraft = (invoiceId) => {
   return updatedInvoice;
 };
 
-// Odoo Action: Cancel Invoice
-export const cancelInvoice = (invoiceId) => {
+// Odoo Action: Void / Cancel Invoice with Reason, inventory restock, and ledger reversal
+export const voidInvoice = (invoiceId, reason = 'Customer refused delivery / Store closed') => {
   const invoices = fetchInvoices();
   const target = invoices.find(i => i.id === invoiceId);
-  if (!target || target.state === 'cancel') return target;
+  if (!target || target.state === 'cancel' || target.isVoid) return target;
 
   const currentOp = getCurrentOperator();
   const products = fetchProducts();
 
-  // If posted, restore stock, stock lots, and reverse ledger
+  // 1. If not draft, restore inventory stock and FIFO lots back to warehouse
   if (target.state !== 'draft') {
     if (target.items && Array.isArray(target.items)) {
       restoreStockLotsFromConsumed(target.items);
@@ -3006,21 +3006,32 @@ export const cancelInvoice = (invoiceId) => {
       });
       setStorageData(STORAGE_KEYS.PRODUCTS, restoredProducts);
     }
-    if (target.partyId && target.amountDue > 0) {
-      updatePartyBalance(target.partyId, -Number(target.amountDue));
+
+    // 2. Reverse customer ledger due balance
+    if (target.partyId) {
+      const openDebt = Number(target.amountDue !== undefined ? target.amountDue : target.balanceAmount) || 0;
+      if (openDebt > 0) {
+        updatePartyBalance(target.partyId, -openDebt);
+      }
     }
   }
 
   const updatedInvoice = {
     ...target,
     state: 'cancel',
+    isVoid: true,
+    voidReason: reason,
+    voidDate: new Date().toISOString(),
+    voidBy: currentOp?.name || 'Administrator',
+    amountDue: 0,
+    balanceAmount: 0,
     chatter: [
       ...(target.chatter || []),
       {
         id: 'cht_' + Date.now(),
         date: new Date().toISOString(),
         author: currentOp?.name || 'Administrator',
-        text: 'Invoice cancelled.',
+        text: `⛔ INVOICE VOIDED. Reason: "${reason}". Stock restored back to inventory and customer ledger cleared.`,
         type: 'system'
       }
     ]
@@ -3028,18 +3039,20 @@ export const cancelInvoice = (invoiceId) => {
 
   const updatedInvoices = invoices.map(i => i.id === invoiceId ? updatedInvoice : i);
   setStorageData(STORAGE_KEYS.INVOICES, updatedInvoices);
-  logAuditAction('CANCEL_INVOICE', 'Billing & Invoicing', `Cancelled Invoice #${target.invoiceNo}`);
+  logAuditAction('VOID_INVOICE', 'Billing & Invoicing', `Voided Invoice #${target.invoiceNo}. Reason: ${reason}`);
   
   InvoiceHistoryLogger.log({
     invoiceId: invoiceId,
     actionType: 'STATUS_CHANGE',
-    description: `Invoice #${target.invoiceNo} cancelled. Inventory deductions & ledger debits reversed.`,
-    metadata: { invoiceNo: target.invoiceNo, state: 'cancel' }
+    description: `Invoice #${target.invoiceNo} VOIDED. Reason: "${reason}". Stock restored & accounting debt reversed.`,
+    metadata: { invoiceNo: target.invoiceNo, state: 'cancel', isVoid: true, reason }
   });
 
   autoCloudSync();
   return updatedInvoice;
 };
+
+export const cancelInvoice = voidInvoice;
 
 export const deleteInvoice = (invoiceId) => {
   const invoices = fetchInvoices();

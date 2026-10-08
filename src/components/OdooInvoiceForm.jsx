@@ -27,7 +27,9 @@ import {
   FileSpreadsheet,
   Zap,
   Info,
-  Eye
+  Eye,
+  Ban,
+  MoreVertical
 } from 'lucide-react';
 import { 
   saveInvoice, 
@@ -36,6 +38,7 @@ import {
   createCreditNote, 
   resetInvoiceToDraft, 
   cancelInvoice, 
+  voidInvoice,
   calculateDueDate,
   formatCartonStock, 
   fetchWarehouses, 
@@ -110,6 +113,10 @@ export default function OdooInvoiceForm({
 
   // Credit Note Wizard State
   const [creditNoteReason, setCreditNoteReason] = useState('Customer Return / Pricing Adjustment');
+
+  // Void Bill Wizard State
+  const [voidModalOpen, setVoidModalOpen] = useState(false);
+  const [voidReason, setVoidReason] = useState('Customer refused delivery / Store closed');
 
   // Selected party object
   const selectedParty = parties.find(p => p.id === invoice.partyId);
@@ -417,12 +424,26 @@ export default function OdooInvoiceForm({
     }
   };
 
-  const handleCancel = () => {
-    if (window.confirm('⚠️ Cancel this invoice?')) {
-      const cancelled = cancelInvoice(invoice.id);
-      setInvoice(cancelled);
-      if (refreshAllData) refreshAllData();
+  const handleOpenVoidModal = () => {
+    setVoidReason('Customer refused delivery / Store was closed');
+    setVoidModalOpen(true);
+  };
+
+  const handleExecuteVoid = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!voidReason || !voidReason.trim()) {
+      alert('Please enter a reason for voiding this invoice.');
+      return;
     }
+    const cancelled = voidInvoice(invoice.id, voidReason.trim());
+    setInvoice(cancelled);
+    setVoidModalOpen(false);
+    if (refreshAllData) refreshAllData();
+    alert(`🚫 Invoice #${invoice.invoiceNo} has been VOIDED.\nStock restored to inventory & customer ledger reversed.`);
+  };
+
+  const handleCancel = () => {
+    handleOpenVoidModal();
   };
 
   const handleAddChatterNote = (e) => {
@@ -531,6 +552,15 @@ export default function OdooInvoiceForm({
                 </button>
               )}
               <button 
+                onClick={handleOpenVoidModal}
+                className="btn btn-sm"
+                style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fca5a5', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Void Bill — Customer refused delivery or store closed"
+              >
+                <Ban size={14} />
+                <span>Void Bill</span>
+              </button>
+              <button 
                 onClick={handleResetDraft}
                 className="btn btn-secondary btn-sm"
                 style={{ fontSize: '0.8rem' }}
@@ -561,6 +591,15 @@ export default function OdooInvoiceForm({
                   <span>Create Return (RMA)</span>
                 </button>
               )}
+              <button 
+                onClick={handleOpenVoidModal}
+                className="btn btn-sm"
+                style={{ background: '#fef2f2', color: '#dc2626', borderColor: '#fca5a5', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}
+                title="Void Bill — Customer refused delivery or store closed"
+              >
+                <Ban size={14} />
+                <span>Void Bill</span>
+              </button>
             </>
           )}
 
@@ -703,26 +742,91 @@ export default function OdooInvoiceForm({
             IN PAYMENT
           </div>
         )}
-        {invoice.state === 'cancel' && (
-          <div style={{
-            position: 'absolute',
-            top: '26px',
-            right: '-36px',
-            transform: 'rotate(45deg)',
-            background: '#ef4444',
-            color: '#ffffff',
-            fontWeight: '900',
-            fontSize: '0.8rem',
-            padding: '4px 34px',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-            letterSpacing: '1px',
-            zIndex: 10
-          }}>
-            CANCELLED
-          </div>
+        {(invoice.state === 'cancel' || invoice.isVoid) && (
+          <>
+            <div style={{
+              position: 'absolute',
+              top: '32px',
+              right: '-42px',
+              transform: 'rotate(45deg)',
+              background: '#dc2626',
+              color: '#ffffff',
+              fontWeight: '900',
+              fontSize: '0.92rem',
+              padding: '6px 46px',
+              boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+              letterSpacing: '2px',
+              zIndex: 10,
+              border: '2px dashed #ffffff'
+            }}>
+              VOID / CANCELLED
+            </div>
+
+            {/* Diagonal Large Center VOID Stamp */}
+            <div style={{
+              position: 'absolute',
+              top: '40%',
+              left: '50%',
+              transform: 'translate(-50%, -50%) rotate(-24deg)',
+              border: '6px dashed rgba(220, 38, 38, 0.28)',
+              borderRadius: '16px',
+              padding: '16px 54px',
+              color: 'rgba(220, 38, 38, 0.28)',
+              fontSize: '4.5rem',
+              fontWeight: '900',
+              letterSpacing: '8px',
+              userSelect: 'none',
+              pointerEvents: 'none',
+              zIndex: 5,
+              textTransform: 'uppercase'
+            }}>
+              VOID
+            </div>
+          </>
         )}
 
         <div style={{ padding: '24px 30px' }}>
+          
+          {/* Voided Bill Notice Banner */}
+          {(invoice.state === 'cancel' || invoice.isVoid) && (
+            <div style={{
+              background: '#fef2f2',
+              border: '2px solid #ef4444',
+              borderRadius: '8px',
+              padding: '12px 18px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              color: '#991b1b'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Ban size={22} color="#dc2626" />
+                <div>
+                  <div style={{ fontWeight: '800', fontSize: '0.96rem' }}>
+                    THIS BILL IS VOIDED / CANCELLED
+                  </div>
+                  <div style={{ fontSize: '0.82rem', marginTop: '2px' }}>
+                    <strong>Reason:</strong> {invoice.voidReason || 'Customer refused delivery / Store closed'}
+                    {invoice.voidDate && <span> • <strong>Date:</strong> {new Date(invoice.voidDate).toLocaleDateString('en-IN')}</span>}
+                    {invoice.voidBy && <span> • <strong>By:</strong> {invoice.voidBy}</span>}
+                  </div>
+                </div>
+              </div>
+              <span style={{ 
+                background: '#dc2626', 
+                color: '#fff', 
+                padding: '4px 10px', 
+                borderRadius: '6px', 
+                fontSize: '0.74rem', 
+                fontWeight: '800',
+                letterSpacing: '0.5px'
+              }}>
+                STOCK RESTORED (0 GST)
+              </span>
+            </div>
+          )}
           
           {/* Document Header & Quick KPI Bar */}
           <div style={{ 
@@ -1905,6 +2009,104 @@ export default function OdooInvoiceForm({
                 </button>
                 <button type="submit" className="btn btn-danger" style={{ fontWeight: '800' }}>
                   Reverse & Generate Credit Note
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 6. Void Bill Modal (Zoho / Tally style) */}
+      {voidModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 1250 }}>
+          <div className="modal-content" style={{ maxWidth: '480px', padding: '24px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid #fee2e2', paddingBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626' }}>
+                <Ban size={22} color="#dc2626" />
+                <span>Void / Cancel Invoice #{invoice.invoiceNo}</span>
+              </h3>
+              <button 
+                type="button" 
+                onClick={() => setVoidModalOpen(false)}
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '4px 8px' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px', marginBottom: '16px', fontSize: '0.85rem', color: '#991b1b' }}>
+              <div style={{ fontWeight: '800', marginBottom: '4px' }}>⚠️ What happens when you VOID this invoice:</div>
+              <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <li>All billed stock is <strong>automatically restored to warehouse inventory</strong>.</li>
+                <li>Invoice amount (₹{Number(invoice.grandTotal || 0).toFixed(2)}) is <strong>removed from GST turnover & tax calculations</strong>.</li>
+                <li>Customer balance / ledger debt is reversed.</li>
+                <li>Invoice will be marked with a <strong>VOID STAMP</strong> and highlighted in red in history.</li>
+              </ul>
+            </div>
+
+            <form onSubmit={handleExecuteVoid} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: '700', marginBottom: '6px', display: 'block' }}>
+                  Reason for Voiding *
+                </label>
+                
+                {/* Quick Reason Suggestions */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                  {[
+                    'Customer refused delivery',
+                    'Store was closed',
+                    'Wrong customer / duplicate bill',
+                    'Order cancelled before delivery',
+                    'Price / item entry error'
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setVoidReason(preset)}
+                      style={{
+                        fontSize: '0.74rem',
+                        fontWeight: '600',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: voidReason === preset ? '#fee2e2' : '#f8fafc',
+                        color: voidReason === preset ? '#dc2626' : '#475569',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea 
+                  className="form-control" 
+                  rows={3}
+                  required 
+                  placeholder="E.g. Dukan band thi, maal godown wapas aa gaya ya customer ne lene se mana kar diya..."
+                  value={voidReason}
+                  onChange={e => setVoidReason(e.target.value)}
+                  style={{ width: '100%', fontSize: '0.88rem', padding: '10px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setVoidModalOpen(false)} 
+                  className="btn btn-secondary"
+                  style={{ fontWeight: '600' }}
+                >
+                  Close / Go Back
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-danger" 
+                  style={{ fontWeight: '800', background: '#dc2626', borderColor: '#b91c1c', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Ban size={16} />
+                  <span>Confirm VOID Bill</span>
                 </button>
               </div>
             </form>

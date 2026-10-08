@@ -799,9 +799,50 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
           breakInside: 'avoid',
           pageBreakAfter: 'avoid',
           breakAfter: 'avoid',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          position: 'relative',
+          overflow: 'hidden'
         }}>
           
+          {/* VOID WATERMARK STAMP ON PRINTABLE BILL */}
+          {(invoice.state === 'cancel' || invoice.isVoid) && (
+            <>
+              <div style={{
+                position: 'absolute',
+                top: '45%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) rotate(-30deg)',
+                border: '8px dashed rgba(220, 38, 38, 0.4)',
+                borderRadius: '20px',
+                padding: '16px 60px',
+                color: 'rgba(220, 38, 38, 0.4)',
+                fontSize: paperFormat === 'A5' ? '4.5rem' : '6rem',
+                fontWeight: '900',
+                letterSpacing: '12px',
+                userSelect: 'none',
+                pointerEvents: 'none',
+                zIndex: 99,
+                textTransform: 'uppercase'
+              }}>
+                VOID
+              </div>
+
+              <div style={{
+                background: '#dc2626',
+                color: '#ffffff',
+                textAlign: 'center',
+                padding: '4px 8px',
+                fontWeight: '900',
+                fontSize: paperFormat === 'A5' ? '9px' : '11px',
+                letterSpacing: '1px',
+                marginBottom: '4px',
+                borderRadius: '4px'
+              }}>
+                ⛔ THIS INVOICE IS VOID / CANCELLED — GOODS RESTORED TO GODOWN (REASON: {invoice.voidReason || 'CUSTOMER REFUSED / STORE CLOSED'})
+              </div>
+            </>
+          )}
+
           {/* ========================================================= */}
           {/* SECTION 1: EXECUTIVE DISTRIBUTOR LETTERHEAD */}
           {/* ========================================================= */}
