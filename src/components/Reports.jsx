@@ -551,7 +551,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     const rawIgst = Math.max(0, regIgst - retIgst);
 
     const expectedTax = Math.max(0, Number((gstNetSales - gstNetTaxable).toFixed(2)));
-    const totalTax = expectedTax > 0 ? expectedTax : Number((rawCgst + rawSgst + rawIgst).toFixed(2));
+    let totalTax = expectedTax > 0 ? expectedTax : Number((rawCgst + rawSgst + rawIgst).toFixed(2));
 
     let cgst = rawCgst;
     let sgst = rawSgst;
@@ -565,7 +565,13 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       } else {
         igst = 0;
         cgst = Number((expectedTax / 2).toFixed(2));
-        sgst = Number((expectedTax - cgst).toFixed(2));
+        sgst = cgst; // Enforce 100% mathematical parity: SGST == CGST
+        totalTax = Number((cgst + sgst).toFixed(2));
+      }
+    } else {
+      if (igst === 0) {
+        sgst = cgst; // Enforce parity for intra-state
+        totalTax = Number((cgst + sgst).toFixed(2));
       }
     }
 
@@ -585,30 +591,38 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             uqc: item.unit || 'BOX',
             totalQty: 0,
             taxableValue: 0,
-            cgst: 0,
-            sgst: 0,
-            igst: 0,
-            totalTax: 0
+            rate: item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 5,
+            isInter: inv.supplyType === 'INTER' || (inv.pos && business?.gstin && !inv.pos.startsWith(business.gstin.substring(0, 2)))
           };
         }
         const qty = Number(item.qty) || 0;
         const taxVal = Number(item.taxableAmount !== undefined ? item.taxableAmount : (item.taxableVal !== undefined ? item.taxableVal : (item.total || 0))) || 0;
-        const rate = item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 5;
-        const isInter = inv.supplyType === 'INTER' || (inv.pos && business?.gstin && !inv.pos.startsWith(business.gstin.substring(0, 2)));
-        const itemTax = (taxVal * rate) / 100;
 
         map[hsn].totalQty += qty;
         map[hsn].taxableValue += taxVal;
-        if (isInter) {
-          map[hsn].igst += itemTax;
-        } else {
-          map[hsn].cgst += itemTax / 2;
-          map[hsn].sgst += itemTax / 2;
-        }
-        map[hsn].totalTax += itemTax;
       });
     });
-    return Object.values(map);
+
+    return Object.values(map).map(h => {
+      const taxableValue = Number(h.taxableValue.toFixed(2));
+      let cgst = 0, sgst = 0, igst = 0;
+      if (h.isInter) {
+        igst = Number(((taxableValue * h.rate) / 100).toFixed(2));
+      } else {
+        cgst = Number(((taxableValue * (h.rate / 2)) / 100).toFixed(2));
+        sgst = cgst; // 100% mathematical parity: SGST == CGST
+      }
+      const totalTax = Number((cgst + sgst + igst).toFixed(2));
+      return {
+        ...h,
+        totalQty: Number(h.totalQty.toFixed(2)),
+        taxableValue,
+        cgst,
+        sgst,
+        igst,
+        totalTax
+      };
+    });
   }, [gstMonthRegularInvoices, business]);
 
   const handleValidateGstr1 = () => {

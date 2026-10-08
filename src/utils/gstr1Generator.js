@@ -408,7 +408,7 @@ export const generateGstr1Payload = ({
 
     if (isIntra) {
       camt = round2((txval * (b.rt / 2)) / 100);
-      samt = round2((txval * (b.rt / 2)) / 100);
+      samt = camt; // 100% mathematical parity: SGST == CGST
       iamt = 0.00;
     } else {
       iamt = round2((txval * b.rt) / 100);
@@ -649,7 +649,7 @@ export const generateGstr1Payload = ({
 
     if (h.isIntra) {
       camt = round2((txval * (h.rate / 2)) / 100);
-      samt = round2((txval * (h.rate / 2)) / 100);
+      samt = camt; // Enforce 100% mathematical parity: SGST == CGST
       iamt = 0.00;
     } else {
       iamt = round2((txval * h.rate) / 100);
@@ -657,6 +657,7 @@ export const generateGstr1Payload = ({
       samt = 0.00;
     }
 
+    // val MUST strictly equal txval + iamt + camt + samt
     const val = round2(txval + iamt + camt + samt);
 
     runningHsnTxval = round2(runningHsnTxval + txval);
@@ -679,7 +680,7 @@ export const generateGstr1Payload = ({
     };
   });
 
-  // Reconcile HSN vs Sales down to exact paisa
+  // Reconcile HSN vs Sales down to exact paisa with strict parity guarantee
   if (hsnData.length > 0) {
     const txvalDelta = round2(targetTotalTxval - runningHsnTxval);
     const iamtDelta = round2(targetTotalIamt - runningHsnIamt);
@@ -694,11 +695,20 @@ export const generateGstr1Payload = ({
     if (Math.abs(iamtDelta) > 0 && Math.abs(iamtDelta) <= 0.05) {
       primaryHsn.iamt = round2(primaryHsn.iamt + iamtDelta);
     }
-    if (Math.abs(camtDelta) > 0 && Math.abs(camtDelta) <= 0.05) {
-      primaryHsn.camt = round2(primaryHsn.camt + camtDelta);
-    }
-    if (Math.abs(samtDelta) > 0 && Math.abs(samtDelta) <= 0.05) {
-      primaryHsn.samt = round2(primaryHsn.samt + samtDelta);
+
+    // Preserve strict parity for intra-state supplies
+    if (primaryHsn.iamt === 0) {
+      if (Math.abs(camtDelta) > 0 && Math.abs(camtDelta) <= 0.05) {
+        primaryHsn.camt = round2(primaryHsn.camt + camtDelta);
+        primaryHsn.samt = primaryHsn.camt;
+      }
+    } else {
+      if (Math.abs(camtDelta) > 0 && Math.abs(camtDelta) <= 0.05) {
+        primaryHsn.camt = round2(primaryHsn.camt + camtDelta);
+      }
+      if (Math.abs(samtDelta) > 0 && Math.abs(samtDelta) <= 0.05) {
+        primaryHsn.samt = round2(primaryHsn.samt + samtDelta);
+      }
     }
 
     primaryHsn.val = round2(primaryHsn.txval + primaryHsn.iamt + primaryHsn.camt + primaryHsn.samt + primaryHsn.csamt);
