@@ -51,6 +51,11 @@ import {
   fetchBankAccounts,
   getProductStockValuation 
 } from '../utils/storage';
+import { 
+  generateGstr1Payload, 
+  validateGstr1Payload, 
+  downloadGstr1Json 
+} from '../utils/gstr1Generator';
 
 
 // Bulletproof Brand Normalizer & Canonicalizer for FMCG Products
@@ -192,7 +197,8 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       return;
     }
 
-    const filename = downloadGstr1Json(payload, business?.gstin, fp);
+    const downloadResult = downloadGstr1Json(payload, business?.gstin, fp);
+    const exportFileName = downloadResult?.fileName || `GSTR1_${payload.gstin}_${payload.fp}.json`;
 
     // Immutable audit timeline logging
     filteredInvoices.forEach(inv => {
@@ -201,12 +207,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
           action: 'GSTR-1 JSON Exported',
           fp,
           gstin: business?.gstin,
-          filename
+          filename: exportFileName
         });
       } catch (e) {}
     });
 
-    alert(`🎉 Official GSTR-1 JSON exported successfully as ${filename}!\n\nUpload directly to the GST Portal (gst.gov.in) under 'Returns Dashboard' ➔ 'GSTR-1' ➔ 'Prepare Offline' ➔ 'Upload'.`);
+    alert(`🎉 Official GSTR-1 JSON exported successfully as ${exportFileName}!\n\nUpload directly to the GST Portal (gst.gov.in) under 'Returns Dashboard' ➔ 'GSTR-1' ➔ 'Prepare Offline' ➔ 'Upload'.`);
   };
 
   // Sole Proprietor Accounting State
