@@ -373,6 +373,44 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     };
   };
 
+  const getInvTaxable = (inv) => {
+    if (isDocCreditNote(inv)) {
+      return getCreditNoteBreakdown(inv).taxable;
+    }
+    return Number(inv.taxableAmount || inv.taxableSubtotal || inv.subTotal || inv.subtotal || (Number(inv.grandTotal || 0) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)))) || 0;
+  };
+
+  // Accurate Invoice Tax Extractor for both explicit and implicit tax invoices
+  const getInvTaxBreakdown = (inv) => {
+    if (isDocCreditNote(inv)) {
+      return getCreditNoteBreakdown(inv);
+    }
+    const cg = Number(inv.cgst || 0);
+    const sg = Number(inv.sgst || 0);
+    const ig = Number(inv.igst || 0);
+    const explicitTax = cg + sg + ig;
+    if (explicitTax > 0) {
+      return {
+        taxable: getInvTaxable(inv),
+        cgst: cg,
+        sgst: sg,
+        igst: ig,
+        taxTotal: explicitTax
+      };
+    }
+    const grand = Number(inv.grandTotal || 0);
+    const taxable = getInvTaxable(inv);
+    const diff = Math.max(0, Number((grand - taxable).toFixed(2)));
+    if (diff > 0) {
+      if (inv.supplyType === 'INTER') {
+        return { taxable, cgst: 0, sgst: 0, igst: diff, taxTotal: diff };
+      }
+      const half = Number((diff / 2).toFixed(2));
+      return { taxable, cgst: half, sgst: half, igst: 0, taxTotal: diff };
+    }
+    return { taxable, cgst: 0, sgst: 0, igst: 0, taxTotal: 0 };
+  };
+
   // Aggregate Sales & Tax Metrics (Net of Credit Notes / Sales Returns)
   const grossSales = regularInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
   const totalReturnsAmount = creditNotesInPeriod.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
@@ -380,30 +418,41 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const totalCollected = Math.max(0, regularInvoices.reduce((sum, inv) => sum + (Number(inv.paidAmount) || 0), 0) - totalReturnsAmount); // Net Cash Received
   const totalUdhar = regularInvoices.reduce((sum, inv) => sum + (Number(inv.balanceAmount) || 0), 0);
 
-  const regularCgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.cgst) || 0), 0);
-  const regularSgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.sgst) || 0), 0);
-  const regularIgst = regularInvoices.reduce((sum, inv) => sum + (Number(inv.igst) || 0), 0);
+  const grossTaxable = regularInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
+  const returnTaxable = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).taxable, 0);
+  const netTaxableRevenue = Math.max(0, grossTaxable - returnTaxable);
+
+  const regularCgst = regularInvoices.reduce((sum, inv) => sum + getInvTaxBreakdown(inv).cgst, 0);
+  const regularSgst = regularInvoices.reduce((sum, inv) => sum + getInvTaxBreakdown(inv).sgst, 0);
+  const regularIgst = regularInvoices.reduce((sum, inv) => sum + getInvTaxBreakdown(inv).igst, 0);
 
   const returnCgst = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).cgst, 0);
   const returnSgst = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).sgst, 0);
   const returnIgst = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).igst, 0);
 
-  const totalCgst = Math.max(0, regularCgst - returnCgst);
-  const totalSgst = Math.max(0, regularSgst - returnSgst);
-  const totalIgst = Math.max(0, regularIgst - returnIgst);
-  
-  // Explicitly define totalTax
-  const totalTax = totalCgst + totalSgst + totalIgst;
+  let rawTotalCgst = Math.max(0, regularCgst - returnCgst);
+  let rawTotalSgst = Math.max(0, regularSgst - returnSgst);
+  let rawTotalIgst = Math.max(0, regularIgst - returnIgst);
 
-  const getInvTaxable = (inv) => {
-    if (isDocCreditNote(inv)) {
-      return getCreditNoteBreakdown(inv).taxable;
+  // Exact reconciliation with Net Sales & Taxable Value so Taxable + Tax = Total Revenue ALWAYS tallies with invoices
+  const expectedNetTax = Math.max(0, Number((totalSales - netTaxableRevenue).toFixed(2)));
+  const totalTax = expectedNetTax > 0 ? expectedNetTax : Number((rawTotalCgst + rawTotalSgst + rawTotalIgst).toFixed(2));
+  
+  let totalIgst = rawTotalIgst;
+  let totalCgst = rawTotalCgst;
+  let totalSgst = rawTotalSgst;
+
+  if (expectedNetTax > 0) {
+    if (rawTotalIgst > 0 && rawTotalCgst === 0 && rawTotalSgst === 0) {
+      totalIgst = expectedNetTax;
+      totalCgst = 0;
+      totalSgst = 0;
+    } else {
+      totalIgst = 0;
+      totalCgst = Number((expectedNetTax / 2).toFixed(2));
+      totalSgst = Number((expectedNetTax - totalCgst).toFixed(2));
     }
-    return Number(inv.taxableAmount || inv.taxableSubtotal || inv.subTotal || inv.subtotal || (Number(inv.grandTotal || 0) - (Number(inv.cgst || 0) + Number(inv.sgst || 0) + Number(inv.igst || 0)))) || 0;
-  };
-  const grossTaxable = regularInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
-  const returnTaxable = creditNotesInPeriod.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).taxable, 0);
-  const netTaxableRevenue = Math.max(0, grossTaxable - returnTaxable);
+  }
 
   // Filter Expenses by selected Period
   const filteredExpenses = useMemo(() => {
@@ -925,9 +974,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     // Table 4A: B2B Invoices
     b2bInvoices.forEach(inv => {
       const pos = inv.partyGstin ? inv.partyGstin.substring(0, 2) : '07';
-      const taxable = getInvTaxable(inv);
+      const taxInfo = getInvTaxBreakdown(inv);
+      const taxable = taxInfo.taxable;
       const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
-      csvContent += `4A,"${inv.partyGstin}","${inv.partyName || inv.customerName}","${inv.invoiceNo}","${inv.date?.split('T')[0]}",${Number(inv.grandTotal || 0).toFixed(2)},"${pos}-State",N,Regular,${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
+      csvContent += `4A,"${inv.partyGstin}","${inv.partyName || inv.customerName}","${inv.invoiceNo}","${inv.date?.split('T')[0]}",${Number(inv.grandTotal || 0).toFixed(2)},"${pos}-State",N,Regular,${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
     });
 
     csvContent += '\n--- GSTR-1 TABLE 7: TAXABLE SUPPLIES TO UNREGISTERED PERSONS (B2C SMALL) ---\n';
@@ -935,9 +985,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
     // Table 7: B2C Small Invoices
     b2cInvoices.forEach(inv => {
-      const taxable = getInvTaxable(inv);
+      const taxInfo = getInvTaxBreakdown(inv);
+      const taxable = taxInfo.taxable;
       const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
-      csvContent += `7,OE,"07-Delhi",${rate},${taxable.toFixed(2)},${Number(inv.cgst || 0).toFixed(2)},${Number(inv.sgst || 0).toFixed(2)},${Number(inv.igst || 0).toFixed(2)},0.00\n`;
+      csvContent += `7,OE,"07-Delhi",${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
     });
 
     // Table 9B: Credit / Debit Notes (CDNR & CDNUR)
@@ -945,9 +996,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     csvContent += 'Table,Type,Note No,Note Date,Original Invoice No,Party Name,GSTIN,Note Value,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
 
     creditNotesInPeriod.forEach(cn => {
-      const taxable = getInvTaxable(cn);
+      const taxInfo = getCreditNoteBreakdown(cn);
+      const taxable = taxInfo.taxable;
       const rate = cn.items?.[0]?.gstRate !== undefined ? Number(cn.items[0].gstRate) : 5;
-      csvContent += `9B,C,"${cn.invoiceNo}","${cn.date?.split('T')[0]}","${cn.reversalOf || 'INV-000'}","${cn.partyName || cn.customerName}","${cn.partyGstin || 'URP'}",${Number(cn.grandTotal || 0).toFixed(2)},${rate},${taxable.toFixed(2)},${Number(cn.cgst || 0).toFixed(2)},${Number(cn.sgst || 0).toFixed(2)},${Number(cn.igst || 0).toFixed(2)},0.00\n`;
+      csvContent += `9B,C,"${cn.invoiceNo}","${cn.date?.split('T')[0]}","${cn.reversalOf || 'INV-000'}","${cn.partyName || cn.customerName}","${cn.partyGstin || 'URP'}",${Number(cn.grandTotal || 0).toFixed(2)},${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
     });
 
     csvContent += '\n--- GSTR-1 TABLE 12: HSN SUMMARY OF OUTWARD SUPPLIES ---\n';
@@ -2744,9 +2796,9 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                           <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{inv.date?.split('T')[0]}</td>
                           <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>₹{Number(inv.grandTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                           <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxable(inv).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(inv.cgst || 0).toFixed(2)}</td>
-                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(inv.sgst || 0).toFixed(2)}</td>
-                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(inv.igst || 0).toFixed(2)}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxBreakdown(inv).cgst.toFixed(2)}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxBreakdown(inv).sgst.toFixed(2)}</td>
+                          <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxBreakdown(inv).igst.toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2795,13 +2847,13 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                           ₹{b2cInvoices.reduce((s, i) => s + getInvTaxable(i), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.cgst) || 0), 0).toFixed(2)}
+                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).cgst, 0).toFixed(2)}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.sgst) || 0), 0).toFixed(2)}
+                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).sgst, 0).toFixed(2)}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.cgst || 0) + Number(i.sgst || 0) + Number(i.igst || 0)), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).taxTotal, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     </tbody>
@@ -2843,10 +2895,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     </thead>
                     <tbody>
                       {creditNotesInPeriod.map((cn, idx) => {
-                        const taxVal = getInvTaxable(cn);
-                        const cgstVal = Number(cn.cgst || 0);
-                        const sgstVal = Number(cn.sgst || 0);
-                        const totTax = cgstVal + sgstVal + Number(cn.igst || 0);
+                        const breakdown = getCreditNoteBreakdown(cn);
+                        const taxVal = breakdown.taxable;
+                        const cgstVal = breakdown.cgst;
+                        const sgstVal = breakdown.sgst;
+                        const totTax = breakdown.taxTotal;
                         return (
                           <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                             <td style={{ padding: '8px', fontWeight: '700', color: '#dc2626', fontFamily: 'monospace' }}>
