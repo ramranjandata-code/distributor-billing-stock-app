@@ -38,7 +38,9 @@ import {
   Sparkles,
   RefreshCw,
   ChevronDown,
-  Tag
+  Tag,
+  Copy,
+  Check
 } from 'lucide-react';
 import { 
   fetchBankTransactions, 
@@ -49,7 +51,9 @@ import {
   fetchProprietorCapital, 
   saveProprietorCapital, 
   fetchBankAccounts,
-  getProductStockValuation 
+  getProductStockValuation,
+  fetchSalesReturns,
+  InvoiceHistoryLogger
 } from '../utils/storage';
 import { 
   generateGstr1Payload, 
@@ -123,6 +127,56 @@ const parseInvoiceDate = (dateVal) => {
   return null;
 };
 
+// Bulletproof GST Return Filing Period Matcher (Supports ISO strings, YYYY-MM, DD-MM-YYYY, DD/MM/YYYY)
+export const isDateInGstPeriod = (dateVal, targetFpMonth) => {
+  if (!dateVal || !targetFpMonth) return false;
+  const parts = targetFpMonth.split('-');
+  if (parts.length !== 2) return false;
+  const tgtYear = parseInt(parts[0], 10);
+  const tgtMonth = parseInt(parts[1], 10);
+
+  if (typeof dateVal === 'string') {
+    const clean = dateVal.trim();
+    if (clean.startsWith(`${targetFpMonth}-`) || clean.startsWith(targetFpMonth)) return true;
+    if (clean.startsWith(`${parts[0]}/${parts[1]}`)) return true;
+    const dParts = clean.split(/[-/]/);
+    if (dParts.length === 3 && dParts[2].length >= 4 && dParts[2].slice(0, 4) === parts[0]) {
+      const mm = parseInt(dParts[1], 10);
+      if (mm === tgtMonth) return true;
+    }
+  }
+  try {
+    const d = new Date(dateVal);
+    if (!isNaN(d.getTime())) {
+      if (d.getFullYear() === tgtYear && (d.getMonth() + 1) === tgtMonth) return true;
+      if (d.getUTCFullYear() === tgtYear && (d.getUTCMonth() + 1) === tgtMonth) return true;
+    }
+  } catch (e) {}
+  return false;
+};
+
+export const formatGstDisplayDate = (dateVal) => {
+  if (!dateVal) return '-';
+  try {
+    const d = new Date(dateVal);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${dd}-${mm}-${yyyy}`;
+    }
+  } catch (e) {}
+  if (typeof dateVal === 'string') {
+    const clean = dateVal.split('T')[0];
+    const parts = clean.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return clean;
+  }
+  return '-';
+};
+
 export default function Reports({ invoices = [], products = [], parties = [], business, refreshAllData, t }) {
   const [reportTab, setReportTab] = useState('SALES');
   const [salesViewMode, setSalesViewMode] = useState('ALL'); // 'ALL', 'BRAND', 'PARTY', 'PRODUCT' // 'SALES', 'PNL', 'BALANCESHEET', 'EXPENSES', 'GST', 'DAYBOOK', 'STOCK'
@@ -143,6 +197,10 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   });
   const [gstValidationResult, setGstValidationResult] = useState(null);
   const [gstValidationModalOpen, setGstValidationModalOpen] = useState(false);
+  const [gstModalActiveTab, setGstModalActiveTab] = useState('INVOICES'); // 'INVOICES', 'HSN', 'JSON'
+  const [gstModalSearch, setGstModalSearch] = useState('');
+  const [gstModalTypeFilter, setGstModalTypeFilter] = useState('ALL'); // 'ALL', 'B2B', 'B2C', 'CN', 'VOID'
+  const [gstJsonCopied, setGstJsonCopied] = useState(false);
 
   const getFpSixDigit = () => {
     if (!gstFpMonth) {
@@ -153,67 +211,6 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     return `${mm}${yyyy}`;
   };
 
-  const getGstTargetInvoices = () => {
-    if (!gstFpMonth) return filteredInvoices;
-    const monthMatched = invoices.filter(inv => inv.date && inv.date.startsWith(gstFpMonth));
-    return monthMatched.length > 0 ? monthMatched : filteredInvoices;
-  };
-
-  const handleValidateGstr1 = () => {
-    const fp = getFpSixDigit();
-    const salesReturns = fetchSalesReturns();
-    const targetInvs = getGstTargetInvoices();
-    const payload = generateGstr1Payload({
-      invoices: targetInvs,
-      creditNotes: salesReturns,
-      businessGstin: business?.gstin || '07AAAAA0000A1Z5',
-      filingPeriod: fp,
-      grossTurnover: totalSales,
-      curGrossTurnover: totalSales
-    });
-    const result = validateGstr1Payload(payload);
-    setGstValidationResult({ ...result, payload, fp });
-    setGstValidationModalOpen(true);
-  };
-
-  const handleExportGstr1OfficialJson = () => {
-    const fp = getFpSixDigit();
-    const salesReturns = fetchSalesReturns();
-    const targetInvs = getGstTargetInvoices();
-    const payload = generateGstr1Payload({
-      invoices: targetInvs,
-      creditNotes: salesReturns,
-      businessGstin: business?.gstin || '07AAAAA0000A1Z5',
-      filingPeriod: fp,
-      grossTurnover: totalSales,
-      curGrossTurnover: totalSales
-    });
-    
-    const validation = validateGstr1Payload(payload);
-    if (!validation.isValid) {
-      alert(`⚠️ Cannot export GSTR-1 JSON due to validation errors:\n\n• ${validation.errors.join('\n• ')}`);
-      setGstValidationResult({ ...validation, payload, fp });
-      setGstValidationModalOpen(true);
-      return;
-    }
-
-    const downloadResult = downloadGstr1Json(payload, business?.gstin, fp);
-    const exportFileName = downloadResult?.fileName || `GSTR1_${payload.gstin}_${payload.fp}.json`;
-
-    // Immutable audit timeline logging
-    filteredInvoices.forEach(inv => {
-      try {
-        InvoiceHistoryLogger.log(inv.id, 'GSTR1_EXPORTED', {
-          action: 'GSTR-1 JSON Exported',
-          fp,
-          gstin: business?.gstin,
-          filename: exportFileName
-        });
-      } catch (e) {}
-    });
-
-    alert(`🎉 Official GSTR-1 JSON exported successfully as ${exportFileName}!\n\nUpload directly to the GST Portal (gst.gov.in) under 'Returns Dashboard' ➔ 'GSTR-1' ➔ 'Prepare Offline' ➔ 'Upload'.`);
-  };
 
   // Sole Proprietor Accounting State
   const [expenses, setExpenses] = useState(fetchExpenses());
@@ -461,6 +458,283 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       totalSgst = Number((expectedNetTax - totalCgst).toFixed(2));
     }
   }
+
+  // -------------------------------------------------------------------------
+  // STRICT MONTH-SPECIFIC GST REGISTERS & COMPUTATIONS (Scoped to gstFpMonth)
+  // -------------------------------------------------------------------------
+  const allSalesReturns = useMemo(() => {
+    try {
+      return fetchSalesReturns() || [];
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  const gstTargetInvoices = useMemo(() => {
+    return invoices.filter(inv => inv && isDateInGstPeriod(inv.date, gstFpMonth));
+  }, [invoices, gstFpMonth]);
+
+  const gstMonthReturns = useMemo(() => {
+    return allSalesReturns.filter(ret => ret && isDateInGstPeriod(ret.date || ret.creditNoteDate || ret.createdAt, gstFpMonth));
+  }, [allSalesReturns, gstFpMonth]);
+
+  const gstActiveInvoices = useMemo(() => {
+    return gstTargetInvoices.filter(inv => !inv.isVoid && inv.state !== 'cancel');
+  }, [gstTargetInvoices]);
+
+  const gstVoidInvoices = useMemo(() => {
+    return gstTargetInvoices.filter(inv => inv.isVoid || inv.state === 'cancel');
+  }, [gstTargetInvoices]);
+
+  const gstMonthRegularInvoices = useMemo(() => {
+    return gstActiveInvoices.filter(inv => !isDocCreditNote(inv));
+  }, [gstActiveInvoices]);
+
+  const gstMonthCreditNotes = useMemo(() => {
+    const fromInvs = gstActiveInvoices.filter(isDocCreditNote);
+    const fromReturns = gstMonthReturns.filter(ret => !ret.isVoid && ret.state !== 'cancel');
+    const seen = new Set();
+    const list = [];
+    [...fromInvs, ...fromReturns].forEach(item => {
+      const key = item.id || item.invoiceNo || item.creditNoteNo;
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        list.push(item);
+      }
+    });
+    return list;
+  }, [gstActiveInvoices, gstMonthReturns]);
+
+  const gstB2bInvoices = useMemo(() => {
+    return gstMonthRegularInvoices.filter(inv => 
+      inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP'
+    );
+  }, [gstMonthRegularInvoices]);
+
+  const gstB2cInvoices = useMemo(() => {
+    return gstMonthRegularInvoices.filter(inv => 
+      !inv.partyGstin || inv.partyGstin.trim().length < 10 || inv.partyGstin.trim().toUpperCase() === 'URP'
+    );
+  }, [gstMonthRegularInvoices]);
+
+  const gstGrossSales = useMemo(() => {
+    return gstMonthRegularInvoices.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+  }, [gstMonthRegularInvoices]);
+
+  const gstReturnsVal = useMemo(() => {
+    return gstMonthCreditNotes.reduce((sum, inv) => sum + (Number(inv.grandTotal) || 0), 0);
+  }, [gstMonthCreditNotes]);
+
+  const gstNetSales = Math.max(0, gstGrossSales - gstReturnsVal);
+
+  const gstGrossTaxable = useMemo(() => {
+    return gstMonthRegularInvoices.reduce((sum, inv) => sum + getInvTaxable(inv), 0);
+  }, [gstMonthRegularInvoices]);
+
+  const gstReturnTaxable = useMemo(() => {
+    return gstMonthCreditNotes.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).taxable, 0);
+  }, [gstMonthCreditNotes]);
+
+  const gstNetTaxable = Math.max(0, gstGrossTaxable - gstReturnTaxable);
+
+  const gstTaxTotals = useMemo(() => {
+    const regCgst = gstMonthRegularInvoices.reduce((sum, inv) => sum + getInvTaxBreakdown(inv).cgst, 0);
+    const regSgst = gstMonthRegularInvoices.reduce((sum, inv) => sum + getInvTaxBreakdown(inv).sgst, 0);
+    const regIgst = gstMonthRegularInvoices.reduce((sum, inv) => sum + getInvTaxBreakdown(inv).igst, 0);
+
+    const retCgst = gstMonthCreditNotes.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).cgst, 0);
+    const retSgst = gstMonthCreditNotes.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).sgst, 0);
+    const retIgst = gstMonthCreditNotes.reduce((sum, inv) => sum + getCreditNoteBreakdown(inv).igst, 0);
+
+    const rawCgst = Math.max(0, regCgst - retCgst);
+    const rawSgst = Math.max(0, regSgst - retSgst);
+    const rawIgst = Math.max(0, regIgst - retIgst);
+
+    const expectedTax = Math.max(0, Number((gstNetSales - gstNetTaxable).toFixed(2)));
+    const totalTax = expectedTax > 0 ? expectedTax : Number((rawCgst + rawSgst + rawIgst).toFixed(2));
+
+    let cgst = rawCgst;
+    let sgst = rawSgst;
+    let igst = rawIgst;
+
+    if (expectedTax > 0) {
+      if (rawIgst > 0 && rawCgst === 0 && rawSgst === 0) {
+        igst = expectedTax;
+        cgst = 0;
+        sgst = 0;
+      } else {
+        igst = 0;
+        cgst = Number((expectedTax / 2).toFixed(2));
+        sgst = Number((expectedTax - cgst).toFixed(2));
+      }
+    }
+
+    return { cgst, sgst, igst, totalTax };
+  }, [gstMonthRegularInvoices, gstMonthCreditNotes, gstNetSales, gstNetTaxable]);
+
+  const gstMonthHsnMap = useMemo(() => {
+    const map = {};
+    gstMonthRegularInvoices.forEach(inv => {
+      (inv.items || []).forEach(item => {
+        if (item.isSection || item.isNote) return;
+        const hsn = (item.hsn || '1905').trim();
+        if (!map[hsn]) {
+          map[hsn] = {
+            hsn,
+            description: item.name || 'General FMCG Item',
+            uqc: item.unit || 'BOX',
+            totalQty: 0,
+            taxableValue: 0,
+            cgst: 0,
+            sgst: 0,
+            igst: 0,
+            totalTax: 0
+          };
+        }
+        const qty = Number(item.qty) || 0;
+        const taxVal = Number(item.taxableAmount !== undefined ? item.taxableAmount : (item.taxableVal !== undefined ? item.taxableVal : (item.total || 0))) || 0;
+        const rate = item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 5;
+        const isInter = inv.supplyType === 'INTER' || (inv.pos && business?.gstin && !inv.pos.startsWith(business.gstin.substring(0, 2)));
+        const itemTax = (taxVal * rate) / 100;
+
+        map[hsn].totalQty += qty;
+        map[hsn].taxableValue += taxVal;
+        if (isInter) {
+          map[hsn].igst += itemTax;
+        } else {
+          map[hsn].cgst += itemTax / 2;
+          map[hsn].sgst += itemTax / 2;
+        }
+        map[hsn].totalTax += itemTax;
+      });
+    });
+    return Object.values(map);
+  }, [gstMonthRegularInvoices, business]);
+
+  const handleValidateGstr1 = () => {
+    const fp = getFpSixDigit();
+    const payload = generateGstr1Payload({
+      invoices: gstTargetInvoices,
+      salesReturns: gstMonthReturns,
+      creditNotes: gstMonthCreditNotes,
+      businessGstin: business?.gstin || '07HNPPK7350N1Z4',
+      filingPeriod: fp,
+      grossTurnover: gstNetSales,
+      curGrossTurnover: gstNetSales
+    });
+    const result = validateGstr1Payload(payload);
+    setGstValidationResult({
+      ...result,
+      payload,
+      fp,
+      monthStr: gstFpMonth
+    });
+    setGstModalActiveTab('INVOICES');
+    setGstModalSearch('');
+    setGstModalTypeFilter('ALL');
+    setGstValidationModalOpen(true);
+  };
+
+  const handleExportGstr1OfficialJson = () => {
+    const fp = getFpSixDigit();
+    const payload = generateGstr1Payload({
+      invoices: gstTargetInvoices,
+      salesReturns: gstMonthReturns,
+      creditNotes: gstMonthCreditNotes,
+      businessGstin: business?.gstin || '07HNPPK7350N1Z4',
+      filingPeriod: fp,
+      grossTurnover: gstNetSales,
+      curGrossTurnover: gstNetSales
+    });
+    
+    const validation = validateGstr1Payload(payload);
+    if (!validation.isValid) {
+      alert(`⚠️ Cannot export GSTR-1 JSON due to validation errors:\n\n• ${validation.errors.join('\n• ')}`);
+      setGstValidationResult({
+        ...validation,
+        payload,
+        fp,
+        monthStr: gstFpMonth
+      });
+      setGstModalActiveTab('INVOICES');
+      setGstValidationModalOpen(true);
+      return;
+    }
+
+    const downloadResult = downloadGstr1Json(payload, business?.gstin, fp);
+    const exportFileName = downloadResult?.fileName || `GSTR1_${payload.gstin}_${payload.fp}.json`;
+
+    // Immutable audit timeline logging
+    gstTargetInvoices.forEach(inv => {
+      try {
+        if (inv && inv.id) {
+          InvoiceHistoryLogger.log({
+            invoiceId: inv.id,
+            actionType: 'GSTR1_EXPORTED',
+            description: `GSTR-1 JSON Exported for Return Period ${fp}`,
+            metadata: {
+              fp,
+              gstin: business?.gstin,
+              filename: exportFileName
+            }
+          });
+        }
+      } catch (e) {}
+    });
+
+    alert(`🎉 Official GSTR-1 JSON exported successfully as ${exportFileName}!\n\nUpload directly to the GST Portal (gst.gov.in) under 'Returns Dashboard' ➔ 'GSTR-1' ➔ 'Prepare Offline' ➔ 'Upload'.`);
+  };
+
+  const handleCopyGstr1Json = () => {
+    if (!gstValidationResult?.payload) return;
+    try {
+      navigator.clipboard.writeText(JSON.stringify(gstValidationResult.payload, null, 2));
+      setGstJsonCopied(true);
+      setTimeout(() => setGstJsonCopied(false), 2500);
+    } catch (e) {
+      alert('Unable to copy JSON to clipboard.');
+    }
+  };
+
+  const gstModalInvoicesToDisplay = useMemo(() => {
+    if (!gstValidationResult) return [];
+    
+    // Combine invoices from that month with any credit notes from that month
+    const combined = [...gstTargetInvoices];
+    gstMonthReturns.forEach(ret => {
+      const retId = ret.id || ret.invoiceNo || ret.creditNoteNo;
+      if (!combined.some(inv => (inv.id || inv.invoiceNo) === retId)) {
+        combined.push({
+          ...ret,
+          isCreditNote: true,
+          invoiceNo: ret.creditNoteNo || ret.invoiceNo || 'CN-001'
+        });
+      }
+    });
+
+    return combined.filter(inv => {
+      if (gstModalSearch) {
+        const q = gstModalSearch.toLowerCase().trim();
+        const num = String(inv.invoiceNo || '').toLowerCase();
+        const party = String(inv.partyName || inv.customerName || '').toLowerCase();
+        const gstin = String(inv.partyGstin || inv.gstin || '').toLowerCase();
+        if (!num.includes(q) && !party.includes(q) && !gstin.includes(q)) {
+          return false;
+        }
+      }
+
+      const isVoid = inv.isVoid === true || inv.state === 'cancel';
+      const isCn = isDocCreditNote(inv);
+      const isB2b = !isCn && !isVoid && inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP';
+      const isB2c = !isCn && !isVoid && !isB2b;
+
+      if (gstModalTypeFilter === 'B2B') return isB2b;
+      if (gstModalTypeFilter === 'B2C') return isB2c;
+      if (gstModalTypeFilter === 'CN') return isCn;
+      if (gstModalTypeFilter === 'VOID') return isVoid;
+      return true;
+    });
+  }, [gstValidationResult, gstTargetInvoices, gstMonthReturns, gstModalSearch, gstModalTypeFilter]);
 
   // Filter Expenses by selected Period
   const filteredExpenses = useMemo(() => {
@@ -980,19 +1254,19 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     csvContent += 'Table,GSTIN of Recipient,Receiver Name,Invoice No,Invoice Date,Invoice Value,Place of Supply,Reverse Charge,Invoice Type,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
 
     // Table 4A: B2B Invoices
-    b2bInvoices.forEach(inv => {
+    gstB2bInvoices.forEach(inv => {
       const pos = inv.partyGstin ? inv.partyGstin.substring(0, 2) : '07';
       const taxInfo = getInvTaxBreakdown(inv);
       const taxable = taxInfo.taxable;
       const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
-      csvContent += `4A,"${inv.partyGstin}","${inv.partyName || inv.customerName}","${inv.invoiceNo}","${inv.date?.split('T')[0]}",${Number(inv.grandTotal || 0).toFixed(2)},"${pos}-State",N,Regular,${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
+      csvContent += `4A,"${inv.partyGstin}","${inv.partyName || inv.customerName}","${inv.invoiceNo}","${formatGstDisplayDate(inv.date)}",${Number(inv.grandTotal || 0).toFixed(2)},"${pos}-State",N,Regular,${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
     });
 
     csvContent += '\n--- GSTR-1 TABLE 7: TAXABLE SUPPLIES TO UNREGISTERED PERSONS (B2C SMALL) ---\n';
     csvContent += 'Table,Type,Place of Supply,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
 
     // Table 7: B2C Small Invoices
-    b2cInvoices.forEach(inv => {
+    gstB2cInvoices.forEach(inv => {
       const taxInfo = getInvTaxBreakdown(inv);
       const taxable = taxInfo.taxable;
       const rate = inv.items?.[0]?.gstRate !== undefined ? Number(inv.items[0].gstRate) : 0;
@@ -1003,25 +1277,25 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     csvContent += '\n--- GSTR-1 TABLE 9B: CREDIT / DEBIT NOTES (REGISTERED & UNREGISTERED) ---\n';
     csvContent += 'Table,Type,Note No,Note Date,Original Invoice No,Party Name,GSTIN,Note Value,Rate (%),Taxable Value,CGST Amount,SGST Amount,IGST Amount,Cess Amount\n';
 
-    creditNotesInPeriod.forEach(cn => {
+    gstMonthCreditNotes.forEach(cn => {
       const taxInfo = getCreditNoteBreakdown(cn);
       const taxable = taxInfo.taxable;
       const rate = cn.items?.[0]?.gstRate !== undefined ? Number(cn.items[0].gstRate) : 5;
-      csvContent += `9B,C,"${cn.invoiceNo}","${cn.date?.split('T')[0]}","${cn.reversalOf || 'INV-000'}","${cn.partyName || cn.customerName}","${cn.partyGstin || 'URP'}",${Number(cn.grandTotal || 0).toFixed(2)},${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
+      csvContent += `9B,C,"${cn.invoiceNo}","${formatGstDisplayDate(cn.date || cn.creditNoteDate || cn.createdAt)}","${cn.reversalOf || 'INV-000'}","${cn.partyName || cn.customerName}","${cn.partyGstin || 'URP'}",${Number(cn.grandTotal || 0).toFixed(2)},${rate},${taxable.toFixed(2)},${taxInfo.cgst.toFixed(2)},${taxInfo.sgst.toFixed(2)},${taxInfo.igst.toFixed(2)},0.00\n`;
     });
 
     csvContent += '\n--- GSTR-1 TABLE 12: HSN SUMMARY OF OUTWARD SUPPLIES ---\n';
     csvContent += 'Table,HSN Code,Description,UQC,Total Quantity,Total Value,Taxable Value,Integrated Tax Amount,Central Tax Amount,State Tax Amount,Cess Amount\n';
 
     // Table 12: HSN Summary
-    hsnMap.forEach(h => {
+    gstMonthHsnMap.forEach(h => {
       csvContent += `12,"${h.hsn}","${h.description}","${h.uqc}",${h.totalQty},${(h.taxableValue + h.totalTax).toFixed(2)},${h.taxableValue.toFixed(2)},${h.igst.toFixed(2)},${h.cgst.toFixed(2)},${h.sgst.toFixed(2)},0.00\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `GSTR1_${period}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `GSTR1_${gstFpMonth}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2689,37 +2963,37 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #3b82f6' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>B2B Invoices (Registered Buyers)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-main)', margin: '4px 0 0 0' }}>
-                  {b2bInvoices.length} Bills
+                  {gstB2bInvoices.length} Bills
                 </h3>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
-                  Val: ₹{b2bInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN')}
+                  Val: ₹{gstB2bInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN')}
                 </span>
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #10b981' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>B2C Small (Unregistered Consumers)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-main)', margin: '4px 0 0 0' }}>
-                  {b2cInvoices.length} Bills
+                  {gstB2cInvoices.length} Bills
                 </h3>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>
-                  Val: ₹{b2cInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN')}
+                  Val: ₹{gstB2cInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN')}
                 </span>
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #f59e0b' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CGST Liability (Central Tax)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#d97706', margin: '4px 0 0 0' }}>
-                  ₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  ₹{gstTaxTotals.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>Matched intra-state</span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>Matched intra-state ({gstFpMonth})</span>
               </div>
 
               <div className="glass-card" style={{ padding: '16px', borderLeft: '4px solid #8b5cf6' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>SGST Liability (State Tax)</span>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#7c3aed', margin: '4px 0 0 0' }}>
-                  ₹{totalSgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  ₹{gstTaxTotals.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </h3>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>Local state authority</span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-dim)' }}>Local state authority ({gstFpMonth})</span>
               </div>
             </div>
 
@@ -2727,7 +3001,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  🏛️ GSTR-3B Table 3.1: Outward Tax Liability Summary
+                  🏛️ GSTR-3B Table 3.1: Outward Tax Liability Summary ({gstFpMonth})
                 </h3>
                 <span className="badge badge-success">GSTR-3B Ready</span>
               </div>
@@ -2747,19 +3021,19 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                   <tbody>
                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '10px', fontWeight: '700' }}>(a) Taxable Outward Supplies</td>
-                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalIgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalSgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>₹{totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700' }}>₹{gstNetTaxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>₹{gstTaxTotals.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                     <tr style={{ background: '#ecfdf5', fontWeight: '800' }}>
                       <td style={{ padding: '10px' }}>Total Net Output Tax Liability</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{netTaxableRevenue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalIgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalCgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{totalSgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '10px', textAlign: 'right', color: '#059669' }}>₹{totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstNetTaxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right', color: '#059669' }}>₹{gstTaxTotals.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2770,14 +3044,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  🏢 GSTR-1 Table 4A: Supplies to Registered Buyers (B2B Invoices)
+                  🏢 GSTR-1 Table 4A: Supplies to Registered Buyers (B2B Invoices - {gstFpMonth})
                 </h3>
-                <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>{b2bInvoices.length} Registered Buyers</span>
+                <span className="badge badge-info" style={{ fontSize: '0.74rem' }}>{gstB2bInvoices.length} Registered Buyers</span>
               </div>
 
-              {b2bInvoices.length === 0 ? (
+              {gstB2bInvoices.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
-                  No B2B invoices found for this period.
+                  No B2B invoices found for {gstFpMonth}.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -2796,12 +3070,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       </tr>
                     </thead>
                     <tbody>
-                      {b2bInvoices.map((inv, idx) => (
+                      {gstB2bInvoices.map((inv, idx) => (
                         <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>{inv.partyGstin}</td>
                           <td style={{ padding: '8px', fontWeight: '700' }}>{inv.partyName || inv.customerName}</td>
                           <td style={{ padding: '8px' }}>{inv.invoiceNo}</td>
-                          <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{inv.date?.split('T')[0]}</td>
+                          <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{formatGstDisplayDate(inv.date)}</td>
                           <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>₹{Number(inv.grandTotal || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                           <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxable(inv).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                           <td style={{ padding: '8px', textAlign: 'right' }}>₹{getInvTaxBreakdown(inv).cgst.toFixed(2)}</td>
@@ -2819,14 +3093,14 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  🛒 GSTR-1 Table 7: Supplies to Unregistered Consumers (B2C Small)
+                  🛒 GSTR-1 Table 7: Supplies to Unregistered Consumers (B2C Small - {gstFpMonth})
                 </h3>
-                <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>{b2cInvoices.length} Consumer Bills</span>
+                <span className="badge badge-success" style={{ fontSize: '0.74rem' }}>{gstB2cInvoices.length} Consumer Bills</span>
               </div>
 
-              {b2cInvoices.length === 0 ? (
+              {gstB2cInvoices.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
-                  No B2C Small invoices found for this period.
+                  No B2C Small invoices found for {gstFpMonth}.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -2847,21 +3121,21 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '8px', fontWeight: '700' }}>OE (Other Intra/Inter)</td>
                         <td style={{ padding: '8px' }}>07-Delhi (Local)</td>
-                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{b2cInvoices.length}</td>
+                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{gstB2cInvoices.length}</td>
                         <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          ₹{gstB2cInvoices.reduce((s, i) => s + (Number(i.grandTotal) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxable(i), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          ₹{gstB2cInvoices.reduce((s, i) => s + getInvTaxable(i), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).cgst, 0).toFixed(2)}
+                          ₹{gstB2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).cgst, 0).toFixed(2)}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).sgst, 0).toFixed(2)}
+                          ₹{gstB2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).sgst, 0).toFixed(2)}
                         </td>
                         <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>
-                          ₹{b2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).taxTotal, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          ₹{gstB2cInvoices.reduce((s, i) => s + getInvTaxBreakdown(i).taxTotal, 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     </tbody>
@@ -2874,16 +3148,16 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             <div className="glass-card" style={{ padding: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
-                  ↩️ GSTR-1 Table 9B: Credit Notes & Sales Returns (CDNR / CDNUR)
+                  ↩️ GSTR-1 Table 9B: Credit Notes & Sales Returns (CDNR / CDNUR - {gstFpMonth})
                 </h3>
                 <span className="badge badge-error" style={{ fontSize: '0.74rem', background: '#fee2e2', color: '#dc2626' }}>
-                  {creditNotesInPeriod.length} Credit Notes (Tax Deducted)
+                  {gstMonthCreditNotes.length} Credit Notes (Tax Deducted)
                 </span>
               </div>
 
-              {creditNotesInPeriod.length === 0 ? (
+              {gstMonthCreditNotes.length === 0 ? (
                 <p style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)', fontSize: '0.84rem' }}>
-                  No credit notes or sales returns recorded for this period.
+                  No credit notes or sales returns recorded for {gstFpMonth}.
                 </p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
@@ -2902,7 +3176,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       </tr>
                     </thead>
                     <tbody>
-                      {creditNotesInPeriod.map((cn, idx) => {
+                      {gstMonthCreditNotes.map((cn, idx) => {
                         const breakdown = getCreditNoteBreakdown(cn);
                         const taxVal = breakdown.taxable;
                         const cgstVal = breakdown.cgst;
@@ -2949,7 +3223,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
             {/* HSN Summary */}
             <div className="glass-card" style={{ padding: '20px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: '800', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                📑 GSTR-1 Table 12: HSN-wise Outward Summary
+                📑 GSTR-1 Table 12: HSN-wise Outward Summary ({gstFpMonth})
               </h3>
 
               <div style={{ overflowX: 'auto' }}>
@@ -2967,7 +3241,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     </tr>
                   </thead>
                   <tbody>
-                    {hsnMap.map((h, idx) => (
+                    {gstMonthHsnMap.map((h, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>{h.hsn}</td>
                         <td style={{ padding: '8px' }}>{h.description}</td>
@@ -3542,6 +3816,563 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* GSTR-1 OFFICIAL VALIDATION & MONTH INVOICE REGISTER MODAL */}
+      {/* ------------------------------------------------------------- */}
+      {gstValidationModalOpen && gstValidationResult && (
+        <div 
+          className="modal-overlay" 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '16px'
+          }}
+          onClick={() => setGstValidationModalOpen(false)}
+        >
+          <div 
+            className="modal-content glass-card"
+            style={{
+              maxWidth: '1100px',
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: '16px',
+              background: '#ffffff',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              overflow: 'hidden',
+              border: '1px solid #cbd5e1'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
+              color: '#ffffff'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  padding: '10px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <ShieldCheck size={26} color="#34d399" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: '#ffffff' }}>
+                    🛡️ GSTR-1 Validation & Month Document Register
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.82rem', color: '#a7f3d0', flexWrap: 'wrap' }}>
+                    <span>Filing Month: <strong style={{ color: '#fff' }}>{gstValidationResult.monthStr || gstFpMonth} ({gstValidationResult.fp})</strong></span>
+                    <span>•</span>
+                    <span>Distributor GSTIN: <strong style={{ color: '#fff' }}>{business?.gstin || '07HNPPK7350N1Z4'}</strong></span>
+                    <span>•</span>
+                    <span>Month Documents: <strong style={{ color: '#fff' }}>{gstTargetInvoices.length} Bills</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setGstValidationModalOpen(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: 'none',
+                  color: '#ffffff',
+                  borderRadius: '8px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body Container */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Validation Status Banner */}
+              {gstValidationResult.isValid ? (
+                <div style={{
+                  background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                  border: '1px solid #10b981',
+                  borderRadius: '10px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <CheckCircle2 size={24} color="#059669" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: '800', color: '#065f46', fontSize: '0.95rem' }}>
+                      🟢 100% GSTN Schema Validated — Ready for Govt Portal (gst.gov.in)
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: '#047857', marginTop: '2px' }}>
+                      Zero-tolerance compliance verified: B2B recipient GSTINs, 16-char invoice numbers, DD-MM-YYYY dates, official UQC units, and Table 12 HSN paisa-exact cross-reconciliation passed with 0 errors.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: '#fef2f2',
+                  border: '1px solid #ef4444',
+                  borderRadius: '10px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <AlertCircle size={24} color="#dc2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '800', color: '#991b1b', fontSize: '0.95rem' }}>
+                      ⚠️ GSTN Schema Validation Errors Found ({gstValidationResult.errors?.length || 0})
+                    </div>
+                    <ul style={{ margin: '6px 0 0 18px', padding: 0, fontSize: '0.82rem', color: '#b91c1c' }}>
+                      {gstValidationResult.errors?.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Month KPI Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #3b82f6' }}>
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: '600' }}>Bills in Month</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', marginTop: '2px' }}>
+                    {gstTargetInvoices.length} Bills
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    {gstB2bInvoices.length} B2B • {gstB2cInvoices.length} B2C • {gstVoidInvoices.length} Void
+                  </span>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #10b981' }}>
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: '600' }}>Taxable Turnover</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#047857', marginTop: '2px' }}>
+                    ₹{gstNetTaxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    Net of {gstMonthCreditNotes.length} returns
+                  </span>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #f59e0b' }}>
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: '600' }}>GST Liability</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#d97706', marginTop: '2px' }}>
+                    ₹{gstTaxTotals.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    CGST: ₹{gstTaxTotals.cgst.toFixed(2)} | SGST: ₹{gstTaxTotals.sgst.toFixed(2)}
+                  </span>
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #8b5cf6' }}>
+                  <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: '600' }}>Net Period Sales</span>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#7c3aed', marginTop: '2px' }}>
+                    ₹{gstNetSales.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                  </div>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    Gross: ₹{gstGrossSales.toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Modal Sub-Tabs */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setGstModalActiveTab('INVOICES')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '0.84rem',
+                    background: gstModalActiveTab === 'INVOICES' ? '#065f46' : '#f1f5f9',
+                    color: gstModalActiveTab === 'INVOICES' ? '#ffffff' : '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Receipt size={16} />
+                  <span>📋 Month Invoices History ({gstTargetInvoices.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGstModalActiveTab('HSN')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '0.84rem',
+                    background: gstModalActiveTab === 'HSN' ? '#065f46' : '#f1f5f9',
+                    color: gstModalActiveTab === 'HSN' ? '#ffffff' : '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Package size={16} />
+                  <span>📦 HSN Summary (Table 12 - {gstMonthHsnMap.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGstModalActiveTab('JSON')}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '0.84rem',
+                    background: gstModalActiveTab === 'JSON' ? '#065f46' : '#f1f5f9',
+                    color: gstModalActiveTab === 'JSON' ? '#ffffff' : '#475569',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <FileText size={16} />
+                  <span>🔍 Raw GSTN JSON Payload</span>
+                </button>
+              </div>
+
+              {/* TAB 1: MONTH INVOICES HISTORY REGISTER */}
+              {gstModalActiveTab === 'INVOICES' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Search & Filter Toolbar */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px' }}>
+                      <div style={{ position: 'relative', width: '100%' }}>
+                        <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                        <input
+                          type="text"
+                          placeholder="Search bill number, party name, GSTIN..."
+                          value={gstModalSearch}
+                          onChange={(e) => setGstModalSearch(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px 8px 34px',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.84rem'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Filter Pills */}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {[
+                        { id: 'ALL', label: `All (${gstTargetInvoices.length})` },
+                        { id: 'B2B', label: `B2B (${gstB2bInvoices.length})` },
+                        { id: 'B2C', label: `B2C (${gstB2cInvoices.length})` },
+                        { id: 'CN', label: `Returns (${gstMonthCreditNotes.length})` },
+                        { id: 'VOID', label: `Void (${gstVoidInvoices.length})` }
+                      ].map(p => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setGstModalTypeFilter(p.id)}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '6px',
+                            border: gstModalTypeFilter === p.id ? '1px solid #065f46' : '1px solid #e2e8f0',
+                            background: gstModalTypeFilter === p.id ? '#ecfdf5' : '#ffffff',
+                            color: gstModalTypeFilter === p.id ? '#065f46' : '#64748b',
+                            fontWeight: '700',
+                            fontSize: '0.78rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Month Bills Table */}
+                  {gstModalInvoicesToDisplay.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '36px 20px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+                      <Receipt size={36} color="#94a3b8" style={{ margin: '0 auto 8px auto' }} />
+                      <h4 style={{ margin: '0 0 4px 0', color: '#1e293b', fontWeight: '800' }}>No Invoices Found for {gstFpMonth}</h4>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                        No records match the active filter or search query.
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                            <th style={{ padding: '10px 8px', textAlign: 'center', width: '36px' }}>#</th>
+                            <th style={{ padding: '10px 8px' }}>Invoice No</th>
+                            <th style={{ padding: '10px 8px' }}>Date</th>
+                            <th style={{ padding: '10px 8px' }}>Customer / Party</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center' }}>GST Type</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'right' }}>Taxable (₹)</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'right' }}>CGST (₹)</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'right' }}>SGST (₹)</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'right' }}>IGST (₹)</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'right' }}>Total (₹)</th>
+                            <th style={{ padding: '10px 8px', textAlign: 'center' }}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gstModalInvoicesToDisplay.map((inv, idx) => {
+                            const isVoid = inv.isVoid === true || inv.state === 'cancel';
+                            const isCn = isDocCreditNote(inv);
+                            const isB2b = !isCn && !isVoid && inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP';
+                            const breakdown = isCn ? getCreditNoteBreakdown(inv) : getInvTaxBreakdown(inv);
+                            const taxable = isCn ? breakdown.taxable : getInvTaxable(inv);
+                            const totalVal = Number(inv.grandTotal || 0);
+
+                            return (
+                              <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: isVoid ? '#fff1f2' : (isCn ? '#faf5ff' : 'transparent') }}>
+                                <td style={{ padding: '8px', textAlign: 'center', color: '#94a3b8' }}>{idx + 1}</td>
+                                <td style={{ padding: '8px', fontWeight: '800', fontFamily: 'monospace', color: isVoid ? '#dc2626' : (isCn ? '#9333ea' : '#0f172a') }}>
+                                  {inv.invoiceNo || inv.id}
+                                </td>
+                                <td style={{ padding: '8px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                  {formatGstDisplayDate(inv.date || inv.creditNoteDate || inv.createdAt)}
+                                </td>
+                                <td style={{ padding: '8px' }}>
+                                  <div style={{ fontWeight: '700', color: '#1e293b' }}>
+                                    {inv.partyName || inv.customerName || 'Cash Customer'}
+                                  </div>
+                                  <div style={{ fontSize: '0.74rem', color: inv.partyGstin ? '#2563eb' : '#94a3b8', fontFamily: 'monospace' }}>
+                                    {inv.partyGstin ? inv.partyGstin : 'Unregistered (URP)'}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'center' }}>
+                                  {isVoid ? (
+                                    <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '4px', fontWeight: '800', fontSize: '0.72rem' }}>
+                                      VOID
+                                    </span>
+                                  ) : isCn ? (
+                                    <span style={{ background: '#f3e8ff', color: '#7e22ce', padding: '2px 8px', borderRadius: '4px', fontWeight: '800', fontSize: '0.72rem' }}>
+                                      CDNR (9B)
+                                    </span>
+                                  ) : isB2b ? (
+                                    <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '4px', fontWeight: '800', fontSize: '0.72rem' }}>
+                                      B2B (4A)
+                                    </span>
+                                  ) : (
+                                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '4px', fontWeight: '800', fontSize: '0.72rem' }}>
+                                      B2C (7)
+                                    </span>
+                                  )}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>
+                                  {isCn ? '-' : ''}₹{taxable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'right' }}>
+                                  {isCn ? '-' : ''}₹{breakdown.cgst.toFixed(2)}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'right' }}>
+                                  {isCn ? '-' : ''}₹{breakdown.sgst.toFixed(2)}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'right' }}>
+                                  {isCn ? '-' : ''}₹{breakdown.igst.toFixed(2)}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: isVoid ? '#dc2626' : (isCn ? '#9333ea' : '#059669') }}>
+                                  {isCn ? '-' : ''}₹{totalVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                  {isVoid ? (
+                                    <span style={{ color: '#dc2626', fontWeight: '700', fontSize: '0.74rem' }}>
+                                      Cancelled (T13)
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#059669', fontWeight: '700', fontSize: '0.74rem' }}>
+                                      ✓ Ready
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: HSN SUMMARY (TABLE 12) */}
+              {gstModalActiveTab === 'HSN' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 8px' }}>HSN Code</th>
+                          <th style={{ padding: '10px 8px' }}>Description</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>UQC</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'center' }}>Total Qty</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'right' }}>Taxable Value (₹)</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'right' }}>CGST (₹)</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'right' }}>SGST (₹)</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'right' }}>IGST (₹)</th>
+                          <th style={{ padding: '10px 8px', textAlign: 'right' }}>Total Tax (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gstMonthHsnMap.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                              No HSN items found for {gstFpMonth}.
+                            </td>
+                          </tr>
+                        ) : (
+                          gstMonthHsnMap.map((h, i) => (
+                            <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '8px', fontWeight: '800', color: 'var(--primary)', fontFamily: 'monospace' }}>{h.hsn}</td>
+                              <td style={{ padding: '8px' }}>{h.description}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{h.uqc}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{h.totalQty}</td>
+                              <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>₹{h.taxableValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '8px', textAlign: 'right' }}>₹{h.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '8px', textAlign: 'right' }}>₹{h.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '8px', textAlign: 'right' }}>₹{h.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                              <td style={{ padding: '8px', textAlign: 'right', fontWeight: '800', color: '#059669' }}>₹{h.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: RAW JSON PREVIEW */}
+              {gstModalActiveTab === 'JSON' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                      Official GSTN GSTR-1 Offline Upload Payload (MMYYYY: {gstValidationResult.fp})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyGstr1Json}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        fontSize: '0.8rem',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: gstJsonCopied ? '#059669' : '#0f172a'
+                      }}
+                    >
+                      {gstJsonCopied ? <Check size={14} color="#059669" /> : <Copy size={14} />}
+                      <span>{gstJsonCopied ? 'Copied to Clipboard!' : 'Copy JSON'}</span>
+                    </button>
+                  </div>
+                  <pre style={{
+                    background: '#0f172a',
+                    color: '#38bdf8',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    maxHeight: '360px',
+                    overflow: 'auto',
+                    fontSize: '0.78rem',
+                    fontFamily: 'monospace',
+                    margin: 0
+                  }}>
+                    {JSON.stringify(gstValidationResult.payload, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Returns Dashboard ➔ GSTR-1 ➔ Prepare Offline ➔ Upload on <strong style={{ color: '#0f172a' }}>gst.gov.in</strong>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setGstValidationModalOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 18px', fontWeight: '700', fontSize: '0.85rem' }}
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportGstr1OfficialJson}
+                  style={{
+                    background: '#10b981',
+                    border: 'none',
+                    color: '#ffffff',
+                    padding: '8px 20px',
+                    borderRadius: '8px',
+                    fontWeight: '800',
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
+                  }}
+                >
+                  <Download size={16} />
+                  <span>Download GSTR-1 JSON</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
