@@ -775,7 +775,7 @@ export const INITIAL_PRODUCTS = [
     "warehouseId": "wh_main"
   },
   {
-    "name": " BS VIBE MASALA - MRP-50/-",
+    "name": "BS VIBE MASALA - MRP-50/-",
     "sku": "SKU-2694",
     "barcode": "",
     "hsn": "210690",
@@ -817,7 +817,7 @@ export const INITIAL_PRODUCTS = [
     "warehouseId": "wh_main"
   },
   {
-    "name": "BS  RICE BRAN ORIGNAL STYLE - MRP-50/-",
+    "name": "BS RICE BRAN ORIGNAL STYLE - MRP-50/-",
     "sku": "SKU-6776",
     "barcode": "",
     "hsn": "210690",
@@ -1092,7 +1092,7 @@ export const INITIAL_PRODUCTS = [
     "warehouseId": "wh_main"
   },
   {
-    "name": "BS  MASALA - MRP-10/-",
+    "name": "BS MASALA - MRP-10/-",
     "sku": "SKU-9658",
     "barcode": "",
     "hsn": "210690",
@@ -1113,7 +1113,7 @@ export const INITIAL_PRODUCTS = [
     "warehouseId": "wh_main"
   },
   {
-    "name": "BS  ACHARI - MRP-10/-",
+    "name": "BS ACHARI - MRP-10/-",
     "sku": "SKU-2686",
     "barcode": "",
     "hsn": "210690",
@@ -2508,7 +2508,7 @@ export const INITIAL_INVOICES = [
     "items": [
       {
         "productId": "prod_1790492344311",
-        "name": "BS  MASALA - MRP-10/-",
+        "name": "BS MASALA - MRP-10/-",
         "sku": "SKU-9658",
         "hsn": "210690",
         "pcsPerCarton": 16,
@@ -2550,7 +2550,7 @@ export const INITIAL_INVOICES = [
       },
       {
         "productId": "prod_1790492253942",
-        "name": "BS  ACHARI - MRP-10/-",
+        "name": "BS ACHARI - MRP-10/-",
         "sku": "SKU-2686",
         "hsn": "210690",
         "pcsPerCarton": 15,
@@ -4560,7 +4560,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790731511853_0",
         "productId": "prod_1790492253942",
-        "name": "BS  ACHARI - MRP-10/-",
+        "name": "BS ACHARI - MRP-10/-",
         "mrp": 120,
         "hsn": "210690",
         "salePrice": 96,
@@ -4577,7 +4577,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790731511853_1",
         "productId": "prod_1790492344311",
-        "name": "BS  MASALA - MRP-10/-",
+        "name": "BS MASALA - MRP-10/-",
         "mrp": 120,
         "hsn": "210690",
         "salePrice": 96,
@@ -4666,7 +4666,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790731529091_nzxw",
         "productId": "prod_1790492344311",
-        "name": "BS  MASALA - MRP-10/-",
+        "name": "BS MASALA - MRP-10/-",
         "mrp": 120,
         "hsn": "210690",
         "salePrice": 96,
@@ -5049,7 +5049,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790732162613_fnj6",
         "productId": "prod_1790492253942",
-        "name": "BS  ACHARI - MRP-10/-",
+        "name": "BS ACHARI - MRP-10/-",
         "mrp": 120,
         "hsn": "210690",
         "salePrice": 96,
@@ -5067,7 +5067,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790732230377_8gos",
         "productId": "prod_1790492344311",
-        "name": "BS  MASALA - MRP-10/-",
+        "name": "BS MASALA - MRP-10/-",
         "mrp": 120,
         "hsn": "210690",
         "salePrice": 96,
@@ -5247,7 +5247,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790732552375_0qw8",
         "productId": "prod_1790563054633",
-        "name": "BS  RICE BRAN ORIGNAL STYLE - MRP-50/-",
+        "name": "BS RICE BRAN ORIGNAL STYLE - MRP-50/-",
         "mrp": 50,
         "hsn": "210690",
         "salePrice": 40,
@@ -5283,7 +5283,7 @@ export const INITIAL_PURCHASES = [
       {
         "id": "prow_1790732555420_sz95",
         "productId": "prod_1790563279470",
-        "name": " BS VIBE MASALA - MRP-50/-",
+        "name": "BS VIBE MASALA - MRP-50/-",
         "mrp": 50,
         "hsn": "210690",
         "salePrice": 40,

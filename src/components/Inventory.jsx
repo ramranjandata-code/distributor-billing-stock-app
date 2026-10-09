@@ -17,7 +17,9 @@ import {
   getPurchaseBillRemainingEditTime,
   recalculateAndNormalizeAllPurchaseBills,
   formatDateDDMMYY,
-  logAuditAction 
+  logAuditAction,
+  normalizeProductName,
+  isProductMatch
 } from '../utils/storage';
 import { 
   Package, 
@@ -3603,7 +3605,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                   onChange={e => {
                                     const val = e.target.value;
                                     handleRowFieldChange(idx, 'name', val);
-                                    const matched = products.find(p => (p.name || '').toLowerCase() === val.toLowerCase());
+                                    const matched = products.find(p => isProductMatch(p, { name: val, sku: val }));
                                     if (matched) {
                                       handleProductSelect(idx, matched.id);
                                     }
@@ -3612,9 +3614,10 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                   }}
                                   onKeyDown={e => {
                                     const query = (row.name || '').trim().toLowerCase();
+                                    const normQuery = normalizeProductName(row.name);
                                     const matching = products.filter(p => 
                                       !query || 
-                                      (p.name && p.name.toLowerCase().includes(query)) || 
+                                      (p.name && normalizeProductName(p.name).includes(normQuery)) || 
                                       (p.brand && p.brand.toLowerCase().includes(query)) || 
                                       (p.sku && p.sku.toLowerCase().includes(query)) || 
                                       (p.hsn && p.hsn.toLowerCase().includes(query))
@@ -4618,7 +4621,41 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
       {/* Inward Stock Lots & Multi-Purchase Rates Modal */}
       {selectedLotProduct && (() => {
         const prodVal = getProductStockValuation(selectedLotProduct.id);
-        const allLots = prodVal.lots || [];
+        const activeLots = prodVal.lots || [];
+        let allLots = (prodVal.allLots && prodVal.allLots.length > 0) ? prodVal.allLots : activeLots;
+
+        // Direct fallback: check purchases list directly to guarantee NO inward purchase is missed
+        if (allLots.length === 0) {
+          const directBills = (purchases || []).filter(p => 
+            Array.isArray(p.items) && p.items.some(it => isProductMatch(selectedLotProduct, it))
+          );
+          if (directBills.length > 0) {
+            allLots = [];
+            directBills.forEach(p => {
+              (p.items || []).filter(it => isProductMatch(selectedLotProduct, it)).forEach((it, idx) => {
+                const q = Number(it.qty) || 0;
+                const pEx = Number(it.purchasePrice) || 0;
+                const r = Number(it.gstRate !== undefined ? it.gstRate : (selectedLotProduct.gstRate || 5));
+                const pWith = Number(it.purchasePriceWithGst) || (pEx * (1 + r / 100));
+                allLots.push({
+                  id: `lot_purch_${p.id}_${it.id || idx}`,
+                  productId: selectedLotProduct.id,
+                  productName: selectedLotProduct.name,
+                  sku: selectedLotProduct.sku || '',
+                  billNo: p.billNo || 'INWARD',
+                  supplierName: p.partyName || 'Supplier',
+                  date: p.date,
+                  batchNo: it.batchNo || p.billNo || 'LOT-INWARD',
+                  purchasePrice: pEx,
+                  purchasePriceWithGst: pWith,
+                  qtyReceived: q,
+                  qtyRemaining: q,
+                  gstRate: r
+                });
+              });
+            });
+          }
+        }
 
         return (
           <div className="modal-overlay" style={{ zIndex: 1150, padding: '16px', alignItems: 'center', justifyContent: 'center' }}>
@@ -4679,8 +4716,13 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   <strong style={{ fontSize: '1.15rem', color: '#1e40af' }}>₹{prodVal.totalExGst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</strong>
                 </div>
                 <div style={{ background: '#fef3c7', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fde68a' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#b45309', display: 'block', fontWeight: '600' }}>ACTIVE INWARD LOTS</span>
-                  <strong style={{ fontSize: '1.15rem', color: '#92400e' }}>{allLots.length} Inward Bills</strong>
+                  <span style={{ fontSize: '0.72rem', color: '#b45309', display: 'block', fontWeight: '600' }}>INWARD BILLS / LOTS</span>
+                  <strong style={{ fontSize: '1.15rem', color: '#92400e' }}>
+                    {activeLots.length > 0 ? `${activeLots.length} Active Lots` : `${allLots.length} Inward Bills`}
+                  </strong>
+                  <div style={{ fontSize: '0.66rem', color: '#b45309', marginTop: '2px' }}>
+                    {allLots.length} Total Recorded Bills
+                  </div>
                 </div>
               </div>
 
@@ -4721,10 +4763,11 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                           const isExhausted = Number(lot.qtyRemaining) <= 0;
 
                           return (
-                            <tr key={lot.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx === 0 ? 'rgba(79, 70, 229, 0.03)' : '#ffffff' }}>
+                            <tr key={lot.id || idx} style={{ borderBottom: '1px solid #f1f5f9', background: idx === 0 && !isExhausted ? 'rgba(79, 70, 229, 0.03)' : '#ffffff' }}>
                               <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                                 <div style={{ fontWeight: '600' }}>{formatDateDDMMYY(lot.date)}</div>
-                                {idx === 0 && <span className="badge badge-primary" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Next in Line (FIFO)</span>}
+                                {idx === 0 && !isExhausted && <span className="badge badge-primary" style={{ fontSize: '0.62rem', padding: '1px 5px' }}>Next in Line (FIFO)</span>}
+                                {isExhausted && <span className="badge badge-secondary" style={{ fontSize: '0.62rem', padding: '1px 5px', background: '#94a3b8', color: '#fff' }}>Consumed</span>}
                               </td>
                               <td style={{ padding: '10px 12px', fontWeight: '700', color: 'var(--primary)' }}>
                                 {lot.billNo || 'INWARD'}
@@ -4745,16 +4788,22 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 {lot.qtyReceived}
                               </td>
                               <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '800', color: isExhausted ? '#94a3b8' : '#2563eb' }}>
-                                {lot.qtyRemaining} {selectedLotProduct.unit || 'Pcs'}
+                                {isExhausted ? `0 ${selectedLotProduct.unit || 'Pcs'}` : `${lot.qtyRemaining} ${selectedLotProduct.unit || 'Pcs'}`}
                               </td>
-                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: '#0f172a' }}>
-                                ₹{lotVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                              <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '700', color: isExhausted ? '#94a3b8' : '#0f172a' }}>
+                                {isExhausted ? '₹0.00 (Consumed)' : `₹${lotVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`}
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+
+                {activeLots.length === 0 && allLots.length > 0 && (
+                  <div style={{ marginTop: '10px', padding: '8px 12px', background: '#fef3c7', borderRadius: '6px', border: '1px solid #fde68a', fontSize: '0.76rem', color: '#92400e' }}>
+                    ℹ️ Note: Previous purchase bill quantities were fully allocated & consumed in sales (FIFO). Current closing stock is valued based on the product standard catalog purchase rate.
                   </div>
                 )}
 

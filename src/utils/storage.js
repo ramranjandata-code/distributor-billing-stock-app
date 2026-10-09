@@ -207,6 +207,37 @@ export const getProductPackagingInfo = (prod) => {
   };
 };
 
+/**
+ * Normalizes product name by collapsing multiple spaces and converting to lowercase.
+ */
+export const normalizeProductName = (name) => {
+  return (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+};
+
+/**
+ * Robust product matching utility.
+ * Matches by exact ID, or SKU, or normalized name (handling multiple spaces, trim, and case).
+ */
+export const isProductMatch = (prod, itemOrLot) => {
+  if (!prod || !itemOrLot) return false;
+  // 1. Direct ID match
+  if (itemOrLot.productId && prod.id === itemOrLot.productId) return true;
+  if (itemOrLot.id && prod.id === itemOrLot.id) return true;
+  if (itemOrLot.productId && prod.productId && itemOrLot.productId === prod.productId) return true;
+
+  // 2. SKU match (case-insensitive)
+  const prodSku = (prod.sku || '').trim().toLowerCase();
+  const itemSku = (itemOrLot.sku || '').trim().toLowerCase();
+  if (prodSku && itemSku && prodSku === itemSku) return true;
+
+  // 3. Normalized Name match (collapsing whitespace)
+  const prodName = normalizeProductName(prod.name);
+  const itemName = normalizeProductName(itemOrLot.name || itemOrLot.productName);
+  if (prodName && itemName && prodName === itemName) return true;
+
+  return false;
+};
+
 // LocalStorage Helpers
 export const getStorageData = (key, defaultVal) => {
   try {
@@ -1352,7 +1383,19 @@ export const importFullBackupJSON = (backupObj) => {
 // Operations: Products
 export const fetchProducts = () => {
   const delSet = new Set(getDeletedIds());
-  return getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
+  const prods = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
+  let modified = false;
+  const cleanProds = prods.map(p => {
+    if (p && p.name && (/\s{2,}/.test(p.name) || /^\s+/.test(p.name) || /\s+$/.test(p.name))) {
+      modified = true;
+      return { ...p, name: p.name.replace(/\s+/g, ' ').trim() };
+    }
+    return p;
+  });
+  if (modified) {
+    setStorageData(STORAGE_KEYS.PRODUCTS, cleanProds);
+  }
+  return cleanProds;
 };
 
 export const saveProduct = (product) => {
@@ -1466,7 +1509,28 @@ export const fetchPurchases = () => {
     list = [...INITIAL_PURCHASES];
     setStorageData(STORAGE_KEYS.PURCHASES, list);
   }
-  return list.sort((a, b) => {
+  let modified = false;
+  const cleanList = list.map(bill => {
+    if (bill && Array.isArray(bill.items)) {
+      let itemsChanged = false;
+      const cleanItems = bill.items.map(it => {
+        if (it && it.name && (/\s{2,}/.test(it.name) || /^\s+/.test(it.name) || /\s+$/.test(it.name))) {
+          itemsChanged = true;
+          return { ...it, name: it.name.replace(/\s+/g, ' ').trim() };
+        }
+        return it;
+      });
+      if (itemsChanged) {
+        modified = true;
+        return { ...bill, items: cleanItems };
+      }
+    }
+    return bill;
+  });
+  if (modified) {
+    setStorageData(STORAGE_KEYS.PURCHASES, cleanList);
+  }
+  return cleanList.sort((a, b) => {
     const da = a.date || '';
     const db = b.date || '';
     if (db !== da) return db.localeCompare(da);
@@ -1478,31 +1542,54 @@ export const fetchPurchases = () => {
 
 export const fetchStockLots = (productId = null) => {
   let lots = getStorageData(STORAGE_KEYS.STOCK_LOTS, null);
+  const purchases = fetchPurchases();
+  const products = fetchProducts();
 
-  // If lots table has never been initialized, synthesize from existing purchases and products
+  let needsSave = false;
+
   if (!lots) {
     lots = [];
-    const purchases = fetchPurchases();
-    const products = fetchProducts();
+    needsSave = true;
+  }
 
-    // 1. Create lots from all recorded purchase bills
-    purchases.forEach(p => {
-      (p.items || []).forEach((item, idx) => {
-        const qty = Number(item.qty) || 0;
-        if (qty <= 0) return;
-        const matchingProd = products.find(prod => 
-          (item.productId && prod.id === item.productId) || 
-          (prod.name && item.name && prod.name.trim().toLowerCase() === item.name.trim().toLowerCase())
-        );
-        const resolvedId = matchingProd ? matchingProd.id : (item.productId || `prod_${item.name}`);
+  // 1. Ensure every item across all recorded purchase bills is represented in lots
+  purchases.forEach(p => {
+    (p.items || []).forEach((item, idx) => {
+      const qty = Number(item.qty) || 0;
+      if (qty <= 0 && !item.name) return;
+
+      const matchingProd = products.find(prod => isProductMatch(prod, item));
+      const resolvedId = matchingProd ? matchingProd.id : (item.productId || `prod_${normalizeProductName(item.name)}`);
+      const itemSku = item.sku || matchingProd?.sku || '';
+
+      // Check if this purchase bill item already exists in lots
+      const existingLot = lots.find(l => 
+        l.billId === p.id && (
+          (item.id && l.id === `lot_purch_${p.id}_${item.id}`) ||
+          isProductMatch(matchingProd, l) ||
+          (l.batchNo && item.batchNo && l.batchNo === item.batchNo) ||
+          (l.productName && item.name && normalizeProductName(l.productName) === normalizeProductName(item.name))
+        )
+      );
+
+      if (existingLot) {
+        // Re-link lot if productId was mismatched or old
+        if (matchingProd && existingLot.productId !== matchingProd.id) {
+          existingLot.productId = matchingProd.id;
+          existingLot.sku = matchingProd.sku || existingLot.sku;
+          needsSave = true;
+        }
+      } else {
+        // Missing lot from recorded purchase bill - insert it!
         const pPrice = Number(item.purchasePrice) || 0;
         const gstRate = Number(item.gstRate !== undefined ? item.gstRate : (matchingProd?.gstRate || 0));
         const pPriceWithGst = Number(item.purchasePriceWithGst) || (pPrice * (1 + gstRate / 100));
 
         lots.push({
-          id: `lot_purch_${p.id || Date.now()}_${idx}`,
+          id: `lot_purch_${p.id || Date.now()}_${item.id || idx}`,
           productId: resolvedId,
           productName: item.name || matchingProd?.name || 'Item',
+          sku: itemSku,
           billId: p.id,
           billNo: p.billNo || 'INWARD',
           supplierName: p.partyName || 'Supplier',
@@ -1516,54 +1603,68 @@ export const fetchStockLots = (productId = null) => {
           qtyRemaining: qty,
           warehouseId: p.warehouseId || matchingProd?.warehouseId || 'wh_main'
         });
-      });
-    });
-
-    // 2. For products that have stock not covered by purchase bills, create an opening stock lot
-    products.forEach(prod => {
-      const prodLots = lots.filter(l => l.productId === prod.id);
-      const totalPurchasedQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
-      const pkg = getProductPackagingInfo(prod);
-      const currentStockUnits = pkg.effectiveUnits;
-      
-      // If current stock exceeds recorded purchases (or no purchases exist for this product)
-      if (currentStockUnits > totalPurchasedQty) {
-        const diffQty = Number((currentStockUnits - totalPurchasedQty).toFixed(2));
-        const pPrice = Number(prod.purchasePrice) || 0;
-        const gstRate = Number(prod.gstRate) || 0;
-        lots.push({
-          id: `lot_init_${prod.id}`,
-          productId: prod.id,
-          productName: prod.name,
-          billId: 'opening',
-          billNo: 'OPENING-STOCK',
-          supplierName: 'Opening Balance',
-          date: '2026-01-01',
-          batchNo: prod.batchNo || 'LOT-OPENING',
-          expiryDate: prod.expiryDate || '',
-          purchasePrice: pPrice,
-          purchasePriceWithGst: pPrice * (1 + gstRate / 100),
-          gstRate,
-          qtyReceived: diffQty,
-          qtyRemaining: diffQty,
-          warehouseId: prod.warehouseId || 'wh_main'
-        });
+        needsSave = true;
       }
     });
+  });
 
-    // 3. Reconcile remaining lot quantities against existing stock (FIFO)
+  // 2. Re-link any legacy lots whose productId doesn't match catalog products but matches by SKU or normalized name
+  lots.forEach(l => {
+    const matchingProd = products.find(prod => isProductMatch(prod, l));
+    if (matchingProd && l.productId !== matchingProd.id) {
+      l.productId = matchingProd.id;
+      l.sku = matchingProd.sku || l.sku;
+      needsSave = true;
+    }
+  });
+
+  // 3. For products that have stock not covered by purchase bills, create an opening stock lot
+  products.forEach(prod => {
+    const prodLots = lots.filter(l => isProductMatch(prod, l));
+    const totalPurchasedQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
+    const pkg = getProductPackagingInfo(prod);
+    const currentStockUnits = pkg.effectiveUnits;
+    
+    if (totalPurchasedQty === 0 && currentStockUnits > 0) {
+      const pPrice = Number(prod.purchasePrice) || 0;
+      const gstRate = Number(prod.gstRate) || 0;
+      lots.push({
+        id: `lot_init_${prod.id}`,
+        productId: prod.id,
+        productName: prod.name,
+        sku: prod.sku || '',
+        billId: 'opening',
+        billNo: 'OPENING-STOCK',
+        supplierName: 'Opening Balance',
+        date: '2026-01-01',
+        batchNo: prod.batchNo || 'LOT-OPENING',
+        expiryDate: prod.expiryDate || '',
+        purchasePrice: pPrice,
+        purchasePriceWithGst: pPrice * (1 + gstRate / 100),
+        gstRate,
+        qtyReceived: currentStockUnits,
+        qtyRemaining: currentStockUnits,
+        warehouseId: prod.warehouseId || 'wh_main'
+      });
+      needsSave = true;
+    }
+  });
+
+  // 4. Reconcile remaining lot quantities against existing stock (FIFO)
+  if (needsSave) {
     products.forEach(prod => {
       const pkg = getProductPackagingInfo(prod);
-      const prodLots = lots.filter(l => l.productId === prod.id).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+      const prodLots = lots.filter(l => isProductMatch(prod, l)).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
       let targetStock = pkg.effectiveUnits;
       
-      const totalLotQty = prodLots.reduce((sum, l) => sum + l.qtyReceived, 0);
+      const totalLotQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
       let qtyToConsume = Math.max(0, totalLotQty - targetStock);
       
       for (const lot of prodLots) {
         if (qtyToConsume <= 0) break;
-        const take = Math.min(qtyToConsume, lot.qtyRemaining);
-        lot.qtyRemaining = Math.max(0, lot.qtyRemaining - take);
+        const currentRem = Number(lot.qtyRemaining) !== undefined ? Number(lot.qtyRemaining) : Number(lot.qtyReceived);
+        const take = Math.min(qtyToConsume, currentRem);
+        lot.qtyRemaining = Math.max(0, currentRem - take);
         qtyToConsume -= take;
       }
     });
@@ -1572,7 +1673,8 @@ export const fetchStockLots = (productId = null) => {
   }
 
   if (productId) {
-    return lots.filter(l => l.productId === productId);
+    const targetProd = products.find(p => p.id === productId || isProductMatch(p, { id: productId }));
+    return lots.filter(l => isProductMatch(targetProd, l));
   }
   return lots;
 };
@@ -1597,7 +1699,7 @@ export const calculateProductWeightedAvgCost = (productId) => {
   
   if (activeLots.length === 0) {
     const products = fetchProducts();
-    const prod = products.find(p => p.id === productId);
+    const prod = products.find(p => p.id === productId || isProductMatch(p, { id: productId }));
     return Number(prod?.purchasePrice) || 0;
   }
 
@@ -1612,9 +1714,10 @@ export const getProductStockValuation = (productId = null) => {
   const products = fetchProducts();
 
   if (productId) {
-    const prod = products.find(p => p.id === productId);
+    const prod = products.find(p => p.id === productId || isProductMatch(p, { id: productId }));
     const pkg = getProductPackagingInfo(prod);
-    const targetLots = lots.filter(l => l.productId === productId && Number(l.qtyRemaining) > 0);
+    const allProductLots = lots.filter(l => isProductMatch(prod, l));
+    const targetLots = allProductLots.filter(l => Number(l.qtyRemaining) > 0);
 
     // Auto-normalize any legacy opening lots that were recorded in raw pieces instead of packaging units
     if (pkg.isSub && pkg.subPcs > 1) {
@@ -1672,6 +1775,7 @@ export const getProductStockValuation = (productId = null) => {
       distinctRatesCount: distinctRates.length,
       distinctRates,
       lots: targetLots,
+      allLots: allProductLots,
       pkg
     };
   }
@@ -1856,10 +1960,7 @@ export const savePurchase = (purchaseData) => {
     existingPurchase.items.forEach(oldItem => {
       const oldQty = Number(oldItem.qty) || 0;
       if (oldQty <= 0) return;
-      const pIdx = currentProducts.findIndex(p => 
-        (oldItem.productId && p.id === oldItem.productId) || 
-        (p.name && oldItem.name && p.name.trim().toLowerCase() === oldItem.name.trim().toLowerCase())
-      );
+      const pIdx = currentProducts.findIndex(p => isProductMatch(p, oldItem));
       if (pIdx >= 0) {
         const prod = currentProducts[pIdx];
         currentProducts[pIdx] = {
@@ -1879,10 +1980,7 @@ export const savePurchase = (purchaseData) => {
       const qtyToAdd = Number(item.qty) || 0;
       if (qtyToAdd <= 0 && !item.name) return;
 
-      const existingProdIndex = currentProducts.findIndex(p => 
-        (item.productId && p.id === item.productId) || 
-        (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase())
-      );
+      const existingProdIndex = currentProducts.findIndex(p => isProductMatch(p, item));
 
       const mrp = Number(item.mrp) || 0;
       const salePrice = Number(item.salePrice) || 0;
@@ -1938,7 +2036,8 @@ export const savePurchase = (purchaseData) => {
       const newLot = {
         id: `lot_purch_${id}_${idx}_${Date.now()}`,
         productId: resolvedProductId,
-        productName: item.name || 'Item',
+        productName: (existingProdIndex >= 0 ? currentProducts[existingProdIndex]?.name : item.name) || 'Item',
+        sku: (existingProdIndex >= 0 ? currentProducts[existingProdIndex]?.sku : item.sku) || '',
         billId: id,
         billNo: purchaseData.billNo || 'INWARD-BILL',
         supplierName: purchaseData.partyName || 'Supplier',
@@ -1960,10 +2059,7 @@ export const savePurchase = (purchaseData) => {
 
     // Recompute weighted average cost for affected products
     purchaseData.items.forEach(item => {
-      const matchingProd = currentProducts.find(p => 
-        (item.productId && p.id === item.productId) || 
-        (p.name && item.name && p.name.trim().toLowerCase() === item.name.trim().toLowerCase())
-      );
+      const matchingProd = currentProducts.find(p => isProductMatch(p, item));
       if (matchingProd) {
         const wac = calculateProductWeightedAvgCost(matchingProd.id);
         if (wac > 0) {
@@ -2168,7 +2264,7 @@ export const recalculateAndNormalizeAllPurchaseBills = () => {
 
         const matchingItem = matchingBill.items.find(it => 
           (it.productId && lot.productId === it.productId) ||
-          (it.name && lot.productName && it.name.trim().toLowerCase() === lot.productName.trim().toLowerCase())
+          isProductMatch(it, lot)
         );
 
         if (matchingItem) {
