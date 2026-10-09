@@ -144,6 +144,69 @@ export const formatCartonStock = (totalStock = 0, pcsPerCarton = 24, pcsPerBox =
   }
 };
 
+/**
+ * Resolves packaging unit multipliers and formats stock for any product.
+ * Properly distinguishes between base pieces (currentStock) and packaging units (Chain Pouch, Box, Pack).
+ */
+export const getProductPackagingInfo = (prod) => {
+  if (!prod) {
+    return {
+      isSub: false,
+      subPcs: 1,
+      subName: 'Pcs',
+      subCount: 0,
+      remPcs: 0,
+      effectiveUnits: 0,
+      stockPcs: 0,
+      primaryDisplay: '0 Pcs',
+      cartonDisplay: '0 Pcs'
+    };
+  }
+
+  const rawUnit = (prod.unit || '').trim();
+  const isChain = rawUnit === 'Chain Pouch' || rawUnit === 'C. Pouch' || rawUnit === 'c. pouch';
+  const isBoxOrPack = isChain || rawUnit === 'Box' || rawUnit === 'Pack';
+  
+  let subPcs = Number(prod.pcsPerBox) || 1;
+  if (subPcs <= 1 && isChain) {
+    subPcs = 12; // Standard FMCG default chain pouch count if unset
+  }
+  
+  const subName = isChain ? 'Chain Pouch' : (rawUnit || 'Pcs');
+  const stockPcs = Number(prod.currentStock) || 0;
+  
+  if (isBoxOrPack && subPcs > 1) {
+    const subCount = Math.floor(stockPcs / subPcs);
+    const remPcs = stockPcs % subPcs;
+    const subDisplay = remPcs > 0 ? `${subCount} ${subName} + ${remPcs} Pcs` : `${subCount} ${subName}`;
+    const effectiveUnits = stockPcs / subPcs;
+
+    return {
+      isSub: true,
+      subPcs,
+      subName,
+      subCount,
+      remPcs,
+      effectiveUnits,
+      stockPcs,
+      primaryDisplay: subDisplay,
+      cartonDisplay: formatCartonStock(stockPcs, prod.pcsPerCarton, subPcs, prod.unit)
+    };
+  }
+
+  return {
+    isSub: false,
+    subPcs: 1,
+    subName: rawUnit || 'Pcs',
+    subCount: stockPcs,
+    remPcs: 0,
+    effectiveUnits: stockPcs,
+    stockPcs,
+    primaryDisplay: `${stockPcs} ${rawUnit || 'Pcs'}`,
+    cartonDisplay: formatCartonStock(stockPcs, prod.pcsPerCarton, 1, prod.unit)
+  };
+};
+
 // LocalStorage Helpers
 export const getStorageData = (key, defaultVal) => {
   try {
@@ -1460,11 +1523,12 @@ export const fetchStockLots = (productId = null) => {
     products.forEach(prod => {
       const prodLots = lots.filter(l => l.productId === prod.id);
       const totalPurchasedQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
-      const currentStock = Number(prod.currentStock) || 0;
+      const pkg = getProductPackagingInfo(prod);
+      const currentStockUnits = pkg.effectiveUnits;
       
       // If current stock exceeds recorded purchases (or no purchases exist for this product)
-      if (currentStock > totalPurchasedQty) {
-        const diffQty = currentStock - totalPurchasedQty;
+      if (currentStockUnits > totalPurchasedQty) {
+        const diffQty = Number((currentStockUnits - totalPurchasedQty).toFixed(2));
         const pPrice = Number(prod.purchasePrice) || 0;
         const gstRate = Number(prod.gstRate) || 0;
         lots.push({
@@ -1489,8 +1553,9 @@ export const fetchStockLots = (productId = null) => {
 
     // 3. Reconcile remaining lot quantities against existing stock (FIFO)
     products.forEach(prod => {
+      const pkg = getProductPackagingInfo(prod);
       const prodLots = lots.filter(l => l.productId === prod.id).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-      let targetStock = Number(prod.currentStock) || 0;
+      let targetStock = pkg.effectiveUnits;
       
       const totalLotQty = prodLots.reduce((sum, l) => sum + l.qtyReceived, 0);
       let qtyToConsume = Math.max(0, totalLotQty - targetStock);
@@ -1548,7 +1613,19 @@ export const getProductStockValuation = (productId = null) => {
 
   if (productId) {
     const prod = products.find(p => p.id === productId);
+    const pkg = getProductPackagingInfo(prod);
     const targetLots = lots.filter(l => l.productId === productId && Number(l.qtyRemaining) > 0);
+
+    // Auto-normalize any legacy opening lots that were recorded in raw pieces instead of packaging units
+    if (pkg.isSub && pkg.subPcs > 1) {
+      targetLots.forEach(l => {
+        if ((l.billId === 'opening' || l.id?.startsWith('lot_init_')) && l.qtyReceived > (pkg.effectiveUnits * 1.5)) {
+          l.qtyReceived = Number((l.qtyReceived / pkg.subPcs).toFixed(2));
+          l.qtyRemaining = Number((l.qtyRemaining / pkg.subPcs).toFixed(2));
+        }
+      });
+    }
+
     const totalRemainingQty = targetLots.reduce((sum, l) => sum + (Number(l.qtyRemaining) || 0), 0);
     
     let totalExGst = targetLots.reduce((sum, l) => sum + ((Number(l.qtyRemaining) || 0) * (Number(l.purchasePrice) || 0)), 0);
@@ -1557,17 +1634,18 @@ export const getProductStockValuation = (productId = null) => {
       return sum + ((Number(l.qtyRemaining) || 0) * rateWithGst);
     }, 0);
 
-    // If currentStock in product exceeds remaining lots (e.g. initial setup without bills), account for difference
-    const stockOnHand = Number(prod?.currentStock) || 0;
-    if (stockOnHand > totalRemainingQty) {
-      const diff = stockOnHand - totalRemainingQty;
+    const stockOnHandUnits = pkg.effectiveUnits;
+
+    // If current stock on hand (in packaging units) exceeds remaining lots, account for difference
+    if (stockOnHandUnits > totalRemainingQty) {
+      const diff = stockOnHandUnits - totalRemainingQty;
       const pPrice = Number(prod?.purchasePrice) || 0;
       const gRate = Number(prod?.gstRate) || 0;
       totalExGst += diff * pPrice;
       totalWithGst += diff * (pPrice * (1 + gRate / 100));
     }
 
-    const effectiveQty = Math.max(stockOnHand, totalRemainingQty);
+    const effectiveQty = Math.max(stockOnHandUnits, totalRemainingQty);
     const avgExGst = effectiveQty > 0 ? Number((totalExGst / effectiveQty).toFixed(2)) : (Number(prod?.purchasePrice) || 0);
     const avgWithGst = effectiveQty > 0 ? Number((totalWithGst / effectiveQty).toFixed(2)) : ((Number(prod?.purchasePrice) || 0) * (1 + (Number(prod?.gstRate) || 0) / 100));
 
@@ -1583,7 +1661,8 @@ export const getProductStockValuation = (productId = null) => {
       activeLotsCount: targetLots.length,
       distinctRatesCount: distinctRates.length,
       distinctRates,
-      lots: targetLots
+      lots: targetLots,
+      pkg
     };
   }
 

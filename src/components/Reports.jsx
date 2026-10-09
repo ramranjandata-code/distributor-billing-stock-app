@@ -52,6 +52,8 @@ import {
   saveProprietorCapital, 
   fetchBankAccounts,
   getProductStockValuation,
+  getProductPackagingInfo,
+  formatCartonStock,
   fetchSalesReturns,
   InvoiceHistoryLogger
 } from '../utils/storage';
@@ -1350,12 +1352,15 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
 
     const list = filteredProducts.map(p => {
       const stock = Number(p.currentStock) || 0;
+      const pkg = getProductPackagingInfo(p);
       const prodVal = getProductStockValuation(p.id);
       const pPrice = prodVal.avgUnitCostExGst > 0 ? prodVal.avgUnitCostExGst : (Number(p.purchasePrice) || 0);
       const sPrice = Number(p.salePrice || p.price || 0);
-      const costVal = prodVal.totalExGst > 0 ? prodVal.totalExGst : (stock * pPrice);
-      const saleVal = stock * sPrice;
-      const potentialProfit = saleVal - costVal;
+      
+      // Cost and retail valuation must be computed on effective packaging units (Chain Pouches / Boxes / Pcs)
+      const costVal = prodVal.totalExGst > 0 ? prodVal.totalExGst : Number((pkg.effectiveUnits * pPrice).toFixed(2));
+      const saleVal = Number((pkg.effectiveUnits * sPrice).toFixed(2));
+      const potentialProfit = Number((saleVal - costVal).toFixed(2));
       const marginPct = saleVal > 0 ? ((potentialProfit / saleVal) * 100).toFixed(1) : '0.0';
 
       totalUnits += stock;
@@ -1365,7 +1370,9 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
       return {
         ...p,
         stock,
+        pkg,
         purchasePrice: pPrice,
+        salePrice: sPrice,
         costVal,
         saleVal,
         potentialProfit,
@@ -3481,7 +3488,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       <th style={{ padding: '8px' }}>#</th>
                       <th style={{ padding: '8px' }}>Product Name</th>
                       <th style={{ padding: '8px' }}>Brand / SKU</th>
-                      <th style={{ padding: '8px', textAlign: 'center' }}>Stock Qty</th>
+                      <th style={{ padding: '8px', textAlign: 'center' }}>Stock Qty (Unit Count)</th>
                       <th style={{ padding: '8px', textAlign: 'right' }}>Purchase Rate (₹)</th>
                       <th style={{ padding: '8px', textAlign: 'right' }}>Sale Rate (₹)</th>
                       <th style={{ padding: '8px', textAlign: 'right' }}>Cost Valuation (₹)</th>
@@ -3493,11 +3500,31 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                     {stockValuationData.list.map((item, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>#{idx + 1}</td>
-                        <td style={{ padding: '8px', fontWeight: '700' }}>{item.name}</td>
+                        <td style={{ padding: '8px', fontWeight: '700' }}>
+                          <div>{item.name}</div>
+                          {item.pkg?.isSub && (
+                            <div style={{ fontSize: '0.69rem', color: '#64748b', fontWeight: 'normal', marginTop: '1px' }}>
+                              Packaging: {item.pkg.subPcs} Pcs / {item.pkg.subName} • {item.pcsPerCarton || 24} Pcs/Ctn
+                            </div>
+                          )}
+                        </td>
                         <td style={{ padding: '8px', color: 'var(--text-muted)' }}>{item.brand || '-'} / {item.sku || '-'}</td>
-                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{item.stock} {item.unit || 'Pcs'}</td>
-                        <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(item.purchasePrice || 0).toFixed(2)}</td>
-                        <td style={{ padding: '8px', textAlign: 'right' }}>₹{Number(item.price || 0).toFixed(2)}</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          <div style={{ fontWeight: '800', color: 'var(--text-main)', fontSize: '0.84rem' }}>
+                            {item.pkg?.primaryDisplay || `${item.stock} ${item.unit || 'Pcs'}`}
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            {item.stock.toLocaleString('en-IN')} Total Pcs {item.pkg?.cartonDisplay ? `• ${item.pkg.cartonDisplay}` : ''}
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          <div style={{ fontWeight: '600' }}>₹{Number(item.purchasePrice || 0).toFixed(2)}</div>
+                          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>per {item.pkg?.subName || item.unit || 'Unit'}</div>
+                        </td>
+                        <td style={{ padding: '8px', textAlign: 'right' }}>
+                          <div style={{ fontWeight: '700', color: 'var(--primary)' }}>₹{Number(item.salePrice || item.price || 0).toFixed(2)}</div>
+                          <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>per {item.pkg?.subName || item.unit || 'Unit'}</div>
+                        </td>
                         <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: '#dc2626' }}>
                           ₹{item.costVal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                         </td>
