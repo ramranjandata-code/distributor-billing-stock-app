@@ -12,6 +12,7 @@ import {
   deletePurchase,
   transferStockBetweenWarehouses, 
   getProductStockValuation,
+  getCatalogStockValuation,
   fetchStockLots,
   isPurchaseBillEditable,
   getPurchaseBillRemainingEditTime,
@@ -61,8 +62,8 @@ export default function Inventory({ products, refreshAllData, defaultSubTab = 's
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [selectedLotProduct, setSelectedLotProduct] = useState(null);
 
-  // Dynamic Multi-rate Stock Valuation
-  const totalCatalogValuation = useMemo(() => getProductStockValuation(), [products]);
+  // Dynamic Multi-rate Stock Valuation (Instant O(N) cached single-pass)
+  const totalCatalogValuation = useMemo(() => getCatalogStockValuation(), [products]);
 
   // Warehouses & Purchase Parties (Suppliers)
   const warehouses = fetchWarehouses();
@@ -1520,7 +1521,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                   const expInfo = getExpiryStatus(prod.expiryDate);
                   const whObj = warehouses.find(w => w.id === prod.warehouseId) || warehouses[0];
                   
-                  const prodVal = getProductStockValuation(prod.id);
+                  const prodVal = totalCatalogValuation.productMap?.[prod.id] || getProductStockValuation(prod.id);
                   const pPrice = prodVal.avgUnitCostExGst > 0 ? prodVal.avgUnitCostExGst : (Number(prod.purchasePrice) || 0);
                   const gRate = Number(prod.gstRate) || 0;
                   const purchaseWithGst = prodVal.avgUnitCostWithGst > 0 ? prodVal.avgUnitCostWithGst : (pPrice * (1 + gRate / 100));
@@ -4620,7 +4621,7 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
 
       {/* Inward Stock Lots & Multi-Purchase Rates Modal */}
       {selectedLotProduct && (() => {
-        const prodVal = getProductStockValuation(selectedLotProduct.id);
+        const prodVal = totalCatalogValuation.productMap?.[selectedLotProduct.id] || getProductStockValuation(selectedLotProduct.id);
         const activeLots = prodVal.lots || [];
         let allLots = (prodVal.allLots && prodVal.allLots.length > 0) ? prodVal.allLots : activeLots;
 

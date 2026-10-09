@@ -238,9 +238,23 @@ export const isProductMatch = (prod, itemOrLot) => {
   return false;
 };
 
+// In-Memory Performance Caches for Instant UI Response
+let _cachedProducts = null;
+let _cachedPurchases = null;
+let _cachedStockLots = null;
+let _cachedCatalogValuation = null;
+
+export const invalidateStockValuationCache = () => {
+  _cachedProducts = null;
+  _cachedPurchases = null;
+  _cachedStockLots = null;
+  _cachedCatalogValuation = null;
+};
+
 // LocalStorage Helpers
 export const getStorageData = (key, defaultVal) => {
   try {
+    if (typeof localStorage === 'undefined') return defaultVal;
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultVal;
   } catch (err) {
@@ -251,7 +265,23 @@ export const getStorageData = (key, defaultVal) => {
 
 export const setStorageData = (key, data) => {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+    // Auto-invalidate in-memory caches upon any data mutation
+    if (key === STORAGE_KEYS.PRODUCTS) {
+      _cachedProducts = null;
+      _cachedCatalogValuation = null;
+    } else if (key === STORAGE_KEYS.PURCHASES) {
+      _cachedPurchases = null;
+      _cachedStockLots = null;
+      _cachedCatalogValuation = null;
+    } else if (key === STORAGE_KEYS.STOCK_LOTS) {
+      _cachedStockLots = null;
+      _cachedCatalogValuation = null;
+    } else if (key === STORAGE_KEYS.INVOICES || key === STORAGE_KEYS.RETURNS || key === STORAGE_KEYS.PURCHASE_RETURNS) {
+      _cachedCatalogValuation = null;
+    }
   } catch (err) {
     console.error(`Error writing ${key} to storage:`, err);
   }
@@ -1381,20 +1411,20 @@ export const importFullBackupJSON = (backupObj) => {
 };
 
 // Operations: Products
-export const fetchProducts = () => {
+export const fetchProducts = (forceRefresh = false) => {
+  if (_cachedProducts && !forceRefresh) {
+    return _cachedProducts;
+  }
   const delSet = new Set(getDeletedIds());
   const prods = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !SAMPLE_IDS.includes(p.id) && !delSet.has(p.id));
-  let modified = false;
-  const cleanProds = prods.map(p => {
+  const baseList = (prods.length === 0 && Array.isArray(INITIAL_PRODUCTS)) ? INITIAL_PRODUCTS : prods;
+  const cleanProds = baseList.map(p => {
     if (p && p.name && (/\s{2,}/.test(p.name) || /^\s+/.test(p.name) || /\s+$/.test(p.name))) {
-      modified = true;
       return { ...p, name: p.name.replace(/\s+/g, ' ').trim() };
     }
     return p;
   });
-  if (modified) {
-    setStorageData(STORAGE_KEYS.PRODUCTS, cleanProds);
-  }
+  _cachedProducts = cleanProds;
   return cleanProds;
 };
 
@@ -1502,181 +1532,181 @@ export const formatDateDDMMYY = (dateStr) => {
 };
 
 // Operations: Purchases, Stock Lots & Inward Costing Engine
-export const fetchPurchases = () => {
+export const fetchPurchases = (forceRefresh = false) => {
+  if (_cachedPurchases && !forceRefresh) {
+    return _cachedPurchases;
+  }
   const delSet = new Set(getDeletedIds());
   let list = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !delSet.has(p.id));
   if ((!list || list.length === 0) && Array.isArray(INITIAL_PURCHASES) && INITIAL_PURCHASES.length > 0) {
     list = [...INITIAL_PURCHASES];
-    setStorageData(STORAGE_KEYS.PURCHASES, list);
   }
-  let modified = false;
   const cleanList = list.map(bill => {
     if (bill && Array.isArray(bill.items)) {
-      let itemsChanged = false;
       const cleanItems = bill.items.map(it => {
         if (it && it.name && (/\s{2,}/.test(it.name) || /^\s+/.test(it.name) || /\s+$/.test(it.name))) {
-          itemsChanged = true;
           return { ...it, name: it.name.replace(/\s+/g, ' ').trim() };
         }
         return it;
       });
-      if (itemsChanged) {
-        modified = true;
-        return { ...bill, items: cleanItems };
-      }
+      return { ...bill, items: cleanItems };
     }
     return bill;
   });
-  if (modified) {
-    setStorageData(STORAGE_KEYS.PURCHASES, cleanList);
-  }
-  return cleanList.sort((a, b) => {
+  const sorted = cleanList.sort((a, b) => {
     const da = a.date || '';
     const db = b.date || '';
     if (db !== da) return db.localeCompare(da);
     return (b.createdAt || '').localeCompare(a.createdAt || '');
   });
+  _cachedPurchases = sorted;
+  return sorted;
 };
 
 // --- BATCH-WISE / LOT-WISE PURCHASE COSTING ENGINE ---
 
-export const fetchStockLots = (productId = null) => {
-  let lots = getStorageData(STORAGE_KEYS.STOCK_LOTS, null);
-  const purchases = fetchPurchases();
-  const products = fetchProducts();
+export const fetchStockLots = (productId = null, forceRefresh = false) => {
+  if (!_cachedStockLots || forceRefresh) {
+    let lots = getStorageData(STORAGE_KEYS.STOCK_LOTS, null);
+    const purchases = fetchPurchases();
+    const products = fetchProducts();
 
-  let needsSave = false;
+    let needsSave = false;
 
-  if (!lots) {
-    lots = [];
-    needsSave = true;
-  }
+    if (!lots) {
+      lots = [];
+      needsSave = true;
+    }
 
-  // 1. Ensure every item across all recorded purchase bills is represented in lots
-  purchases.forEach(p => {
-    (p.items || []).forEach((item, idx) => {
-      const qty = Number(item.qty) || 0;
-      if (qty <= 0 && !item.name) return;
+    // 1. Ensure every item across all recorded purchase bills is represented in lots
+    purchases.forEach(p => {
+      (p.items || []).forEach((item, idx) => {
+        const qty = Number(item.qty) || 0;
+        if (qty <= 0 && !item.name) return;
 
-      const matchingProd = products.find(prod => isProductMatch(prod, item));
-      const resolvedId = matchingProd ? matchingProd.id : (item.productId || `prod_${normalizeProductName(item.name)}`);
-      const itemSku = item.sku || matchingProd?.sku || '';
+        const matchingProd = products.find(prod => isProductMatch(prod, item));
+        const resolvedId = matchingProd ? matchingProd.id : (item.productId || `prod_${normalizeProductName(item.name)}`);
+        const itemSku = item.sku || matchingProd?.sku || '';
 
-      // Check if this purchase bill item already exists in lots
-      const existingLot = lots.find(l => 
-        l.billId === p.id && (
-          (item.id && l.id === `lot_purch_${p.id}_${item.id}`) ||
-          isProductMatch(matchingProd, l) ||
-          (l.batchNo && item.batchNo && l.batchNo === item.batchNo) ||
-          (l.productName && item.name && normalizeProductName(l.productName) === normalizeProductName(item.name))
-        )
-      );
+        // Check if this purchase bill item already exists in lots
+        const existingLot = lots.find(l => 
+          l.billId === p.id && (
+            (item.id && l.id === `lot_purch_${p.id}_${item.id}`) ||
+            isProductMatch(matchingProd, l) ||
+            (l.batchNo && item.batchNo && l.batchNo === item.batchNo) ||
+            (l.productName && item.name && normalizeProductName(l.productName) === normalizeProductName(item.name))
+          )
+        );
 
-      if (existingLot) {
-        // Re-link lot if productId was mismatched or old
-        if (matchingProd && existingLot.productId !== matchingProd.id) {
-          existingLot.productId = matchingProd.id;
-          existingLot.sku = matchingProd.sku || existingLot.sku;
+        if (existingLot) {
+          // Re-link lot if productId was mismatched or old
+          if (matchingProd && existingLot.productId !== matchingProd.id) {
+            existingLot.productId = matchingProd.id;
+            existingLot.sku = matchingProd.sku || existingLot.sku;
+            needsSave = true;
+          }
+        } else {
+          // Missing lot from recorded purchase bill - insert it!
+          const pPrice = Number(item.purchasePrice) || 0;
+          const gstRate = Number(item.gstRate !== undefined ? item.gstRate : (matchingProd?.gstRate || 0));
+          const pPriceWithGst = Number(item.purchasePriceWithGst) || (pPrice * (1 + gstRate / 100));
+
+          lots.push({
+            id: `lot_purch_${p.id || Date.now()}_${item.id || idx}`,
+            productId: resolvedId,
+            productName: item.name || matchingProd?.name || 'Item',
+            sku: itemSku,
+            billId: p.id,
+            billNo: p.billNo || 'INWARD',
+            supplierName: p.partyName || 'Supplier',
+            date: p.date || (p.createdAt ? p.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
+            batchNo: item.batchNo || p.billNo || 'LOT-INWARD',
+            expiryDate: item.expiryDate || matchingProd?.expiryDate || '',
+            purchasePrice: pPrice,
+            purchasePriceWithGst: pPriceWithGst,
+            gstRate,
+            qtyReceived: qty,
+            qtyRemaining: qty,
+            warehouseId: p.warehouseId || matchingProd?.warehouseId || 'wh_main'
+          });
           needsSave = true;
         }
-      } else {
-        // Missing lot from recorded purchase bill - insert it!
-        const pPrice = Number(item.purchasePrice) || 0;
-        const gstRate = Number(item.gstRate !== undefined ? item.gstRate : (matchingProd?.gstRate || 0));
-        const pPriceWithGst = Number(item.purchasePriceWithGst) || (pPrice * (1 + gstRate / 100));
+      });
+    });
 
+    // 2. Re-link any legacy lots whose productId doesn't match catalog products but matches by SKU or normalized name
+    lots.forEach(l => {
+      const matchingProd = products.find(prod => isProductMatch(prod, l));
+      if (matchingProd && l.productId !== matchingProd.id) {
+        l.productId = matchingProd.id;
+        l.sku = matchingProd.sku || l.sku;
+        needsSave = true;
+      }
+    });
+
+    // 3. For products that have stock not covered by purchase bills, create an opening stock lot
+    products.forEach(prod => {
+      const prodLots = lots.filter(l => isProductMatch(prod, l));
+      const totalPurchasedQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
+      const pkg = getProductPackagingInfo(prod);
+      const currentStockUnits = pkg.effectiveUnits;
+      
+      if (totalPurchasedQty === 0 && currentStockUnits > 0) {
+        const pPrice = Number(prod.purchasePrice) || 0;
+        const gstRate = Number(prod.gstRate) || 0;
         lots.push({
-          id: `lot_purch_${p.id || Date.now()}_${item.id || idx}`,
-          productId: resolvedId,
-          productName: item.name || matchingProd?.name || 'Item',
-          sku: itemSku,
-          billId: p.id,
-          billNo: p.billNo || 'INWARD',
-          supplierName: p.partyName || 'Supplier',
-          date: p.date || (p.createdAt ? p.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
-          batchNo: item.batchNo || p.billNo || 'LOT-INWARD',
-          expiryDate: item.expiryDate || matchingProd?.expiryDate || '',
+          id: `lot_init_${prod.id}`,
+          productId: prod.id,
+          productName: prod.name,
+          sku: prod.sku || '',
+          billId: 'opening',
+          billNo: 'OPENING-STOCK',
+          supplierName: 'Opening Balance',
+          date: '2026-01-01',
+          batchNo: prod.batchNo || 'LOT-OPENING',
+          expiryDate: prod.expiryDate || '',
           purchasePrice: pPrice,
-          purchasePriceWithGst: pPriceWithGst,
+          purchasePriceWithGst: pPrice * (1 + gstRate / 100),
           gstRate,
-          qtyReceived: qty,
-          qtyRemaining: qty,
-          warehouseId: p.warehouseId || matchingProd?.warehouseId || 'wh_main'
+          qtyReceived: currentStockUnits,
+          qtyRemaining: currentStockUnits,
+          warehouseId: prod.warehouseId || 'wh_main'
         });
         needsSave = true;
       }
     });
-  });
 
-  // 2. Re-link any legacy lots whose productId doesn't match catalog products but matches by SKU or normalized name
-  lots.forEach(l => {
-    const matchingProd = products.find(prod => isProductMatch(prod, l));
-    if (matchingProd && l.productId !== matchingProd.id) {
-      l.productId = matchingProd.id;
-      l.sku = matchingProd.sku || l.sku;
-      needsSave = true;
-    }
-  });
-
-  // 3. For products that have stock not covered by purchase bills, create an opening stock lot
-  products.forEach(prod => {
-    const prodLots = lots.filter(l => isProductMatch(prod, l));
-    const totalPurchasedQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
-    const pkg = getProductPackagingInfo(prod);
-    const currentStockUnits = pkg.effectiveUnits;
-    
-    if (totalPurchasedQty === 0 && currentStockUnits > 0) {
-      const pPrice = Number(prod.purchasePrice) || 0;
-      const gstRate = Number(prod.gstRate) || 0;
-      lots.push({
-        id: `lot_init_${prod.id}`,
-        productId: prod.id,
-        productName: prod.name,
-        sku: prod.sku || '',
-        billId: 'opening',
-        billNo: 'OPENING-STOCK',
-        supplierName: 'Opening Balance',
-        date: '2026-01-01',
-        batchNo: prod.batchNo || 'LOT-OPENING',
-        expiryDate: prod.expiryDate || '',
-        purchasePrice: pPrice,
-        purchasePriceWithGst: pPrice * (1 + gstRate / 100),
-        gstRate,
-        qtyReceived: currentStockUnits,
-        qtyRemaining: currentStockUnits,
-        warehouseId: prod.warehouseId || 'wh_main'
+    // 4. Reconcile remaining lot quantities against existing stock (FIFO)
+    if (needsSave) {
+      products.forEach(prod => {
+        const pkg = getProductPackagingInfo(prod);
+        const prodLots = lots.filter(l => isProductMatch(prod, l)).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+        let targetStock = pkg.effectiveUnits;
+        
+        const totalLotQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
+        let qtyToConsume = Math.max(0, totalLotQty - targetStock);
+        
+        for (const lot of prodLots) {
+          if (qtyToConsume <= 0) break;
+          const currentRem = Number(lot.qtyRemaining) !== undefined ? Number(lot.qtyRemaining) : Number(lot.qtyReceived);
+          const take = Math.min(qtyToConsume, currentRem);
+          lot.qtyRemaining = Math.max(0, currentRem - take);
+          qtyToConsume -= take;
+        }
       });
-      needsSave = true;
+
+      setStorageData(STORAGE_KEYS.STOCK_LOTS, lots);
     }
-  });
 
-  // 4. Reconcile remaining lot quantities against existing stock (FIFO)
-  if (needsSave) {
-    products.forEach(prod => {
-      const pkg = getProductPackagingInfo(prod);
-      const prodLots = lots.filter(l => isProductMatch(prod, l)).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
-      let targetStock = pkg.effectiveUnits;
-      
-      const totalLotQty = prodLots.reduce((sum, l) => sum + (Number(l.qtyReceived) || 0), 0);
-      let qtyToConsume = Math.max(0, totalLotQty - targetStock);
-      
-      for (const lot of prodLots) {
-        if (qtyToConsume <= 0) break;
-        const currentRem = Number(lot.qtyRemaining) !== undefined ? Number(lot.qtyRemaining) : Number(lot.qtyReceived);
-        const take = Math.min(qtyToConsume, currentRem);
-        lot.qtyRemaining = Math.max(0, currentRem - take);
-        qtyToConsume -= take;
-      }
-    });
-
-    setStorageData(STORAGE_KEYS.STOCK_LOTS, lots);
+    _cachedStockLots = lots;
   }
 
   if (productId) {
+    const products = fetchProducts();
     const targetProd = products.find(p => p.id === productId || isProductMatch(p, { id: productId }));
-    return lots.filter(l => isProductMatch(targetProd, l));
+    return _cachedStockLots.filter(l => isProductMatch(targetProd, l));
   }
-  return lots;
+  return _cachedStockLots;
 };
 
 export const saveStockLot = (lotData) => {
@@ -1709,14 +1739,47 @@ export const calculateProductWeightedAvgCost = (productId) => {
   return totalQty > 0 ? Number((totalValue / totalQty).toFixed(2)) : 0;
 };
 
-export const getProductStockValuation = (productId = null) => {
-  const lots = fetchStockLots();
-  const products = fetchProducts();
+export const getCatalogStockValuation = (forceRefresh = false) => {
+  if (_cachedCatalogValuation && !forceRefresh) {
+    return _cachedCatalogValuation;
+  }
 
-  if (productId) {
-    const prod = products.find(p => p.id === productId || isProductMatch(p, { id: productId }));
+  const lots = fetchStockLots(null, forceRefresh);
+  const products = fetchProducts(forceRefresh);
+
+  // Group lots by matching product in a single O(N) pass
+  const lotsByProductId = new Map();
+  const prodBySku = new Map();
+  const prodByName = new Map();
+
+  products.forEach(p => {
+    if (p.sku) prodBySku.set(p.sku.trim().toLowerCase(), p);
+    if (p.name) prodByName.set(normalizeProductName(p.name), p);
+  });
+
+  lots.forEach(lot => {
+    let matchedProd = products.find(p => p.id === lot.productId);
+    if (!matchedProd && lot.sku) {
+      matchedProd = prodBySku.get(lot.sku.trim().toLowerCase());
+    }
+    if (!matchedProd && lot.productName) {
+      matchedProd = prodByName.get(normalizeProductName(lot.productName));
+    }
+    const matchedId = matchedProd ? matchedProd.id : lot.productId;
+    if (!lotsByProductId.has(matchedId)) {
+      lotsByProductId.set(matchedId, []);
+    }
+    lotsByProductId.get(matchedId).push(lot);
+  });
+
+  const productMap = {};
+  let grandTotalExGst = 0;
+  let grandTotalWithGst = 0;
+  let totalActiveLots = 0;
+
+  products.forEach(prod => {
     const pkg = getProductPackagingInfo(prod);
-    const allProductLots = lots.filter(l => isProductMatch(prod, l));
+    const allProductLots = lotsByProductId.get(prod.id) || [];
     const targetLots = allProductLots.filter(l => Number(l.qtyRemaining) > 0);
 
     // Auto-normalize any legacy opening lots that were recorded in raw pieces instead of packaging units
@@ -1765,7 +1828,7 @@ export const getProductStockValuation = (productId = null) => {
     // Distinct purchase rates in active lots
     const distinctRates = Array.from(new Set(targetLots.map(l => Number(l.purchasePrice) || 0)));
 
-    return {
+    const valObj = {
       totalExGst: Number(totalExGst.toFixed(2)),
       totalWithGst: Number(totalWithGst.toFixed(2)),
       totalRemainingQty: effectiveQty,
@@ -1778,24 +1841,49 @@ export const getProductStockValuation = (productId = null) => {
       allLots: allProductLots,
       pkg
     };
-  }
 
-  // Entire catalog valuation across all products
-  let grandTotalExGst = 0;
-  let grandTotalWithGst = 0;
-  let totalActiveLots = 0;
-
-  products.forEach(p => {
-    const val = getProductStockValuation(p.id);
-    grandTotalExGst += val.totalExGst;
-    grandTotalWithGst += val.totalWithGst;
-    totalActiveLots += val.activeLotsCount;
+    productMap[prod.id] = valObj;
+    grandTotalExGst += valObj.totalExGst;
+    grandTotalWithGst += valObj.totalWithGst;
+    totalActiveLots += valObj.activeLotsCount;
   });
 
-  return {
+  const result = {
     totalExGst: Number(grandTotalExGst.toFixed(2)),
     totalWithGst: Number(grandTotalWithGst.toFixed(2)),
-    activeLotsCount: totalActiveLots
+    activeLotsCount: totalActiveLots,
+    productMap
+  };
+
+  _cachedCatalogValuation = result;
+  return result;
+};
+
+export const getProductStockValuation = (productId = null, forceRefresh = false) => {
+  const catalogVal = getCatalogStockValuation(forceRefresh);
+  if (!productId) {
+    return catalogVal;
+  }
+  if (catalogVal.productMap && catalogVal.productMap[productId]) {
+    return catalogVal.productMap[productId];
+  }
+  const products = fetchProducts();
+  const prod = products.find(p => p.id === productId || isProductMatch(p, { id: productId }));
+  if (prod && catalogVal.productMap && catalogVal.productMap[prod.id]) {
+    return catalogVal.productMap[prod.id];
+  }
+  return {
+    totalExGst: 0,
+    totalWithGst: 0,
+    totalRemainingQty: 0,
+    avgUnitCostExGst: 0,
+    avgUnitCostWithGst: 0,
+    activeLotsCount: 0,
+    distinctRatesCount: 0,
+    distinctRates: [],
+    lots: [],
+    allLots: [],
+    pkg: { effectiveUnits: 0 }
   };
 };
 
