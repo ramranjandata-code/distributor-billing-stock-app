@@ -1626,26 +1626,36 @@ export const getProductStockValuation = (productId = null) => {
       });
     }
 
-    const totalRemainingQty = targetLots.reduce((sum, l) => sum + (Number(l.qtyRemaining) || 0), 0);
-    
-    let totalExGst = targetLots.reduce((sum, l) => sum + ((Number(l.qtyRemaining) || 0) * (Number(l.purchasePrice) || 0)), 0);
-    let totalWithGst = targetLots.reduce((sum, l) => {
-      const rateWithGst = Number(l.purchasePriceWithGst) || ((Number(l.purchasePrice) || 0) * (1 + (Number(l.gstRate) || 0) / 100));
-      return sum + ((Number(l.qtyRemaining) || 0) * rateWithGst);
-    }, 0);
-
     const stockOnHandUnits = pkg.effectiveUnits;
+    let totalExGst = 0;
+    let totalWithGst = 0;
+    let qtyLeftToValue = stockOnHandUnits;
 
-    // If current stock on hand (in packaging units) exceeds remaining lots, account for difference
-    if (stockOnHandUnits > totalRemainingQty) {
-      const diff = stockOnHandUnits - totalRemainingQty;
-      const pPrice = Number(prod?.purchasePrice) || 0;
-      const gRate = Number(prod?.gstRate) || 0;
-      totalExGst += diff * pPrice;
-      totalWithGst += diff * (pPrice * (1 + gRate / 100));
+    // Sort lots newest first so remaining closing stock is valued against most recent purchase rates
+    const sortedLots = [...targetLots].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    for (const lot of sortedLots) {
+      if (qtyLeftToValue <= 0) break;
+      const lotRemaining = Number(lot.qtyRemaining) || 0;
+      if (lotRemaining <= 0) continue;
+      const takeQty = Math.min(qtyLeftToValue, lotRemaining);
+      const lotPrice = Number(lot.purchasePrice) || 0;
+      const rateWithGst = Number(lot.purchasePriceWithGst) || (lotPrice * (1 + (Number(lot.gstRate) || 0) / 100));
+
+      totalExGst += takeQty * lotPrice;
+      totalWithGst += takeQty * rateWithGst;
+      qtyLeftToValue -= takeQty;
     }
 
-    const effectiveQty = Math.max(stockOnHandUnits, totalRemainingQty);
+    // If current stock on hand exceeds remaining lots, value remaining unbilled stock at master purchase price
+    if (qtyLeftToValue > 0) {
+      const pPrice = Number(prod?.purchasePrice) || 0;
+      const gRate = Number(prod?.gstRate) || 0;
+      totalExGst += qtyLeftToValue * pPrice;
+      totalWithGst += qtyLeftToValue * (pPrice * (1 + gRate / 100));
+    }
+
+    const effectiveQty = stockOnHandUnits;
     const avgExGst = effectiveQty > 0 ? Number((totalExGst / effectiveQty).toFixed(2)) : (Number(prod?.purchasePrice) || 0);
     const avgWithGst = effectiveQty > 0 ? Number((totalWithGst / effectiveQty).toFixed(2)) : ((Number(prod?.purchasePrice) || 0) * (1 + (Number(prod?.gstRate) || 0) / 100));
 
