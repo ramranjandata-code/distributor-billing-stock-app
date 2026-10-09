@@ -343,6 +343,11 @@ const SAMPLE_IDS = [
 
 // Initialize Storage with Defaults if missing
 export const initDataStorage = () => {
+  // If catalog is already initialized, skip all legacy migrations and redundant writes (0ms instant boot)
+  if (typeof localStorage !== 'undefined' && localStorage.getItem('distro_catalog_initialized') === 'true') {
+    return;
+  }
+
   // If no business or old dummy business exists, set clean default
   const existingBiz = getStorageData(STORAGE_KEYS.BUSINESS, null);
   if (!existingBiz || existingBiz.name === "Distributor Agency" || existingBiz.name === "Shree Ganesh Sales Agency" || existingBiz.gstin === "07AAACG1234F1Z8" || existingBiz.proprietor === "Rajesh Kumar Verma") {
@@ -894,16 +899,6 @@ export const initDataStorage = () => {
       localStorage.removeItem('distro_active_billing_draft');
     }
   } catch (e) {}
-
-  // Wipe Cloud DB sample rows as well
-  const client = getSupabaseClient();
-  if (client) {
-    SAMPLE_IDS.forEach(id => {
-      client.from('products').delete().eq('id', id).then(() => {}).catch(console.error);
-      client.from('parties').delete().eq('id', id).then(() => {}).catch(console.error);
-      client.from('invoices').delete().eq('id', id).then(() => {}).catch(console.error);
-    });
-  }
 };
 
 export const clearAllSampleData = () => {
@@ -1155,28 +1150,30 @@ export const pushLocalDataToCloud = async () => {
     }
   }
 
-  // 2. Secondary fallback mirror
-  try {
-    const metaPayload = { invoices, deletedIds, parties, suppliers, business, warehouses, expenses, lastUpdated: now };
-    const p1 = fetch(CLOUD_BINS.INVOICES_META, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(metaPayload)
-    });
-    const p2 = fetch(CLOUD_BINS.PURCHASES, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ purchases, lastUpdated: now })
-    });
-    const p3 = fetch(CLOUD_BINS.PRODUCTS, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ products, lastUpdated: now })
-    });
-    await Promise.all([p1, p2, p3]);
-    binSuccess = true;
-  } catch (err) {
-    console.warn('Cloud bin push error:', err);
+  // 2. Secondary fallback mirror (Only if Supabase is unavailable or failed)
+  if (!supabaseSuccess) {
+    try {
+      const metaPayload = { invoices, deletedIds, parties, suppliers, business, warehouses, expenses, lastUpdated: now };
+      const p1 = fetch(CLOUD_BINS.INVOICES_META, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(metaPayload)
+      });
+      const p2 = fetch(CLOUD_BINS.PURCHASES, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchases, lastUpdated: now })
+      });
+      const p3 = fetch(CLOUD_BINS.PRODUCTS, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products, lastUpdated: now })
+      });
+      await Promise.all([p1, p2, p3]);
+      binSuccess = true;
+    } catch (err) {
+      console.warn('Cloud bin push error:', err);
+    }
   }
 
   if (supabaseSuccess || binSuccess) {
@@ -1280,7 +1277,7 @@ export const autoCloudSync = async () => {
           autoCloudSync();
         }
       }
-    }, 60); // 60ms micro-debounce for ultra-fast response
+    }, 1200); // 1.2s smooth debounce to prevent CPU/network thrashing while maintaining rapid multi-device sync
   } catch (e) {
     console.warn('Auto cloud sync warning:', e);
   }
