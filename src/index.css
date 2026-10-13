@@ -463,7 +463,7 @@ input[type=number] {
 
   /* Default A4 Table Styles */
   .print-area:not(.print-area-a5) table th,
-  .print-area:not(.print-area-a5) table td {
+  .print-area:not(.print-area-a5) table td:not(.grand-total-label):not(.grand-total-val):not(.items-total-cell):not(.items-total-grand) {
     padding: 2.5px 6px !important;
     font-size: 10px !important;
     line-height: 1.2 !important;
@@ -498,10 +498,53 @@ input[type=number] {
     color: #000000 !important;
   }
 
-  /* Large Bold TOTAL AMOUNT for Print */
+  /* Large Bold TOTAL AMOUNT for A4 / Full Page Print */
+  .print-area.print-area-a4 .grand-total-label,
+  .print-area-a4 .grand-total-label,
+  .print-area:not(.print-area-a5) .grand-total-label {
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    padding: 6px 8px !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+  }
+
+  .print-area.print-area-a4 .grand-total-val,
+  .print-area-a4 .grand-total-val,
+  .print-area:not(.print-area-a5) .grand-total-val {
+    font-size: 25px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    letter-spacing: 0.5px !important;
+    padding: 6px 8px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Large Bold TOTAL AMOUNT for A3 Print */
+  .print-area.print-area-a3 .grand-total-label,
+  .print-area-a3 .grand-total-label {
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    padding: 8px 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  .print-area.print-area-a3 .grand-total-val,
+  .print-area-a3 .grand-total-val {
+    font-size: 28px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    letter-spacing: 0.5px !important;
+    padding: 8px 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Large Bold TOTAL AMOUNT for Half-Page / A5 Print */
   .print-area.print-area-a5 .grand-total-label,
-  .print-area-a5 .grand-total-label,
-  .grand-total-label {
+  .print-area-a5 .grand-total-label {
     font-size: 13.5px !important;
     font-weight: 900 !important;
     color: #000000 !important;
@@ -510,14 +553,44 @@ input[type=number] {
   }
 
   .print-area.print-area-a5 .grand-total-val,
-  .print-area-a5 .grand-total-val,
-  .grand-total-val {
+  .print-area-a5 .grand-total-val {
     font-size: 19px !important;
     font-weight: 900 !important;
     color: #000000 !important;
     letter-spacing: 0.5px !important;
     padding: 4px 6px !important;
     line-height: 1.2 !important;
+  }
+
+  /* Items Table Summary Row for A4 */
+  .print-area.print-area-a4 .items-total-cell,
+  .print-area-a4 .items-total-cell,
+  .print-area:not(.print-area-a5) .items-total-cell {
+    font-size: 11.5px !important;
+    font-weight: 900 !important;
+    padding: 3.5px 6px !important;
+  }
+
+  .print-area.print-area-a4 .items-total-grand,
+  .print-area-a4 .items-total-grand,
+  .print-area:not(.print-area-a5) .items-total-grand {
+    font-size: 13.5px !important;
+    font-weight: 900 !important;
+    padding: 3.5px 6px !important;
+  }
+
+  /* Fallback grand-total */
+  .grand-total-label {
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+
+  .grand-total-val {
+    font-size: 22px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    letter-spacing: 0.5px !important;
   }
 
   .print-area.print-area-a5 .items-table tr,
