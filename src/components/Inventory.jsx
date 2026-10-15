@@ -1153,11 +1153,20 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
       alert('Please allow popups to print the purchase bill.');
       return;
     }
+    const billNo = String(bill.billNo || bill.id || '').trim();
+    const vendorName = String(bill.partyName || '').trim();
+    const billTitleParts = [];
+    if (billNo) billTitleParts.push(`Bill ${billNo}`);
+    if (vendorName) billTitleParts.push(vendorName);
+    const docTitle = billTitleParts.length > 0
+      ? billTitleParts.join(' - ').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim()
+      : `Purchase Bill - ${bill.id}`;
+
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Purchase Bill - ${bill.billNo || bill.id}</title>
+        <title>${docTitle}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #1e293b; line-height: 1.4; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px; }

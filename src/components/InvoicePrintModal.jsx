@@ -127,6 +127,36 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     };
   }, []);
 
+  const currentInvNo = editMode ? (editInvoiceNo || invoice.invoiceNo) : invoice.invoiceNo;
+  const currentPartyName = editMode 
+    ? (editCustomerName || invoice.partyName || invoice.customerName) 
+    : (invoice.partyName || invoice.customerName || (partyObj ? partyObj.name : ''));
+
+  // Set document.title to "InvNo - PartyName" while modal is open so browser "Save as PDF" uses this filename
+  useEffect(() => {
+    const originalTitle = document.title;
+    const invNo = String(currentInvNo || '').trim();
+    const partyName = String(currentPartyName || '').trim();
+
+    const parts = [];
+    if (invNo) parts.push(invNo);
+    if (partyName) parts.push(partyName);
+
+    let pdfTitle = parts.length > 0
+      ? parts.join(' - ').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim()
+      : 'Tax Invoice';
+
+    if (invoice?.state === 'cancel' || invoice?.isVoid) {
+      pdfTitle += ' (CANCELLED)';
+    }
+
+    document.title = pdfTitle;
+
+    return () => {
+      document.title = originalTitle;
+    };
+  }, [currentInvNo, currentPartyName, invoice?.state, invoice?.isVoid]);
+
   // Generate dynamic QR codes locally & offline
   useEffect(() => {
     // If user has uploaded a custom UPI QR image, use it directly
@@ -145,6 +175,23 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       setShowOverflowWarning(true);
       return;
     }
+
+    // Ensure document.title is set to "InvNo - PartyName" right before opening browser print/PDF dialog
+    const invNo = String(currentInvNo || '').trim();
+    const partyName = String(currentPartyName || '').trim();
+    const parts = [];
+    if (invNo) parts.push(invNo);
+    if (partyName) parts.push(partyName);
+
+    let pdfTitle = parts.length > 0
+      ? parts.join(' - ').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim()
+      : 'Tax Invoice';
+
+    if (invoice?.state === 'cancel' || invoice?.isVoid) {
+      pdfTitle += ' (CANCELLED)';
+    }
+
+    document.title = pdfTitle;
     window.print();
   };
 
@@ -694,9 +741,14 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               </button>
             )}
 
-            <button onClick={handlePrint} className="btn btn-primary" style={{ gap: '6px', padding: '6px 14px', fontSize: '0.85rem' }}>
+            <button 
+              onClick={handlePrint} 
+              className="btn btn-primary" 
+              style={{ gap: '6px', padding: '6px 14px', fontSize: '0.85rem' }}
+              title="Print Bill or Save as PDF (Ctrl+P)"
+            >
               <Printer size={16} />
-              <span>Print Bill</span>
+              <span>Print / Save PDF</span>
             </button>
 
             <button 
@@ -1717,7 +1769,7 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
               onClick={() => {
                 setShowOverflowWarning(false);
                 changePaperFormat('A4');
-                setTimeout(() => window.print(), 250);
+                setTimeout(() => handlePrint(true), 250);
               }}
               style={{
                 background: '#1d4ed8',
