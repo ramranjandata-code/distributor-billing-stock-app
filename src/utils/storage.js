@@ -943,6 +943,11 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
   const map = new Map();
   const invNoMap = new Map();
 
+  const isDummyItems = (items) => {
+    if (!Array.isArray(items) || items.length === 0) return true;
+    return items.every(it => !it.name || it.name.startsWith('Goods Sold / Items as billed to') || it.productId === 'prod_restored_summary');
+  };
+
   const processInvoice = (inv) => {
     if (!inv) return;
     const id = inv.id || (inv.invoiceNo ? `inv_auto_${String(inv.invoiceNo).trim()}` : null);
@@ -954,15 +959,62 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
       const existing = map.get(existingId);
       const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
       const newItems = Array.isArray(inv?.items) ? inv.items.length : 0;
-      if (newItems >= existingItems) {
-        map.set(existingId, { ...existing, ...inv, id: existingId });
+
+      const existingIsDummy = isDummyItems(existing?.items);
+      const newIsDummy = isDummyItems(inv?.items);
+
+      // Prefer real items over dummy items, or whichever has more items
+      const preferNew = (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
+
+      const mergedPartyGstin = (inv.partyGstin && inv.partyGstin.trim()) ? inv.partyGstin.trim() : (existing?.partyGstin || '');
+      const mergedPartyAddress = (inv.partyAddress && inv.partyAddress.trim()) ? inv.partyAddress.trim() : (existing?.partyAddress || '');
+
+      if (preferNew) {
+        map.set(existingId, {
+          ...existing,
+          ...inv,
+          partyGstin: mergedPartyGstin,
+          partyAddress: mergedPartyAddress,
+          id: existingId
+        });
+      } else {
+        map.set(existingId, {
+          ...inv,
+          ...existing,
+          partyGstin: mergedPartyGstin,
+          partyAddress: mergedPartyAddress,
+          id: existingId
+        });
       }
       return;
     }
 
     if (map.has(id)) {
       const existing = map.get(id);
-      map.set(id, { ...existing, ...inv });
+      const existingIsDummy = isDummyItems(existing?.items);
+      const newIsDummy = isDummyItems(inv?.items);
+      const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
+      const newItems = Array.isArray(inv?.items) ? inv.items.length : 0;
+      const preferNew = (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
+
+      const mergedPartyGstin = (inv.partyGstin && inv.partyGstin.trim()) ? inv.partyGstin.trim() : (existing?.partyGstin || '');
+      const mergedPartyAddress = (inv.partyAddress && inv.partyAddress.trim()) ? inv.partyAddress.trim() : (existing?.partyAddress || '');
+
+      if (preferNew) {
+        map.set(id, {
+          ...existing,
+          ...inv,
+          partyGstin: mergedPartyGstin,
+          partyAddress: mergedPartyAddress
+        });
+      } else {
+        map.set(id, {
+          ...inv,
+          ...existing,
+          partyGstin: mergedPartyGstin,
+          partyAddress: mergedPartyAddress
+        });
+      }
     } else {
       map.set(id, inv);
       if (invNo) invNoMap.set(invNo, id);
@@ -971,6 +1023,51 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
 
   (remoteArr || []).forEach(processInvoice);
   (localArr || []).forEach(processInvoice);
+  return Array.from(map.values());
+};
+
+export const mergeParties = (localArr = [], remoteArr = [], customDeletedSet = null) => {
+  const delSet = customDeletedSet instanceof Set ? customDeletedSet : new Set(getDeletedIds());
+  const map = new Map();
+  const nameMap = new Map();
+
+  const processParty = (p) => {
+    if (!p) return;
+    const id = p.id || (p.name ? `party_auto_${String(p.name).trim().toLowerCase().replace(/\s+/g, '_')}` : null);
+    if (!id || SAMPLE_IDS.includes(id) || delSet.has(id)) return;
+    const normName = p.name ? String(p.name).trim().toUpperCase() : null;
+
+    if (normName && nameMap.has(normName)) {
+      const existingId = nameMap.get(normName);
+      const existing = map.get(existingId);
+      map.set(existingId, {
+        ...existing,
+        ...p,
+        gstin: (p.gstin && p.gstin.trim()) ? p.gstin.trim() : (existing?.gstin || ''),
+        address: (p.address && p.address.trim()) ? p.address.trim() : (existing?.address || ''),
+        phone: (p.phone && p.phone.trim()) ? p.phone.trim() : (existing?.phone || ''),
+        id: existingId
+      });
+      return;
+    }
+
+    if (map.has(id)) {
+      const existing = map.get(id);
+      map.set(id, {
+        ...existing,
+        ...p,
+        gstin: (p.gstin && p.gstin.trim()) ? p.gstin.trim() : (existing?.gstin || ''),
+        address: (p.address && p.address.trim()) ? p.address.trim() : (existing?.address || ''),
+        phone: (p.phone && p.phone.trim()) ? p.phone.trim() : (existing?.phone || '')
+      });
+    } else {
+      map.set(id, p);
+      if (normName) nameMap.set(normName, id);
+    }
+  };
+
+  (remoteArr || []).forEach(processParty);
+  (localArr || []).forEach(processParty);
   return Array.from(map.values());
 };
 
@@ -1070,7 +1167,7 @@ export const fetchCloudData = async (force = false) => {
           setStorageData(STORAGE_KEYS.PRODUCTS, mergedProds);
 
           const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
-          const mergedParties = mergeById(localParties, remote.parties || [], activeDelSet);
+          const mergedParties = mergeParties(localParties, remote.parties || [], activeDelSet);
           setStorageData(STORAGE_KEYS.PARTIES, mergedParties);
 
           if (Array.isArray(remote.suppliers)) {
