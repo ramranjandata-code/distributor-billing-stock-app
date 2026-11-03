@@ -938,6 +938,77 @@ const getActiveCloudCredentials = () => {
   };
 };
 
+export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = null) => {
+  const delSet = customDeletedSet instanceof Set ? customDeletedSet : new Set(getDeletedIds());
+  const map = new Map();
+  const invNoMap = new Map();
+
+  const processInvoice = (inv) => {
+    if (!inv) return;
+    const id = inv.id || (inv.invoiceNo ? `inv_auto_${String(inv.invoiceNo).trim()}` : null);
+    if (!id || SAMPLE_IDS.includes(id) || delSet.has(id)) return;
+    const invNo = inv.invoiceNo ? String(inv.invoiceNo).trim().toUpperCase() : null;
+
+    if (invNo && invNoMap.has(invNo)) {
+      const existingId = invNoMap.get(invNo);
+      const existing = map.get(existingId);
+      const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
+      const newItems = Array.isArray(inv?.items) ? inv.items.length : 0;
+      if (newItems >= existingItems) {
+        map.set(existingId, { ...existing, ...inv, id: existingId });
+      }
+      return;
+    }
+
+    if (map.has(id)) {
+      const existing = map.get(id);
+      map.set(id, { ...existing, ...inv });
+    } else {
+      map.set(id, inv);
+      if (invNo) invNoMap.set(invNo, id);
+    }
+  };
+
+  (remoteArr || []).forEach(processInvoice);
+  (localArr || []).forEach(processInvoice);
+  return Array.from(map.values());
+};
+
+export const mergePurchases = (localArr = [], remoteArr = [], customDeletedSet = null) => {
+  const delSet = customDeletedSet instanceof Set ? customDeletedSet : new Set(getDeletedIds());
+  const map = new Map();
+  const billNoMap = new Map();
+
+  const processPurchase = (p) => {
+    if (!p) return;
+    const id = p.id || (p.billNo ? `pur_auto_${String(p.billNo).trim()}` : null);
+    if (!id || delSet.has(id)) return;
+    const billNo = p.billNo ? String(p.billNo).trim().toUpperCase() : null;
+
+    if (billNo && billNoMap.has(billNo)) {
+      const existingId = billNoMap.get(billNo);
+      const existing = map.get(existingId);
+      const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
+      const newItems = Array.isArray(p?.items) ? p.items.length : 0;
+      if (newItems >= existingItems) {
+        map.set(existingId, { ...existing, ...p, id: existingId });
+      }
+      return;
+    }
+
+    if (map.has(id)) {
+      map.set(id, { ...map.get(id), ...p });
+    } else {
+      map.set(id, p);
+      if (billNo) billNoMap.set(billNo, id);
+    }
+  };
+
+  (remoteArr || []).forEach(processPurchase);
+  (localArr || []).forEach(processPurchase);
+  return Array.from(map.values());
+};
+
 const mergeById = (localArr = [], remoteArr = [], customDeletedSet = null) => {
   const delSet = customDeletedSet instanceof Set ? customDeletedSet : new Set(getDeletedIds());
   const map = new Map();
@@ -984,11 +1055,28 @@ export const fetchCloudData = async (force = false) => {
             recordDeletedIds(remote.deletedIds);
           }
           const activeDelSet = new Set(getDeletedIds());
-          if (Array.isArray(remote.invoices)) setStorageData(STORAGE_KEYS.INVOICES, remote.invoices.filter(i => !activeDelSet.has(i.id)));
-          if (Array.isArray(remote.purchases)) setStorageData(STORAGE_KEYS.PURCHASES, remote.purchases.filter(p => !activeDelSet.has(p.id)));
-          if (Array.isArray(remote.products)) setStorageData(STORAGE_KEYS.PRODUCTS, remote.products.filter(p => !activeDelSet.has(p.id)));
-          if (Array.isArray(remote.parties)) setStorageData(STORAGE_KEYS.PARTIES, remote.parties.filter(p => !activeDelSet.has(p.id)));
-          if (Array.isArray(remote.suppliers)) setStorageData(STORAGE_KEYS.SUPPLIERS, remote.suppliers);
+
+          // SMART TWO-WAY MERGE: Never wipe out local invoices or remote invoices!
+          const localInvs = getStorageData(STORAGE_KEYS.INVOICES, []);
+          const mergedInvs = mergeInvoices(localInvs, remote.invoices || [], activeDelSet);
+          setStorageData(STORAGE_KEYS.INVOICES, mergedInvs);
+
+          const localPurch = getStorageData(STORAGE_KEYS.PURCHASES, []);
+          const mergedPurch = mergePurchases(localPurch, remote.purchases || [], activeDelSet);
+          setStorageData(STORAGE_KEYS.PURCHASES, mergedPurch);
+
+          const localProds = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+          const mergedProds = mergeById(localProds, remote.products || [], activeDelSet);
+          setStorageData(STORAGE_KEYS.PRODUCTS, mergedProds);
+
+          const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+          const mergedParties = mergeById(localParties, remote.parties || [], activeDelSet);
+          setStorageData(STORAGE_KEYS.PARTIES, mergedParties);
+
+          if (Array.isArray(remote.suppliers)) {
+            const localSupp = getStorageData(STORAGE_KEYS.SUPPLIERS, []);
+            setStorageData(STORAGE_KEYS.SUPPLIERS, mergeById(localSupp, remote.suppliers));
+          }
           if (remote.business && remote.business.name) setStorageData(STORAGE_KEYS.BUSINESS, remote.business);
           if (Array.isArray(remote.warehouses) && remote.warehouses.length > 0) setStorageData(STORAGE_KEYS.WAREHOUSES, remote.warehouses);
           if (Array.isArray(remote.expenses)) setStorageData(STORAGE_KEYS.EXPENSES, remote.expenses.filter(e => !activeDelSet.has(e.id)));
@@ -1033,12 +1121,13 @@ export const fetchCloudData = async (force = false) => {
           const activeDelSet = new Set(getDeletedIds());
 
           if (Array.isArray(meta.invoices)) {
-            const cleanInvoices = meta.invoices.filter(i => i && !activeDelSet.has(i.id));
-            setStorageData(STORAGE_KEYS.INVOICES, cleanInvoices);
+            const localInvs = getStorageData(STORAGE_KEYS.INVOICES, []);
+            setStorageData(STORAGE_KEYS.INVOICES, mergeInvoices(localInvs, meta.invoices, activeDelSet));
           }
 
           if (Array.isArray(meta.parties)) {
-            setStorageData(STORAGE_KEYS.PARTIES, meta.parties.filter(p => p && !activeDelSet.has(p.id)));
+            const localParties = getStorageData(STORAGE_KEYS.PARTIES, []);
+            setStorageData(STORAGE_KEYS.PARTIES, mergeById(localParties, meta.parties, activeDelSet));
           }
 
           if (Array.isArray(meta.suppliers)) {
@@ -1064,7 +1153,8 @@ export const fetchCloudData = async (force = false) => {
           if (purRes && purRes.ok) {
             const purData = await purRes.json().catch(() => null);
             if (Array.isArray(purData?.purchases)) {
-              setStorageData(STORAGE_KEYS.PURCHASES, purData.purchases.filter(p => p && !activeDelSet.has(p.id)));
+              const localPurch = getStorageData(STORAGE_KEYS.PURCHASES, []);
+              setStorageData(STORAGE_KEYS.PURCHASES, mergePurchases(localPurch, purData.purchases, activeDelSet));
             }
           }
 
@@ -1075,7 +1165,8 @@ export const fetchCloudData = async (force = false) => {
           if (prodRes && prodRes.ok) {
             const prodData = await prodRes.json().catch(() => null);
             if (Array.isArray(prodData?.products)) {
-              setStorageData(STORAGE_KEYS.PRODUCTS, prodData.products.filter(p => p && !activeDelSet.has(p.id)));
+              const localProds = getStorageData(STORAGE_KEYS.PRODUCTS, []);
+              setStorageData(STORAGE_KEYS.PRODUCTS, mergeById(localProds, prodData.products, activeDelSet));
             }
           }
 
@@ -1096,35 +1187,70 @@ export const fetchCloudData = async (force = false) => {
 
 export const pushLocalDataToCloud = async () => {
   const activeDelSet = new Set(getDeletedIds());
-  const invoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !activeDelSet.has(i.id));
+  let localInvoices = getStorageData(STORAGE_KEYS.INVOICES, []).filter(i => i && !activeDelSet.has(i.id));
   const deletedIds = getDeletedIds();
-  const parties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !activeDelSet.has(p.id));
-  const suppliers = getStorageData(STORAGE_KEYS.SUPPLIERS, []);
-  const business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
-  const warehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
-  const expenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !activeDelSet.has(e.id));
-  const purchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !activeDelSet.has(p.id));
-  const products = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !activeDelSet.has(p.id));
-  const stockLots = getStorageData(STORAGE_KEYS.STOCK_LOTS, []);
-  const currentOperator = getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
+  let localParties = getStorageData(STORAGE_KEYS.PARTIES, []).filter(p => p && !activeDelSet.has(p.id));
+  let localSuppliers = getStorageData(STORAGE_KEYS.SUPPLIERS, []);
+  let business = getStorageData(STORAGE_KEYS.BUSINESS, DEFAULT_BUSINESS);
+  let localWarehouses = getStorageData(STORAGE_KEYS.WAREHOUSES, DEFAULT_WAREHOUSES);
+  let expenses = getStorageData(STORAGE_KEYS.EXPENSES, []).filter(e => e && !activeDelSet.has(e.id));
+  let localPurchases = getStorageData(STORAGE_KEYS.PURCHASES, []).filter(p => p && !activeDelSet.has(p.id));
+  let localProducts = getStorageData(STORAGE_KEYS.PRODUCTS, []).filter(p => p && !activeDelSet.has(p.id));
+  let stockLots = getStorageData(STORAGE_KEYS.STOCK_LOTS, []);
+  let currentOperator = getStorageData(STORAGE_KEYS.CURRENT_OPERATOR, DEFAULT_OPERATOR);
   const now = Date.now();
 
   let supabaseSuccess = false;
   let binSuccess = false;
 
-  // 1. Push to Supabase Cloud Database (Primary)
+  // 1. Push to Supabase Cloud Database with SMART TWO-WAY MERGE (Zero overwrite loss)
   const client = getSupabaseClient();
   if (client) {
     try {
+      // PRE-FETCH remote to combine data so NO device ever overwrites bills from another device!
+      let finalInvoices = localInvoices;
+      let finalPurchases = localPurchases;
+      let finalProducts = localProducts;
+      let finalParties = localParties;
+      let finalSuppliers = localSuppliers;
+
+      try {
+        const { data: rows } = await client
+          .from('distro_cloud_store')
+          .select('beat')
+          .eq('id', STORE_DATA_ID)
+          .limit(1);
+
+        if (rows && rows[0] && rows[0].beat) {
+          const remote = decompressDataLossless(rows[0].beat);
+          if (remote) {
+            finalInvoices = mergeInvoices(localInvoices, remote.invoices || [], activeDelSet);
+            finalPurchases = mergePurchases(localPurchases, remote.purchases || [], activeDelSet);
+            finalProducts = mergeById(localProducts, remote.products || [], activeDelSet);
+            finalParties = mergeById(localParties, remote.parties || [], activeDelSet);
+            finalSuppliers = mergeById(localSuppliers, remote.suppliers || []);
+
+            // Immediately persist merged records locally as well
+            setStorageData(STORAGE_KEYS.INVOICES, finalInvoices);
+            setStorageData(STORAGE_KEYS.PURCHASES, finalPurchases);
+            setStorageData(STORAGE_KEYS.PRODUCTS, finalProducts);
+            setStorageData(STORAGE_KEYS.PARTIES, finalParties);
+            setStorageData(STORAGE_KEYS.SUPPLIERS, finalSuppliers);
+          }
+        }
+      } catch (mergeErr) {
+        console.warn('Supabase pre-merge fetch error:', mergeErr);
+      }
+
       const rawBeat = JSON.stringify({
         business,
-        products,
-        parties,
-        suppliers,
-        invoices,
-        purchases,
+        products: finalProducts,
+        parties: finalParties,
+        suppliers: finalSuppliers,
+        invoices: finalInvoices,
+        purchases: finalPurchases,
         expenses,
-        warehouses,
+        warehouses: localWarehouses,
         stockLots,
         currentOperator,
         deletedIds,
@@ -1142,6 +1268,16 @@ export const pushLocalDataToCloud = async () => {
       const { error } = await client.from('distro_cloud_store').upsert(payload);
       if (!error) {
         supabaseSuccess = true;
+        // Also save daily snapshot in Supabase for disaster recovery
+        try {
+          const today = new Date().toISOString().split('T')[0];
+          await client.from('distro_cloud_store').upsert({
+            id: `distropulse_snapshot_${today}`,
+            name: `DAILY_SNAPSHOT_${today}`,
+            beat: compressedBeat,
+            updated_at: new Date().toISOString()
+          });
+        } catch (snapErr) {}
       } else {
         console.warn('Supabase upsert warning:', error);
       }
