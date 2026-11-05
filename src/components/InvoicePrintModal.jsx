@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle } from 'lucide-react';
-import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, updateInvoice, saveParty } from '../utils/storage';
+import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, fetchInvoices, updateInvoice, saveParty } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
+import Billing from './Billing';
 
 // Number to Words Converter for Indian Currency Format
 function numToWords(num) {
@@ -83,7 +84,12 @@ function numToWordsIndian(num, isTax = false) {
   return `INR ${words} Only`;
 }
 
-export default function InvoicePrintModal({ invoice, business, onClose, refreshAllData, onEditInvoice }) {
+export default function InvoicePrintModal({ invoice: initialInvoice, business, onClose, refreshAllData, onEditInvoice, handlePrintInvoice }) {
+  const [invoice, setInvoice] = useState(initialInvoice);
+  useEffect(() => {
+    setInvoice(initialInvoice);
+  }, [initialInvoice]);
+
   const [paperFormat, setPaperFormat] = useState(() => localStorage.getItem('distro_default_paper_format') || 'A5');
   const [themeColor, setThemeColor] = useState(() => localStorage.getItem('distro_invoice_theme') || '#059669');
   const [upiQrUrl, setUpiQrUrl] = useState(null);
@@ -206,17 +212,6 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   };
 
   const handleEditInvoice = () => {
-    // Open inline edit panel — no delete, no navigation
-    setEditInvoiceNo(invoice.invoiceNo || '');
-    setEditItems((invoice.items || []).map(item => ({ ...item })));
-    setEditPartyId(invoice.partyId || '');
-    setEditCustomerName(invoice.partyName || invoice.customerName || '');
-    setEditPartyGstin(invoice.partyGstin || partyObj?.gstin || '');
-    setEditPartyAddress(invoice.partyAddress || (partyObj ? (partyObj.address || partyObj.city) : '') || '');
-    setEditPaymentStatus(invoice.paymentStatus || 'PAID');
-    setEditPaymentMode(invoice.paymentMode || 'CASH');
-    setEditPaidAmount(invoice.paidAmount || '');
-    setEditNotes(invoice.notes || '');
     setEditMode(true);
   };
 
@@ -1495,240 +1490,98 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       </div>
     </div>
 
-    {/* Inline Edit Bill Panel */}
+    {/* Full POS Billing Edit Bill Modal */}
     {editMode && (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-        <div style={{ background: 'var(--bg-card)', borderRadius: '14px', width: '100%', maxWidth: '720px', maxHeight: '90vh', overflow: 'auto', padding: '24px', border: '1px solid var(--border-color)' }}>
-          
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
-            <div>
-              <div style={{ fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Edit3 size={18} color="#d97706" />
-                Edit Bill — {editInvoiceNo || invoice.invoiceNo}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>You can update items, party, payment, or invoice number. Changes save instantly.</div>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.75)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 3000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '12px'
+      }}>
+        <div style={{
+          background: 'var(--bg-main, #0f172a)',
+          borderRadius: '16px',
+          width: '98vw',
+          maxWidth: '1500px',
+          height: '96vh',
+          maxHeight: '96vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+          border: '1px solid var(--border-color)'
+        }}>
+          {/* Top Header */}
+          <div style={{
+            padding: '10px 18px',
+            background: 'var(--bg-card, #1e293b)',
+            borderBottom: '1px solid var(--border-color)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexShrink: 0
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{
+                background: '#d97706',
+                color: '#fff',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontWeight: '800',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <Edit3 size={14} /> EDIT INVOICE POPUP
+              </span>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                Editing Invoice #{invoice.invoiceNo} — {invoice.partyName || invoice.customerName}
+              </h2>
             </div>
-            <button onClick={() => setEditMode(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Top Row: Invoice Number & Customer / Party */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                Invoice Number (Customizable)
-              </label>
-              <input
-                type="text"
-                className="input-field"
-                value={editInvoiceNo}
-                onChange={e => setEditInvoiceNo(e.target.value)}
-                placeholder="e.g. 206 or INV-206"
-                style={{ fontWeight: '700' }}
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                Customer / Party
-              </label>
-              <select
-                className="input-field"
-                value={editPartyId}
-                onChange={e => {
-                  const p = fetchParties().find(x => x.id === e.target.value);
-                  setEditPartyId(e.target.value);
-                  if (p) setEditCustomerName(p.name);
-                }}
-                style={{ marginBottom: '6px' }}
-              >
-                <option value="">-- Cash Customer --</option>
-                {fetchParties().map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              {!editPartyId && (
-                <input
-                  className="input-field"
-                  placeholder="Customer name (optional)"
-                  value={editCustomerName}
-                  onChange={e => setEditCustomerName(e.target.value)}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Items Table */}
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Items</label>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Product</th>
-                    <th style={{ padding: '8px', textAlign: 'center', width: '80px' }}>Qty</th>
-                    <th style={{ padding: '8px', textAlign: 'right', width: '100px' }}>Rate (₹)</th>
-                    <th style={{ padding: '8px', textAlign: 'right', width: '90px' }}>Total</th>
-                    <th style={{ padding: '8px', width: '40px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {editItems.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '8px', fontWeight: '600', color: 'var(--text-main)' }}>
-                        {item.name || item.productName}
-                        {item.hsn && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>HSN: {item.hsn}</div>}
-                      </td>
-                      <td style={{ padding: '6px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = [...editItems];
-                              updated[idx] = { ...updated[idx], qty: Math.max(1, (Number(updated[idx].qty) || 1) - 1) };
-                              setEditItems(updated);
-                            }}
-                            style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <Minus size={12} />
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.qty}
-                            onChange={e => {
-                              const updated = [...editItems];
-                              updated[idx] = { ...updated[idx], qty: Number(e.target.value) || 1 };
-                              setEditItems(updated);
-                            }}
-                            style={{ width: '44px', textAlign: 'center', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '2px 4px', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.84rem' }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = [...editItems];
-                              updated[idx] = { ...updated[idx], qty: (Number(updated[idx].qty) || 1) + 1 };
-                              setEditItems(updated);
-                            }}
-                            style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          >
-                            <Plus size={12} />
-                          </button>
-                        </div>
-                      </td>
-                      <td style={{ padding: '6px' }}>
-                        <input
-                          type="number"
-                          value={item.price}
-                          onChange={e => {
-                            const updated = [...editItems];
-                            updated[idx] = { ...updated[idx], price: Number(e.target.value) || 0 };
-                            setEditItems(updated);
-                          }}
-                          style={{ width: '90px', textAlign: 'right', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 6px', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.84rem' }}
-                        />
-                      </td>
-                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)' }}>
-                        ₹{((Number(item.price) || 0) * (Number(item.qty) || 0)).toFixed(2)}
-                      </td>
-                      <td style={{ padding: '6px', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => setEditItems(editItems.filter((_, i) => i !== idx))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171' }}
-                          title="Remove item"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Add Product from inventory */}
-            <div style={{ marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <select
-                className="input-field"
-                style={{ flex: 1, minWidth: '200px' }}
-                value=""
-                onChange={e => {
-                  if (!e.target.value) return;
-                  const prod = fetchProducts().find(p => p.id === e.target.value);
-                  if (prod) {
-                    setEditItems([...editItems, {
-                      productId: prod.id,
-                      name: prod.name,
-                      hsn: prod.hsn || '',
-                      price: prod.salePrice || prod.mrp || 0,
-                      qty: 1,
-                      unit: prod.unit || 'Pcs',
-                      gstRate: prod.gstRate || 0,
-                      mrp: prod.mrp || 0,
-                      pcsPerCarton: prod.pcsPerCarton || 24,
-                      total: prod.salePrice || 0
-                    }]);
-                  }
-                  e.target.value = '';
-                }}
-              >
-                <option value="">+ Add product from inventory...</option>
-                {fetchProducts().map(p => <option key={p.id} value={p.id}>{p.name} — ₹{p.salePrice}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Payment */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Payment Status</label>
-              <select className="input-field" value={editPaymentStatus} onChange={e => setEditPaymentStatus(e.target.value)}>
-                <option value="PAID">PAID</option>
-                <option value="UNPAID">UNPAID</option>
-                <option value="PARTIAL">PARTIAL</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Payment Mode</label>
-              <select className="input-field" value={editPaymentMode} onChange={e => setEditPaymentMode(e.target.value)}>
-                <option value="CASH">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="NEFT">NEFT / Bank Transfer</option>
-                <option value="CHEQUE">Cheque</option>
-              </select>
-            </div>
-            {editPaymentStatus === 'PARTIAL' && (
-              <div>
-                <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Amount Paid (₹)</label>
-                <input type="number" className="input-field" value={editPaidAmount} onChange={e => setEditPaidAmount(e.target.value)} />
-              </div>
-            )}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ fontSize: '0.82rem', fontWeight: '600', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Notes</label>
-              <input type="text" className="input-field" value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Optional note..." />
-            </div>
-          </div>
-
-          {/* Grand Total Preview */}
-          <div style={{ padding: '12px 16px', background: 'rgba(5,150,105,0.08)', borderRadius: '8px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: '700', color: 'var(--text-main)' }}>New Grand Total:</span>
-            <span style={{ fontSize: '1.2rem', fontWeight: '900', color: 'var(--primary)' }}>
-              ₹{editItems.reduce((s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 0), 0).toFixed(2)}
-            </span>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <button onClick={() => setEditMode(false)} className="btn btn-secondary">Cancel</button>
             <button
-              onClick={handleSaveEdit}
-              className="btn btn-primary"
-              style={{ gap: '6px', display: 'flex', alignItems: 'center' }}
+              onClick={() => setEditMode(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                padding: '6px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              title="Close Edit"
             >
-              <Save size={16} />
-              Update Bill
+              <X size={22} />
             </button>
+          </div>
+
+          {/* Content: Full POS Billing Screen in exact same format */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
+            <Billing
+              editingInvoice={invoice}
+              products={fetchProducts()}
+              parties={fetchParties()}
+              business={business}
+              invoices={fetchInvoices()}
+              refreshAllData={refreshAllData}
+              handlePrintInvoice={handlePrintInvoice}
+              onCancelEdit={() => setEditMode(false)}
+              onSaveEditedInvoice={(updatedInv) => {
+                if (updatedInv) setInvoice(updatedInv);
+                setEditMode(false);
+                if (refreshAllData) refreshAllData();
+              }}
+            />
           </div>
         </div>
       </div>

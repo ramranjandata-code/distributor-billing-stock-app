@@ -19,10 +19,12 @@ import {
   Send,
   Layers,
   Edit3,
-  Ban
+  Ban,
+  X
 } from 'lucide-react';
 import { deleteInvoice, formatDateDDMMYY, compareInvoicesDesc, extractInvoiceNumericValue } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
+import Billing from './Billing';
 
 export default function InvoiceHistory({ 
   invoices = [], 
@@ -575,33 +577,96 @@ export default function InvoiceHistory({
         )}
       </div>
 
-      {/* 5. Full Odoo Invoice Studio Modal */}
+      {/* 5. Full POS Billing Edit Modal */}
       {selectedInvoiceForEdit !== null && (
-        <div className="modal-overlay" style={{ zIndex: 1100, padding: '20px', overflowY: 'auto' }}>
-          <div style={{ maxWidth: '1240px', width: '100%', margin: '0 auto' }}>
-            <OdooInvoiceForm 
-              invoice={selectedInvoiceForEdit.id ? selectedInvoiceForEdit : null}
-              parties={parties}
-              products={products}
-              business={business}
-              onClose={() => setSelectedInvoiceForEdit(null)}
-              onSave={(saved) => {
-                setSelectedInvoiceForEdit(null);
-                if (refreshAllData) refreshAllData();
-              }}
-              refreshAllData={refreshAllData}
-              handlePrintInvoice={handlePrintInvoice}
-              onOpenSalesReturn={(inv) => {
-                setSelectedInvoiceForEdit(null);
-                if (setActiveTab) setActiveTab('returns');
-              }}
-              onNavigateToDocument={(type, id) => {
-                if (type === 'return' && setActiveTab) {
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 3000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '12px'
+        }}>
+          <div style={{
+            background: 'var(--bg-main, #0f172a)',
+            borderRadius: '16px',
+            width: '98vw',
+            maxWidth: '1500px',
+            height: '96vh',
+            maxHeight: '96vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            border: '1px solid var(--border-color)'
+          }}>
+            <div style={{
+              padding: '10px 18px',
+              background: 'var(--bg-card, #1e293b)',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{
+                  background: '#d97706',
+                  color: '#fff',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontWeight: '800',
+                  fontSize: '0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}>
+                  <Edit3 size={14} /> EDIT INVOICE POPUP
+                </span>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                  {selectedInvoiceForEdit.invoiceNo ? `Editing Invoice #${selectedInvoiceForEdit.invoiceNo} — ${selectedInvoiceForEdit.partyName || selectedInvoiceForEdit.customerName || ''}` : 'Create / Edit Invoice'}
+                </h2>
+              </div>
+              <button
+                onClick={() => setSelectedInvoiceForEdit(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  padding: '6px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title="Close"
+              >
+                <X size={22} />
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
+              <Billing 
+                editingInvoice={selectedInvoiceForEdit.id ? selectedInvoiceForEdit : null}
+                parties={parties}
+                products={products}
+                business={business}
+                invoices={invoices}
+                refreshAllData={refreshAllData}
+                handlePrintInvoice={handlePrintInvoice}
+                setActiveTab={setActiveTab}
+                onCancelEdit={() => setSelectedInvoiceForEdit(null)}
+                onSaveEditedInvoice={(saved) => {
                   setSelectedInvoiceForEdit(null);
-                  setActiveTab('returns');
-                }
-              }}
-            />
+                  if (refreshAllData) refreshAllData();
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

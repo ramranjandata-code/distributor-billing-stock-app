@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { saveInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate, getNextInvoiceNumber, findInvoiceByNumber } from '../utils/storage';
+import { saveInvoice, updateInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate, getNextInvoiceNumber, findInvoiceByNumber } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
 import {
@@ -38,9 +38,56 @@ import {
   Calendar
 } from 'lucide-react';
 
-export default function Billing({ products, parties, business, invoices, refreshAllData, handlePrintInvoice, setActiveTab, onRegisterNavigationGuard }) {
+export default function Billing({ 
+  products, 
+  parties, 
+  business, 
+  invoices, 
+  refreshAllData, 
+  handlePrintInvoice, 
+  setActiveTab, 
+  t, 
+  onRegisterNavigationGuard,
+  editingInvoice = null,
+  onCancelEdit = null,
+  onSaveEditedInvoice = null
+}) {
+  // Helper to map invoice items to cart items
+  const mapInvoiceItemsToCart = (items, allProducts) => {
+    if (!Array.isArray(items)) return [];
+    return items.map(it => {
+      const prod = (allProducts || []).find(p => p.id === it.productId || (p.name && it.name && p.name.trim().toLowerCase() === it.name.trim().toLowerCase()));
+      const pcsPerCtn = it.pcsPerCarton || prod?.pcsPerCarton || 24;
+      const isChain = it.rateMode === 'CHAIN_POUCH' || (it.unit && it.unit.toLowerCase().includes('chain')) || (it.name && it.name.toLowerCase().includes('chain'));
+      return {
+        productId: it.productId || prod?.id,
+        name: it.name || prod?.name || 'Item',
+        sku: it.sku || prod?.sku || '',
+        brand: it.brand || prod?.brand || 'General',
+        hsn: it.hsn || prod?.hsn || '',
+        pcsPerCarton: pcsPerCtn,
+        pcsPerBox: it.pcsPerBox || prod?.pcsPerBox || 1,
+        packsPerCarton: it.packsPerCarton || prod?.packsPerCarton || (isChain ? (pcsPerCtn / (it.pcsPerBox || 1)) : ''),
+        cartonQty: it.cartonQty !== undefined ? it.cartonQty : (it.ctnQty || 0),
+        looseQty: it.looseQty !== undefined ? it.looseQty : (it.qty || 1),
+        qty: it.qty || 1,
+        unit: it.unit || prod?.unit || 'Pcs',
+        rateMode: it.rateMode || (isChain ? 'CHAIN_POUCH' : 'POUCH'),
+        price: it.price !== undefined ? it.price : (it.effectiveUnitPrice || prod?.salePrice || 0),
+        mrp: it.mrp || prod?.mrp || 0,
+        gstRate: it.gstRate !== undefined ? it.gstRate : (prod?.gstRate || 0),
+        costPrice: it.costPrice || prod?.purchasePrice || 0,
+        itemDiscountType: it.itemDiscountType || 'AMOUNT',
+        itemDiscountVal: it.itemDiscountVal || 0,
+        isSection: !!it.isSection,
+        isNote: !!it.isNote
+      };
+    });
+  };
+
   // Check for saved active billing draft in progress so navigation or reload doesn't wipe work
   const getInitialDraft = () => {
+    if (editingInvoice) return null;
     try {
       const raw = localStorage.getItem('distro_active_billing_draft');
       if (!raw) return null;
@@ -56,13 +103,18 @@ export default function Billing({ products, parties, business, invoices, refresh
 
   const initialDraft = getInitialDraft();
 
-  const [cart, setCart] = useState(() => initialDraft?.rawCart || initialDraft?.cart || []);
-  const [selectedPartyId, setSelectedPartyId] = useState(() => initialDraft?.selectedPartyId || '');
-  const [customerName, setCustomerName] = useState(() => initialDraft?.customerName || '');
-  const [customerPhone, setCustomerPhone] = useState(() => initialDraft?.customerPhone || '');
-  const [pricingType, setPricingType] = useState(() => initialDraft?.pricingType || 'INCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
-  const [taxMode, setTaxMode] = useState(() => initialDraft?.taxMode || 'INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
-  const [roundOffEnabled, setRoundOffEnabled] = useState(() => initialDraft?.roundOffEnabled !== undefined ? initialDraft.roundOffEnabled : true);
+  const [cart, setCart] = useState(() => {
+    if (editingInvoice && Array.isArray(editingInvoice.items)) {
+      return mapInvoiceItemsToCart(editingInvoice.items, products);
+    }
+    return initialDraft?.rawCart || initialDraft?.cart || [];
+  });
+  const [selectedPartyId, setSelectedPartyId] = useState(() => editingInvoice?.partyId || initialDraft?.selectedPartyId || '');
+  const [customerName, setCustomerName] = useState(() => editingInvoice?.customerName || editingInvoice?.partyName || initialDraft?.customerName || '');
+  const [customerPhone, setCustomerPhone] = useState(() => editingInvoice?.partyPhone || initialDraft?.customerPhone || '');
+  const [pricingType, setPricingType] = useState(() => editingInvoice?.pricingType || initialDraft?.pricingType || 'INCLUSIVE'); // 'EXCLUSIVE' (Rate + GST Extra) or 'INCLUSIVE' (MRP)
+  const [taxMode, setTaxMode] = useState(() => editingInvoice?.taxMode || (editingInvoice?.supplyType === 'INTER_STATE' ? 'INTER' : 'INTRA') || initialDraft?.taxMode || 'INTRA'); // 'INTRA' (CGST + SGST), 'INTER' (IGST), 'NONE' (0%)
+  const [roundOffEnabled, setRoundOffEnabled] = useState(() => editingInvoice ? (editingInvoice.roundOff !== 0) : (initialDraft?.roundOffEnabled !== undefined ? initialDraft.roundOffEnabled : true));
 
   // Enterprise POS & Barcode State
   const [posMode, setPosMode] = useState('STANDARD'); // 'STANDARD' or 'FAST_TOUCH'
@@ -72,20 +124,20 @@ export default function Billing({ products, parties, business, invoices, refresh
 
   // Multi-Warehouse Source
   const warehouses = fetchWarehouses();
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(() => initialDraft?.selectedWarehouseId || warehouses[0]?.id || 'wh_main');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(() => editingInvoice?.warehouseId || initialDraft?.selectedWarehouseId || warehouses[0]?.id || 'wh_main');
 
   // Payment Terms, Custom Invoice Date & Due Date (For live & past offline bills)
   const todayStr = new Date().toISOString().split('T')[0];
-  const [invoiceDate, setInvoiceDate] = useState(() => initialDraft?.invoiceDate || todayStr);
-  const [customInvoiceNo, setCustomInvoiceNo] = useState(() => initialDraft?.customInvoiceNo || '');
+  const [invoiceDate, setInvoiceDate] = useState(() => editingInvoice?.date ? editingInvoice.date.split('T')[0] : (initialDraft?.invoiceDate || todayStr));
+  const [customInvoiceNo, setCustomInvoiceNo] = useState(() => editingInvoice?.invoiceNo || initialDraft?.customInvoiceNo || '');
   const autoInvoiceNo = useMemo(() => getNextInvoiceNumber(), [business, invoices]);
-  const [paymentTerms, setPaymentTerms] = useState(() => initialDraft?.paymentTerms || 'immediate');
+  const [paymentTerms, setPaymentTerms] = useState(() => editingInvoice?.paymentTerms || initialDraft?.paymentTerms || 'immediate');
   const computedDueDate = calculateDueDate(invoiceDate, paymentTerms);
   const isPastDate = invoiceDate && invoiceDate < todayStr;
 
   // e-Way Bill & Transport State
-  const [ewayBillOpen, setEwayBillOpen] = useState(() => !!initialDraft?.ewayBillOpen);
-  const [ewayBillData, setEwayBillData] = useState(() => initialDraft?.ewayBillData || {
+  const [ewayBillOpen, setEwayBillOpen] = useState(() => !!(editingInvoice?.ewayBill || initialDraft?.ewayBillOpen));
+  const [ewayBillData, setEwayBillData] = useState(() => editingInvoice?.ewayBill || initialDraft?.ewayBillData || {
     transporterName: '',
     vehicleNo: '',
     distanceKm: '',
@@ -108,6 +160,8 @@ export default function Billing({ products, parties, business, invoices, refresh
     const cleanNo = String(billNo).trim().toLowerCase();
     return (invoices || []).find(inv => {
       if (!inv || !inv.invoiceNo) return false;
+      if (editingInvoice && inv.id === editingInvoice.id) return false;
+      if (editingInvoice && String(editingInvoice.invoiceNo).trim().toLowerCase() === cleanNo && inv.id === editingInvoice.id) return false;
       if (activeDraftId && inv.id === activeDraftId) return false;
       if (activeDraftNo && String(inv.invoiceNo).trim().toLowerCase() === String(activeDraftNo).trim().toLowerCase()) return false;
       return String(inv.invoiceNo).trim().toLowerCase() === cleanNo;
@@ -190,13 +244,40 @@ export default function Billing({ products, parties, business, invoices, refresh
   const [newPartyData, setNewPartyData] = useState(initialNewPartyState);
 
   // Overall Bill Discount
-  const [discountType, setDiscountType] = useState(() => initialDraft?.discountType || 'AMOUNT'); // 'AMOUNT' (₹) or 'PERCENT' (%)
-  const [discountValue, setDiscountValue] = useState(() => initialDraft?.discountValue || 0);
+  const [discountType, setDiscountType] = useState(() => editingInvoice?.discountType || initialDraft?.discountType || 'AMOUNT'); // 'AMOUNT' (₹) or 'PERCENT' (%)
+  const [discountValue, setDiscountValue] = useState(() => editingInvoice?.discount || initialDraft?.discountValue || 0);
 
-  const [paymentStatus, setPaymentStatus] = useState(() => initialDraft?.paymentStatus || 'PAID'); // PAID, UNPAID, PARTIAL
-  const [paidAmount, setPaidAmount] = useState(() => initialDraft?.paidAmount || '');
-  const [paymentMode, setPaymentMode] = useState(() => initialDraft?.paymentMode || 'CASH'); // CASH, UPI, NEFT, CHEQUE
-  const [notes, setNotes] = useState(() => initialDraft?.notes || '');
+  const [paymentStatus, setPaymentStatus] = useState(() => editingInvoice?.paymentStatus || initialDraft?.paymentStatus || 'PAID'); // PAID, UNPAID, PARTIAL
+  const [paidAmount, setPaidAmount] = useState(() => editingInvoice?.paidAmount !== undefined ? editingInvoice.paidAmount : (initialDraft?.paidAmount || ''));
+  const [paymentMode, setPaymentMode] = useState(() => editingInvoice?.paymentMode || initialDraft?.paymentMode || 'CASH'); // CASH, UPI, NEFT, CHEQUE
+  const [notes, setNotes] = useState(() => editingInvoice?.notes || initialDraft?.notes || '');
+
+  // Populate / sync bill data whenever editingInvoice prop updates
+  useEffect(() => {
+    if (editingInvoice) {
+      if (Array.isArray(editingInvoice.items)) {
+        setCart(mapInvoiceItemsToCart(editingInvoice.items, products));
+      }
+      setSelectedPartyId(editingInvoice.partyId || '');
+      setCustomerName(editingInvoice.customerName || editingInvoice.partyName || '');
+      setCustomerPhone(editingInvoice.partyPhone || '');
+      setPricingType(editingInvoice.pricingType || 'INCLUSIVE');
+      setTaxMode(editingInvoice.taxMode || (editingInvoice.supplyType === 'INTER_STATE' ? 'INTER' : 'INTRA'));
+      setInvoiceDate(editingInvoice.date ? editingInvoice.date.split('T')[0] : todayStr);
+      setCustomInvoiceNo(editingInvoice.invoiceNo || '');
+      setPaymentStatus(editingInvoice.paymentStatus || 'PAID');
+      setPaidAmount(editingInvoice.paidAmount !== undefined ? editingInvoice.paidAmount : '');
+      setPaymentMode(editingInvoice.paymentMode || 'CASH');
+      setNotes(editingInvoice.notes || '');
+      setDiscountValue(editingInvoice.discount || 0);
+      setDiscountType(editingInvoice.discountType || 'AMOUNT');
+      if (editingInvoice.warehouseId) setSelectedWarehouseId(editingInvoice.warehouseId);
+      if (editingInvoice.ewayBill) {
+        setEwayBillOpen(true);
+        setEwayBillData(editingInvoice.ewayBill);
+      }
+    }
+  }, [editingInvoice]);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -804,6 +885,30 @@ export default function Billing({ products, parties, business, invoices, refresh
       notes: notes || (asDraft ? 'Draft invoice saved' : '')
     };
 
+    // If editing existing invoice, call updateInvoice and trigger edit callbacks
+    if (editingInvoice) {
+      const chosenParty = (parties || []).find(p => p.id === selectedPartyId);
+      const finalGstin = chosenParty?.gstin || editingInvoice.partyGstin || '';
+      const finalAddress = chosenParty?.address || chosenParty?.city || editingInvoice.partyAddress || '';
+
+      const updatedPayload = {
+        ...editingInvoice,
+        ...invoicePayload,
+        id: editingInvoice.id,
+        invoiceNo: (customInvoiceNo && customInvoiceNo.trim()) ? customInvoiceNo.trim() : editingInvoice.invoiceNo,
+        partyGstin: finalGstin,
+        partyAddress: finalAddress
+      };
+
+      const savedInv = updateInvoice(editingInvoice, updatedPayload);
+      if (refreshAllData) refreshAllData();
+
+      if (onSaveEditedInvoice) {
+        onSaveEditedInvoice(savedInv);
+      }
+      return savedInv;
+    }
+
     const savedInv = saveInvoice(invoicePayload);
     refreshAllData();
 
@@ -898,7 +1003,7 @@ export default function Billing({ products, parties, business, invoices, refresh
 
   // Auto-persist active draft in progress so navigation or reload never wipes work
   useEffect(() => {
-    if (cart.length > 0) {
+    if (!editingInvoice && cart.length > 0) {
       const draftState = {
         cart,
         rawCart: cart,
@@ -993,7 +1098,7 @@ export default function Billing({ products, parties, business, invoices, refresh
   // Catch accidental browser reload or tab close when cart has items
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      if (cart.length > 0) {
+      if (!editingInvoice && cart.length > 0) {
         e.preventDefault();
         e.returnValue = 'You have unsaved changes in your invoice. Are you sure you want to leave?';
         return e.returnValue;
@@ -1001,11 +1106,55 @@ export default function Billing({ products, parties, business, invoices, refresh
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [cart]);
+  }, [cart, editingInvoice]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {showDraftNotice && cart.length > 0 && (
+      {editingInvoice && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fde68a',
+          borderRadius: '12px',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 2px 8px rgba(217, 119, 6, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              padding: '4px 10px',
+              borderRadius: '6px',
+              background: '#d97706',
+              color: '#ffffff',
+              fontWeight: '800',
+              fontSize: '0.82rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <Edit3 size={15} /> EDITING INVOICE #{editingInvoice.invoiceNo}
+            </div>
+            <div style={{ fontSize: '0.84rem', color: '#92400e', fontWeight: '600' }}>
+              Party: <strong>{editingInvoice.partyName || editingInvoice.customerName}</strong> • Date: {invoiceDate} • Total: ₹{grandTotal.toFixed(2)}
+            </div>
+          </div>
+          {onCancelEdit && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="btn btn-secondary btn-sm"
+              style={{ fontWeight: '700', fontSize: '0.78rem', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <X size={15} /> Cancel & Close
+            </button>
+          )}
+        </div>
+      )}
+
+      {!editingInvoice && showDraftNotice && cart.length > 0 && (
         <div style={{
           background: '#ecfdf5',
           border: '1px solid #a7f3d0',
@@ -2514,27 +2663,63 @@ export default function Billing({ products, parties, business, invoices, refresh
 
           {/* Action Buttons: Confirm & Post vs Save as Draft */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '6px' }}>
-              <button 
-                onClick={() => handleSaveAndPrintBill(false)}
-                disabled={cart.length === 0}
-                className="btn btn-primary"
-                style={{ padding: '8px 10px', gap: '6px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800', fontSize: '0.84rem' }}
-              >
-                <Zap size={16} />
-                <span>Confirm & Post Invoice</span>
-              </button>
-              <button 
-                onClick={() => handleSaveAndPrintBill(true)}
-                disabled={cart.length === 0}
-                className="btn btn-secondary"
-                style={{ padding: '8px 8px', gap: '4px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '700', fontSize: '0.78rem', background: '#f1f5f9' }}
-                title="Save as Draft without deducting stock or updating ledger yet"
-              >
-                <FileText size={14} />
-                <span>Save Draft</span>
-              </button>
-            </div>
+            {editingInvoice ? (
+              <div style={{ display: 'grid', gridTemplateColumns: onCancelEdit ? '1fr 2fr' : '1fr', gap: '8px' }}>
+                {onCancelEdit && (
+                  <button 
+                    type="button"
+                    onClick={onCancelEdit}
+                    className="btn btn-secondary"
+                    style={{ padding: '10px 12px', fontWeight: '700', fontSize: '0.84rem' }}
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button 
+                  type="button"
+                  onClick={() => handleSaveAndPrintBill(false)}
+                  disabled={cart.length === 0}
+                  className="btn btn-primary"
+                  style={{ 
+                    padding: '10px 14px', 
+                    gap: '6px', 
+                    opacity: cart.length === 0 ? 0.5 : 1, 
+                    fontWeight: '800', 
+                    fontSize: '0.9rem',
+                    background: '#d97706',
+                    borderColor: '#b45309',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Save size={16} />
+                  <span>Update & Save Bill #{editingInvoice.invoiceNo}</span>
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '6px' }}>
+                <button 
+                  onClick={() => handleSaveAndPrintBill(false)}
+                  disabled={cart.length === 0}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 10px', gap: '6px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '800', fontSize: '0.84rem' }}
+                >
+                  <Zap size={16} />
+                  <span>Confirm & Post Invoice</span>
+                </button>
+                <button 
+                  onClick={() => handleSaveAndPrintBill(true)}
+                  disabled={cart.length === 0}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 8px', gap: '4px', opacity: cart.length === 0 ? 0.5 : 1, fontWeight: '700', fontSize: '0.78rem', background: '#f1f5f9' }}
+                  title="Save as Draft without deducting stock or updating ledger yet"
+                >
+                  <FileText size={14} />
+                  <span>Save Draft</span>
+                </button>
+              </div>
+            )}
           </div>
 
         </div>

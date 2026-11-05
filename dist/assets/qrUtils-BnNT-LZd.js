@@ -13,4 +13,4 @@ import{b as u}from"./vendor-qr-CjSdxGTc.js";const d=(t,n,e,o="")=>{const r=(t||"
 `),c&&Number(t?.balanceAmount)>0&&(a+=`
 📲 *Pay via UPI:* ${c}
 `),a+=`
-Thank you for doing business with us!`,a},N=(t,n)=>{let e=(t||"").replace(/[^0-9]/g,"");return e.length===10&&(e="91"+e),`https://api.whatsapp.com/send?phone=${e}&text=${encodeURIComponent(n)}`},$=(t,n)=>`sms:${(t||"").replace(/[^0-9+]/g,"")}?body=${encodeURIComponent(n)}`,y=(t,n,e)=>`mailto:${t||""}?subject=${encodeURIComponent(n)}&body=${encodeURIComponent(e)}`;export{N as a,b,g as c,$ as d,y as e,I as g};
+Thank you for doing business with us!`,a},N=(t,n)=>{let e=(t||"").replace(/[^0-9]/g,"");return e.length===10&&(e="91"+e),`https://api.whatsapp.com/send?phone=${e}&text=${encodeURIComponent(n)}`},$=(t,n)=>`sms:${(t||"").replace(/[^0-9+]/g,"")}?body=${encodeURIComponent(n)}`,y=(t,n,e)=>`mailto:${t||""}?subject=${encodeURIComponent(n)}&body=${encodeURIComponent(e)}`;export{g as a,N as b,b as c,$ as d,y as e,I as g};
