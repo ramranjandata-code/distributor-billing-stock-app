@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle } from 'lucide-react';
-import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, updateInvoice } from '../utils/storage';
+import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, updateInvoice, saveParty } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
 
@@ -95,6 +95,8 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
   const [editItems, setEditItems] = useState([]);
   const [editPartyId, setEditPartyId] = useState('');
   const [editCustomerName, setEditCustomerName] = useState('');
+  const [editPartyGstin, setEditPartyGstin] = useState('');
+  const [editPartyAddress, setEditPartyAddress] = useState('');
   const [editPaymentStatus, setEditPaymentStatus] = useState('PAID');
   const [editPaymentMode, setEditPaymentMode] = useState('CASH');
   const [editPaidAmount, setEditPaidAmount] = useState('');
@@ -209,6 +211,8 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     setEditItems((invoice.items || []).map(item => ({ ...item })));
     setEditPartyId(invoice.partyId || '');
     setEditCustomerName(invoice.partyName || invoice.customerName || '');
+    setEditPartyGstin(invoice.partyGstin || partyObj?.gstin || '');
+    setEditPartyAddress(invoice.partyAddress || (partyObj ? (partyObj.address || partyObj.city) : '') || '');
     setEditPaymentStatus(invoice.paymentStatus || 'PAID');
     setEditPaymentMode(invoice.paymentMode || 'CASH');
     setEditPaidAmount(invoice.paidAmount || '');
@@ -234,6 +238,17 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
     // Resolve party
     const allParties = fetchParties();
     const chosenParty = allParties.find(p => p.id === editPartyId);
+    const finalGstin = (editPartyGstin && editPartyGstin.trim()) || chosenParty?.gstin || invoice.partyGstin || '';
+    const finalAddress = (editPartyAddress && editPartyAddress.trim()) || chosenParty?.address || invoice.partyAddress || '';
+
+    // If party exists and GSTIN was provided/updated, save it to the party record as well
+    if (chosenParty && finalGstin && chosenParty.gstin !== finalGstin) {
+      try {
+        saveParty({ ...chosenParty, gstin: finalGstin, address: finalAddress || chosenParty.address });
+      } catch (e) {
+        console.warn('Failed to update party gstin:', e);
+      }
+    }
 
     const paidAmt = editPaymentStatus === 'PAID' ? grandTotal : (Number(editPaidAmount) || 0);
     const finalInvNo = (editInvoiceNo && editInvoiceNo.trim()) ? editInvoiceNo.trim() : invoice.invoiceNo;
@@ -245,8 +260,9 @@ export default function InvoicePrintModal({ invoice, business, onClose, refreshA
       partyId: editPartyId || invoice.partyId,
       partyName: chosenParty?.name || editCustomerName || invoice.partyName,
       customerName: chosenParty?.name || editCustomerName || invoice.customerName,
+      partyGstin: finalGstin,
       partyPhone: chosenParty?.phone || invoice.partyPhone,
-      partyAddress: chosenParty?.address || invoice.partyAddress,
+      partyAddress: finalAddress,
       paymentStatus: editPaymentStatus,
       paymentMode: editPaymentMode,
       paidAmount: paidAmt,
