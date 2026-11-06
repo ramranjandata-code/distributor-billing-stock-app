@@ -25,6 +25,7 @@ import {
 import { deleteInvoice, formatDateDDMMYY, compareInvoicesDesc, extractInvoiceNumericValue } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
 import Billing from './Billing';
+import ErrorBoundary from './ErrorBoundary';
 
 export default function InvoiceHistory({ 
   invoices = [], 
@@ -651,21 +652,23 @@ export default function InvoiceHistory({
               </button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
-              <Billing 
-                editingInvoice={selectedInvoiceForEdit.id ? selectedInvoiceForEdit : null}
-                parties={parties}
-                products={products}
-                business={business}
-                invoices={invoices}
-                refreshAllData={refreshAllData}
-                handlePrintInvoice={handlePrintInvoice}
-                setActiveTab={setActiveTab}
-                onCancelEdit={() => setSelectedInvoiceForEdit(null)}
-                onSaveEditedInvoice={(saved) => {
-                  setSelectedInvoiceForEdit(null);
-                  if (refreshAllData) refreshAllData();
-                }}
-              />
+              <ErrorBoundary onReset={() => setSelectedInvoiceForEdit(null)}>
+                <Billing 
+                  editingInvoice={selectedInvoiceForEdit.id ? selectedInvoiceForEdit : null}
+                  parties={parties}
+                  products={products}
+                  business={business}
+                  invoices={invoices}
+                  refreshAllData={refreshAllData}
+                  handlePrintInvoice={handlePrintInvoice}
+                  setActiveTab={setActiveTab}
+                  onCancelEdit={() => setSelectedInvoiceForEdit(null)}
+                  onSaveEditedInvoice={(saved) => {
+                    setSelectedInvoiceForEdit(null);
+                    if (refreshAllData) refreshAllData();
+                  }}
+                />
+              </ErrorBoundary>
             </div>
           </div>
         </div>

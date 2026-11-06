@@ -4,6 +4,7 @@ import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, fetchInv
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
 import Billing from './Billing';
+import ErrorBoundary from './ErrorBoundary';
 
 // Number to Words Converter for Indian Currency Format
 function numToWords(num) {
@@ -1567,21 +1568,23 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
 
           {/* Content: Full POS Billing Screen in exact same format */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
-            <Billing
-              editingInvoice={invoice}
-              products={fetchProducts()}
-              parties={fetchParties()}
-              business={business}
-              invoices={fetchInvoices()}
-              refreshAllData={refreshAllData}
-              handlePrintInvoice={handlePrintInvoice}
-              onCancelEdit={() => setEditMode(false)}
-              onSaveEditedInvoice={(updatedInv) => {
-                if (updatedInv) setInvoice(updatedInv);
-                setEditMode(false);
-                if (refreshAllData) refreshAllData();
-              }}
-            />
+            <ErrorBoundary onReset={() => setEditMode(false)}>
+              <Billing
+                editingInvoice={invoice}
+                products={fetchProducts()}
+                parties={fetchParties()}
+                business={business}
+                invoices={fetchInvoices()}
+                refreshAllData={refreshAllData}
+                handlePrintInvoice={handlePrintInvoice}
+                onCancelEdit={() => setEditMode(false)}
+                onSaveEditedInvoice={(updatedInv) => {
+                  if (updatedInv) setInvoice(updatedInv);
+                  setEditMode(false);
+                  if (refreshAllData) refreshAllData();
+                }}
+              />
+            </ErrorBoundary>
           </div>
         </div>
       </div>

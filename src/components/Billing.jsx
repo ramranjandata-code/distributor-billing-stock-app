@@ -35,7 +35,8 @@ import {
   FileText,
   PlusCircle,
   ChevronDown,
-  Calendar
+  Calendar,
+  Edit3
 } from 'lucide-react';
 
 export default function Billing({ 
@@ -282,7 +283,7 @@ export default function Billing({
   const [searchTerm, setSearchTerm] = useState('');
 
   // Selected party object (memoized for instant lookups)
-  const selectedParty = useMemo(() => parties.find(p => p.id === selectedPartyId), [parties, selectedPartyId]);
+  const selectedParty = useMemo(() => (parties || []).find(p => p && p.id === selectedPartyId), [parties, selectedPartyId]);
 
   // Auto-detect supply type (Intra vs Inter) based on Seller and Buyer GSTIN state codes
   useEffect(() => {
@@ -352,28 +353,28 @@ export default function Billing({
 
   // Filter parties for live search suggestions inside Customer Name input (memoized)
   const filteredParties = useMemo(() => {
-    const term = (partySearchTerm || customerName).toLowerCase();
-    if (!term) return parties;
-    return parties.filter(p => 
-      p.name.toLowerCase().includes(term) ||
-      (p.phone && p.phone.includes(term)) ||
-      (p.contactPerson && p.contactPerson.toLowerCase().includes(term)) ||
-      (p.address && p.address.toLowerCase().includes(term)) ||
-      (p.city && p.city.toLowerCase().includes(term))
+    const term = (partySearchTerm || customerName || '').toLowerCase();
+    if (!term) return parties || [];
+    return (parties || []).filter(p => 
+      (p && p.name && p.name.toLowerCase().includes(term)) ||
+      (p && p.phone && String(p.phone).includes(term)) ||
+      (p && p.contactPerson && String(p.contactPerson).toLowerCase().includes(term)) ||
+      (p && p.address && String(p.address).toLowerCase().includes(term)) ||
+      (p && p.city && String(p.city).toLowerCase().includes(term))
     );
   }, [parties, partySearchTerm, customerName]);
 
   // Filter parties for upper customer search bar (memoized)
   const filteredPartiesForUpper = useMemo(() => {
     const term = (upperPartySearchTerm || '').trim().toLowerCase();
-    if (!term) return parties;
-    return parties.filter(p => 
-      (p.name && p.name.toLowerCase().includes(term)) ||
-      (p.phone && p.phone.includes(term)) ||
-      (p.contactPerson && p.contactPerson.toLowerCase().includes(term)) ||
-      (p.city && p.city.toLowerCase().includes(term)) ||
-      (p.address && p.address.toLowerCase().includes(term)) ||
-      (p.gstin && p.gstin.toLowerCase().includes(term))
+    if (!term) return parties || [];
+    return (parties || []).filter(p => 
+      (p && p.name && p.name.toLowerCase().includes(term)) ||
+      (p && p.phone && String(p.phone).includes(term)) ||
+      (p && p.contactPerson && String(p.contactPerson).toLowerCase().includes(term)) ||
+      (p && p.city && String(p.city).toLowerCase().includes(term)) ||
+      (p && p.address && String(p.address).toLowerCase().includes(term)) ||
+      (p && p.gstin && String(p.gstin).toLowerCase().includes(term))
     );
   }, [parties, upperPartySearchTerm]);
 
@@ -422,14 +423,14 @@ export default function Billing({
   // Filter products for quick search & dropdown suggestions (memoized)
   const filteredProducts = useMemo(() => {
     const term = (searchTerm || '').trim().toLowerCase();
-    if (!term) return products;
-    return products.filter(p => 
-      (p.name && p.name.toLowerCase().includes(term)) ||
-      (p.sku && p.sku.toLowerCase().includes(term)) ||
-      (p.barcode && p.barcode.toLowerCase().includes(term)) ||
-      (p.hsn && p.hsn.toLowerCase().includes(term)) ||
-      (p.brand && p.brand.toLowerCase().includes(term)) ||
-      (p.category && p.category.toLowerCase().includes(term))
+    if (!term) return products || [];
+    return (products || []).filter(p => 
+      (p && p.name && p.name.toLowerCase().includes(term)) ||
+      (p && p.sku && String(p.sku).toLowerCase().includes(term)) ||
+      (p && p.barcode && String(p.barcode).toLowerCase().includes(term)) ||
+      (p && p.hsn && String(p.hsn).toLowerCase().includes(term)) ||
+      (p && p.brand && String(p.brand).toLowerCase().includes(term)) ||
+      (p && p.category && String(p.category).toLowerCase().includes(term))
     );
   }, [products, searchTerm]);
 

@@ -15,6 +15,7 @@ import { setupRealtimeSubscription } from './utils/realtimeSync';
 
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Code-split heavy views to reduce initial bundle by ~70% and make app boot instant
 const Inventory = lazy(() => import('./components/Inventory'));
@@ -561,7 +562,8 @@ export default function App() {
         )}
 
         {/* View Switcher */}
-        <Suspense fallback={<TabLoadingFallback />}>
+        <ErrorBoundary>
+          <Suspense fallback={<TabLoadingFallback />}>
           {activeTab === 'dashboard' && (
             <Dashboard 
               products={products}
@@ -670,6 +672,7 @@ export default function App() {
             />
           )}
         </Suspense>
+        </ErrorBoundary>
       </main>
 
       {/* Unsaved Invoice Confirmation Popup Modal */}
