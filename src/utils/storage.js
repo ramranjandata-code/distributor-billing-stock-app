@@ -954,21 +954,32 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
     if (!id || SAMPLE_IDS.includes(id) || delSet.has(id)) return;
     const invNo = inv.invoiceNo ? String(inv.invoiceNo).trim().toUpperCase() : null;
 
+    const resolvePreferNew = (existing, incoming) => {
+      const isIncomingVerified = !!(incoming?.isVerified || (incoming?.notes && incoming?.notes.toLowerCase().includes('verified')));
+      const isExistingVerified = !!(existing?.isVerified || (existing?.notes && existing?.notes.toLowerCase().includes('verified')));
+
+      if (isIncomingVerified && !isExistingVerified) return true;
+      if (isExistingVerified && !isIncomingVerified) return false;
+
+      const existingIsDummy = isDummyItems(existing?.items);
+      const incomingIsDummy = isDummyItems(incoming?.items);
+      if (existingIsDummy && !incomingIsDummy) return true;
+      if (!existingIsDummy && incomingIsDummy) return false;
+
+      const existingTs = Number(existing?.updatedAt || existing?.lastUpdated || 0);
+      const incomingTs = Number(incoming?.updatedAt || incoming?.lastUpdated || 0);
+      if (incomingTs > existingTs) return true;
+      if (existingTs > incomingTs) return false;
+
+      const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
+      const incomingItems = Array.isArray(incoming?.items) ? incoming.items.length : 0;
+      return incomingItems >= existingItems;
+    };
+
     if (invNo && invNoMap.has(invNo)) {
       const existingId = invNoMap.get(invNo);
       const existing = map.get(existingId);
-      const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
-      const newItems = Array.isArray(inv?.items) ? inv.items.length : 0;
-
-      const existingIsDummy = isDummyItems(existing?.items);
-      const newIsDummy = isDummyItems(inv?.items);
-
-      const existingTs = Number(existing?.updatedAt || existing?.lastUpdated || 0);
-      const newTs = Number(inv?.updatedAt || inv?.lastUpdated || 0);
-      const isExplicitlyVerified = inv?.isVerified || (inv?.notes && inv?.notes.includes('verified'));
-
-      // Prefer real items over dummy items, newer timestamps, explicitly verified, or whichever has more items
-      const preferNew = (newTs > existingTs) || isExplicitlyVerified || (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
+      const preferNew = resolvePreferNew(existing, inv);
 
       const mergedPartyGstin = (inv.partyGstin && inv.partyGstin.trim()) ? inv.partyGstin.trim() : (existing?.partyGstin || '');
       const mergedPartyAddress = (inv.partyAddress && inv.partyAddress.trim()) ? inv.partyAddress.trim() : (existing?.partyAddress || '');
@@ -979,7 +990,7 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
           ...inv,
           partyGstin: mergedPartyGstin,
           partyAddress: mergedPartyAddress,
-          id: existingId
+          id: inv.id || existingId
         });
       } else {
         map.set(existingId, {
@@ -995,16 +1006,7 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
 
     if (map.has(id)) {
       const existing = map.get(id);
-      const existingIsDummy = isDummyItems(existing?.items);
-      const newIsDummy = isDummyItems(inv?.items);
-      const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
-      const newItems = Array.isArray(inv?.items) ? inv.items.length : 0;
-      const existingTs = Number(existing?.updatedAt || existing?.lastUpdated || 0);
-      const newTs = Number(inv?.updatedAt || inv?.lastUpdated || 0);
-      const isExplicitlyVerified = inv?.isVerified || (inv?.notes && inv?.notes.includes('verified'));
-
-      const preferNew = (newTs > existingTs) || isExplicitlyVerified || (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
-
+      const preferNew = resolvePreferNew(existing, inv);
       const mergedPartyGstin = (inv.partyGstin && inv.partyGstin.trim()) ? inv.partyGstin.trim() : (existing?.partyGstin || '');
       const mergedPartyAddress = (inv.partyAddress && inv.partyAddress.trim()) ? inv.partyAddress.trim() : (existing?.partyAddress || '');
 
