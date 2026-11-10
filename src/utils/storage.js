@@ -938,6 +938,223 @@ const getActiveCloudCredentials = () => {
   };
 };
 
+
+export const VERIFIED_INVOICE_282 = {
+  "id": "inv_1793170685059",
+  "invoiceNo": "282",
+  "date": "2026-10-28T09:38:05.059Z",
+  "dueDate": "2026-10-28",
+  "partyId": "party_supplier_preeti",
+  "partyName": "PREETI ENTERPRISES",
+  "customerName": "PREETI ENTERPRISES",
+  "partyPhone": "",
+  "partyGstin": "07GHQPD6817P1ZI",
+  "partyAddress": "Delhi",
+  "placeOfSupply": "Delhi (07)",
+  "pricingType": "CUSTOM",
+  "taxMode": "INCLUSIVE",
+  "supplyType": "INTRA_STATE",
+  "subTotal": 53860.08,
+  "subtotal": 53860.08,
+  "taxableAmount": 53860.08,
+  "taxableSubtotal": 53860.08,
+  "taxTotal": 2693,
+  "cgst": 1346.5,
+  "sgst": 1346.5,
+  "igst": 0,
+  "discount": 0,
+  "roundOff": -0.08,
+  "grandTotal": 56553,
+  "paymentStatus": "PAID",
+  "paidAmount": 56553,
+  "balanceAmount": 0,
+  "amountDue": 0,
+  "paymentMode": "CASH",
+  "paymentTerms": "Immediate",
+  "state": "posted",
+  "warehouseId": "wh_main",
+  "ewayBill": "",
+  "documentType": "TAX_INVOICE",
+  "journal": "SALES",
+  "operator": "Sunil Sharma",
+  "isVerified": true,
+  "updatedAt": 1794322262056,
+  "notes": "Verified Tax Invoice #282 from original bill PDF. Issued on 28 Oct 2026.",
+  "items": [
+    {
+      "productId": "prod_1794319966776",
+      "name": "BEYOND SNACKS KERALA BANANA 510 GM MRP -499/-",
+      "sku": "BEY-3236",
+      "brand": "BEYOND SNACKS",
+      "hsn": "210690",
+      "pcsPerCarton": 6,
+      "pcsPerBox": 1,
+      "cartonQty": 34,
+      "looseQty": 0,
+      "qty": 204,
+      "unit": "Pcs",
+      "rateMode": "POUCH",
+      "price": 264.02,
+      "mrp": 499,
+      "gstRate": 5,
+      "costPrice": 264.02,
+      "itemDiscountType": "AMOUNT",
+      "itemDiscountVal": 0,
+      "effectiveUnitPrice": 264.02,
+      "grossTotal": 56553.08,
+      "discAmount": 0,
+      "taxableAmount": 53860.08,
+      "taxableVal": 53860.08,
+      "itemGstAmount": 2693,
+      "gstVal": 2693,
+      "cgstAmount": 1346.5,
+      "sgstAmount": 1346.5,
+      "igstAmount": 0,
+      "total": 56553.08,
+      "finalItemTotal": 56553.08,
+      "totalCost": 53860.08,
+      "consumedLots": [
+        {
+          "lotId": "lot_purch_purch_1794319974325_0_1794320386609",
+          "billNo": "379",
+          "supplierName": "SHREE VAISHNO ENTERPRISES",
+          "date": "2026-10-24",
+          "purchasePrice": 264.02,
+          "purchasePriceWithGst": 277.22,
+          "qty": 204,
+          "cost": 53860.08
+        }
+      ]
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay_inv_1793170685059",
+      "amount": 56553,
+      "date": "2026-10-28T09:38:05.059Z",
+      "mode": "CASH",
+      "reference": "Bill payment #282 - PREETI ENTERPRISES"
+    }
+  ],
+  "chatter": [
+    {
+      "id": "ch_inv_1793170685059_1",
+      "date": "2026-10-28T09:38:05.059Z",
+      "author": "Sunil Sharma",
+      "text": "Invoice #282 confirmed and posted for PREETI ENTERPRISES (₹56,553.00)",
+      "type": "system"
+    }
+  ]
+};
+
+export const VERIFIED_INVOICE_283 = {
+  "id": "inv_1793170854100",
+  "invoiceNo": "283",
+  "date": "2026-10-28T09:40:54.100Z",
+  "dueDate": "2026-10-28",
+  "partyId": "party_supplier_preeti",
+  "partyName": "PREETI ENTERPRISES",
+  "customerName": "PREETI ENTERPRISES",
+  "partyPhone": "",
+  "partyGstin": "07GHQPD6817P1ZI",
+  "partyAddress": "Delhi",
+  "placeOfSupply": "Delhi (07)",
+  "pricingType": "CUSTOM",
+  "taxMode": "INCLUSIVE",
+  "supplyType": "INTRA_STATE",
+  "subTotal": 79100,
+  "subtotal": 79100,
+  "taxableAmount": 79100,
+  "taxableSubtotal": 79100,
+  "taxTotal": 3955,
+  "cgst": 1977.5,
+  "sgst": 1977.5,
+  "igst": 0,
+  "discount": 0,
+  "roundOff": 0,
+  "grandTotal": 83055,
+  "paymentStatus": "PAID",
+  "paidAmount": 83055,
+  "balanceAmount": 0,
+  "amountDue": 0,
+  "paymentMode": "CASH",
+  "paymentTerms": "Immediate",
+  "state": "posted",
+  "warehouseId": "wh_main",
+  "ewayBill": "",
+  "documentType": "TAX_INVOICE",
+  "journal": "SALES",
+  "operator": "Sunil Sharma",
+  "isVerified": true,
+  "updatedAt": 1794322262056,
+  "notes": "Verified Tax Invoice #283 from original bill PDF. Issued on 28 Oct 2026.",
+  "items": [
+    {
+      "productId": "prod_1794320148514",
+      "name": "BEYOND SNACKS KERALA CHIPS GIFT PACK 330G MRP-299/-",
+      "sku": "BEY-3684",
+      "brand": "BEYOND SNACKS",
+      "hsn": "210690",
+      "pcsPerCarton": 10,
+      "pcsPerBox": 1,
+      "cartonQty": 50,
+      "looseQty": 0,
+      "qty": 500,
+      "unit": "Pcs",
+      "rateMode": "POUCH",
+      "price": 158.2,
+      "mrp": 299,
+      "gstRate": 5,
+      "costPrice": 158.2,
+      "itemDiscountType": "AMOUNT",
+      "itemDiscountVal": 0,
+      "effectiveUnitPrice": 158.2,
+      "grossTotal": 83055,
+      "discAmount": 0,
+      "taxableAmount": 79100,
+      "taxableVal": 79100,
+      "itemGstAmount": 3955,
+      "gstVal": 3955,
+      "cgstAmount": 1977.5,
+      "sgstAmount": 1977.5,
+      "igstAmount": 0,
+      "total": 83055,
+      "finalItemTotal": 83055,
+      "totalCost": 79100,
+      "consumedLots": [
+        {
+          "lotId": "lot_purch_purch_1794320226018_0_1794320256724",
+          "billNo": "377",
+          "supplierName": "SHREE VAISHNO ENTERPRISES",
+          "date": "2026-10-23",
+          "purchasePrice": 158.2,
+          "purchasePriceWithGst": 166.11,
+          "qty": 500,
+          "cost": 79100
+        }
+      ]
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay_inv_1793170854100",
+      "amount": 83055,
+      "date": "2026-10-28T09:40:54.100Z",
+      "mode": "CASH",
+      "reference": "Bill payment #283 - PREETI ENTERPRISES"
+    }
+  ],
+  "chatter": [
+    {
+      "id": "ch_inv_1793170854100_1",
+      "date": "2026-10-28T09:40:54.100Z",
+      "author": "Sunil Sharma",
+      "text": "Invoice #283 confirmed and posted for PREETI ENTERPRISES (₹83,055.00)",
+      "type": "system"
+    }
+  ]
+};
+
 export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = null) => {
   const delSet = customDeletedSet instanceof Set ? customDeletedSet : new Set(getDeletedIds());
   const map = new Map();
@@ -950,6 +1167,9 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
 
   const processInvoice = (inv) => {
     if (!inv) return;
+    if (inv.id === 'inv_1793536035240' && String(inv.invoiceNo).trim() === '283') {
+      inv = { ...inv, invoiceNo: '257' };
+    }
     const id = inv.id || (inv.invoiceNo ? `inv_auto_${String(inv.invoiceNo).trim()}` : null);
     if (!id || SAMPLE_IDS.includes(id) || delSet.has(id)) return;
     const invNo = inv.invoiceNo ? String(inv.invoiceNo).trim().toUpperCase() : null;
@@ -1033,7 +1253,23 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
 
   (remoteArr || []).forEach(processInvoice);
   (localArr || []).forEach(processInvoice);
-  return Array.from(map.values());
+
+  const allInvs = Array.from(map.values()).map(i => {
+    if (String(i?.invoiceNo).trim() === '283' && (i.id === 'inv_1793536035240' || i.grandTotal !== 83055)) {
+      return VERIFIED_INVOICE_283;
+    }
+    if (String(i?.invoiceNo).trim() === '282' && i.grandTotal !== 56553) {
+      return VERIFIED_INVOICE_282;
+    }
+    return i;
+  });
+  if (!allInvs.some(i => String(i?.invoiceNo).trim() === '283')) {
+    allInvs.push(VERIFIED_INVOICE_283);
+  }
+  if (!allInvs.some(i => String(i?.invoiceNo).trim() === '282')) {
+    allInvs.push(VERIFIED_INVOICE_282);
+  }
+  return allInvs;
 };
 
 export const mergeParties = (localArr = [], remoteArr = [], customDeletedSet = null) => {
@@ -1347,6 +1583,26 @@ export const pushLocalDataToCloud = async () => {
         }
       } catch (mergeErr) {
         console.warn('Supabase pre-merge fetch error:', mergeErr);
+      }
+
+      finalInvoices = finalInvoices.map(i => {
+        if (!i) return i;
+        if (i.id === 'inv_1793536035240' && String(i.invoiceNo).trim() === '283') {
+          return { ...i, invoiceNo: '257' };
+        }
+        if (String(i.invoiceNo).trim() === '283') {
+          return VERIFIED_INVOICE_283;
+        }
+        if (String(i.invoiceNo).trim() === '282') {
+          return VERIFIED_INVOICE_282;
+        }
+        return i;
+      });
+      if (!finalInvoices.some(i => String(i?.invoiceNo).trim() === '283')) {
+        finalInvoices.push(VERIFIED_INVOICE_283);
+      }
+      if (!finalInvoices.some(i => String(i?.invoiceNo).trim() === '282')) {
+        finalInvoices.push(VERIFIED_INVOICE_282);
       }
 
       const rawBeat = JSON.stringify({
@@ -2881,7 +3137,40 @@ export const compareInvoicesDesc = (a, b) => {
 // Operations: Invoices
 export const fetchInvoices = () => {
   const delSet = new Set(getDeletedIds());
-  return getStorageData(STORAGE_KEYS.INVOICES, [])
+  let list = getStorageData(STORAGE_KEYS.INVOICES, []);
+  let hasChanges = false;
+
+  list = list.map(inv => {
+    if (!inv) return inv;
+    if (inv.id === 'inv_1793536035240' && String(inv.invoiceNo).trim() === '283') {
+      hasChanges = true;
+      return { ...inv, invoiceNo: '257' };
+    }
+    if (String(inv.invoiceNo).trim() === '283' && (inv.id === 'inv_1793536035240' || inv.grandTotal !== 83055)) {
+      hasChanges = true;
+      return VERIFIED_INVOICE_283;
+    }
+    if (String(inv.invoiceNo).trim() === '282' && inv.grandTotal !== 56553) {
+      hasChanges = true;
+      return VERIFIED_INVOICE_282;
+    }
+    return inv;
+  });
+
+  if (!list.some(i => String(i?.invoiceNo).trim() === '283')) {
+    hasChanges = true;
+    list.push(VERIFIED_INVOICE_283);
+  }
+  if (!list.some(i => String(i?.invoiceNo).trim() === '282')) {
+    hasChanges = true;
+    list.push(VERIFIED_INVOICE_282);
+  }
+
+  if (hasChanges) {
+    setStorageData(STORAGE_KEYS.INVOICES, list);
+  }
+
+  return list
     .filter(i => i && !SAMPLE_IDS.includes(i.id) && !delSet.has(i.id))
     .sort(compareInvoicesDesc);
 };
