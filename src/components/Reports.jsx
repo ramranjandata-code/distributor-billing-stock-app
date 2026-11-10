@@ -184,7 +184,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const [salesViewMode, setSalesViewMode] = useState('ALL'); // 'ALL', 'BRAND', 'PARTY', 'PRODUCT' // 'SALES', 'PNL', 'BALANCESHEET', 'EXPENSES', 'GST', 'DAYBOOK', 'STOCK'
   const [period, setPeriod] = useState('ALL'); // Default ALL so previous months (Aug/Sep) are never hidden
   const [brandSearchQuery, setBrandSearchQuery] = useState('');
-  const [selectedBrandDetail, setSelectedBrandDetail] = useState(null);
+  const [selectedBrandName, setSelectedBrandName] = useState(null);
   const [brandDetailTab, setBrandDetailTab] = useState('PRODUCTS'); // 'PRODUCTS' or 'INVOICES' // 'TODAY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', 'YEARLY', 'CUSTOM', 'ALL'
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -1119,6 +1119,12 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     };
   }).sort((a, b) => b.totalAmount - a.totalAmount);
 
+  // Dynamic live brand detail that never goes stale
+  const selectedBrandDetail = useMemo(() => {
+    if (!selectedBrandName) return null;
+    return brandBreakdown.find(b => b.name === selectedBrandName) || null;
+  }, [selectedBrandName, brandBreakdown]);
+
   // 2. Product Sales Breakdown (enhanced with Brand & packaging unit)
   const productSalesMap = {};
   filteredInvoices.forEach(inv => {
@@ -1907,7 +1913,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <button
                             type="button"
-                            onClick={() => setSelectedBrandDetail(null)}
+                            onClick={() => setSelectedBrandName(null)}
                             className="btn btn-secondary btn-sm"
                             style={{ gap: '6px', padding: '5px 10px', fontSize: '0.8rem', fontWeight: '700' }}
                           >
@@ -2103,7 +2109,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                                   cursor: 'pointer',
                                   transition: 'background 0.15s'
                                 }}
-                                onClick={() => setSelectedBrandDetail(brand)}
+                                onClick={() => setSelectedBrandName(brand.name)}
                                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(59, 130, 246, 0.05)'}
                                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                               >
@@ -2149,7 +2155,7 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setSelectedBrandDetail(brand);
+                                      setSelectedBrandName(brand.name);
                                     }}
                                     className="btn btn-secondary btn-sm"
                                     style={{ gap: '4px', padding: '3px 8px', fontSize: '0.75rem', fontWeight: '700' }}
