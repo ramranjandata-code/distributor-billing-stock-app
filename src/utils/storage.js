@@ -963,8 +963,12 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
       const existingIsDummy = isDummyItems(existing?.items);
       const newIsDummy = isDummyItems(inv?.items);
 
-      // Prefer real items over dummy items, or whichever has more items
-      const preferNew = (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
+      const existingTs = Number(existing?.updatedAt || existing?.lastUpdated || 0);
+      const newTs = Number(inv?.updatedAt || inv?.lastUpdated || 0);
+      const isExplicitlyVerified = inv?.isVerified || (inv?.notes && inv?.notes.includes('verified'));
+
+      // Prefer real items over dummy items, newer timestamps, explicitly verified, or whichever has more items
+      const preferNew = (newTs > existingTs) || isExplicitlyVerified || (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
 
       const mergedPartyGstin = (inv.partyGstin && inv.partyGstin.trim()) ? inv.partyGstin.trim() : (existing?.partyGstin || '');
       const mergedPartyAddress = (inv.partyAddress && inv.partyAddress.trim()) ? inv.partyAddress.trim() : (existing?.partyAddress || '');
@@ -995,7 +999,11 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
       const newIsDummy = isDummyItems(inv?.items);
       const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
       const newItems = Array.isArray(inv?.items) ? inv.items.length : 0;
-      const preferNew = (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
+      const existingTs = Number(existing?.updatedAt || existing?.lastUpdated || 0);
+      const newTs = Number(inv?.updatedAt || inv?.lastUpdated || 0);
+      const isExplicitlyVerified = inv?.isVerified || (inv?.notes && inv?.notes.includes('verified'));
+
+      const preferNew = (newTs > existingTs) || isExplicitlyVerified || (existingIsDummy && !newIsDummy) || (!existingIsDummy && !newIsDummy && newItems >= existingItems) || (existingIsDummy && newIsDummy && newItems >= existingItems);
 
       const mergedPartyGstin = (inv.partyGstin && inv.partyGstin.trim()) ? inv.partyGstin.trim() : (existing?.partyGstin || '');
       const mergedPartyAddress = (inv.partyAddress && inv.partyAddress.trim()) ? inv.partyAddress.trim() : (existing?.partyAddress || '');

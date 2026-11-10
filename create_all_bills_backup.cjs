@@ -43,7 +43,7 @@ async function run() {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
   console.log('Connecting to cloud database...');
-  const { data, error } = await supabase.from('distro_cloud_store').select('*');
+  const { data, error } = await supabase.from('distro_cloud_store').select('*').eq('id', 'distropulse_store_data');
 
   if (error || !data || !data[0] || !data[0].beat) {
     throw new Error('Failed to retrieve cloud store data: ' + (error ? error.message : 'empty data'));
