@@ -74,32 +74,44 @@ export const mapToGstnUqc = (unitStr) => {
  */
 export const resolveItemUqc = (item) => {
   if (!item) return 'OTH';
-
-  // Gift Packs / Gift Boxes (e.g. Beyond Snacks Gift Pack 330 GM) are strictly BOX packaging
   const name = String(item.name || item.description || item.productName || '').toUpperCase();
-  if (name.includes('GIFT PACK') || name.includes('GIFT BOX') || (name.includes('BEYOND SNACKS') && (name.includes('330') || name.includes('GIFT')))) {
+
+  // 1. Precise "BOX" enforcement: Boxes, Gift Packs, Bulk 510GM & 330GM Boxes, Jars
+  if (
+    name.includes('GIFT PACK') || 
+    name.includes('GIFT BOX') || 
+    name.includes('510 GM') || 
+    name.includes('510GM') || 
+    name.includes('330 GM') || 
+    name.includes('330G') || 
+    name.includes('JAR') ||
+    (name.includes('BEYOND SNACKS') && (name.includes('GIFT') || name.includes('330') || name.includes('510')))
+  ) {
     return 'BOX';
   }
 
+  // 2. Precise "PAC" enforcement: Chain Pouches, Packs, Standup Pouches
+  if (
+    name.includes('CHAIN POUCH') || 
+    name.includes('C. POUCH') || 
+    name.includes('C.POUCH') ||
+    name.includes('STANDUP POUCH')
+  ) {
+    return 'PAC';
+  }
+
+  // 3. Explicit source unit mapping
   const unitStr = item.unit || item.uom || item.pkg || item.packaging;
   if (unitStr && typeof unitStr === 'string' && unitStr.trim().length > 0) {
     const mapped = mapToGstnUqc(unitStr);
     if (mapped !== 'OTH') return mapped;
   }
 
-  // Fallback heuristic based on product name if unit is omitted or OTH
-  if (name.includes('CHAIN POUCH') || name.includes('C. POUCH') || name.includes('C.POUCH')) {
-    return 'PAC';
-  }
-  if (name.includes('BOX') || name.includes('JAR')) {
-    return 'BOX';
-  }
-  if (name.includes('POUCH') || name.includes('PACKET') || name.includes('PACK')) {
-    return 'PAC';
-  }
-  if (name.includes('PCS') || name.includes('PIECE') || name.includes('UNIT')) {
-    return 'PCS';
-  }
+  // 4. Secondary heuristics based on product name
+  if (name.includes('BOX')) return 'BOX';
+  if (name.includes('POUCH') || name.includes('PACKET') || name.includes('PACK')) return 'PAC';
+  if (name.includes('PCS') || name.includes('PIECE') || name.includes('UNIT') || name.includes('LOOSE')) return 'PCS';
+
   return 'PCS';
 };
 

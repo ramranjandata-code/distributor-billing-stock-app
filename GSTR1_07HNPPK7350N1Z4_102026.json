@@ -219,11 +219,11 @@
         "desc": "Snacks & Namkeen (Pouch)",
         "uqc": "PAC",
         "qty": 1700,
-        "val": 110762.59,
-        "txval": 105488.19,
+        "val": 110762.08,
+        "txval": 105487.7,
         "iamt": 0,
-        "camt": 2637.2,
-        "samt": 2637.2,
+        "camt": 2637.19,
+        "samt": 2637.19,
         "csamt": 0
       },
       {
@@ -244,12 +244,12 @@
         "hsn_sc": "210690",
         "desc": "Snacks & Namkeen (Pcs)",
         "uqc": "PCS",
-        "qty": 1466,
-        "val": 76566.14,
-        "txval": 72920.14,
+        "qty": 1262,
+        "val": 20013.06,
+        "txval": 19060.06,
         "iamt": 0,
-        "camt": 1823,
-        "samt": 1823,
+        "camt": 476.5,
+        "samt": 476.5,
         "csamt": 0
       },
       {
@@ -257,12 +257,12 @@
         "hsn_sc": "21069099",
         "desc": "Snacks & Namkeen (Pcs)",
         "uqc": "PCS",
-        "qty": 364,
-        "val": 12799.3,
-        "txval": 12189.8,
+        "qty": 326,
+        "val": 11279.24,
+        "txval": 10742.14,
         "iamt": 0,
-        "camt": 304.75,
-        "samt": 304.75,
+        "camt": 268.55,
+        "samt": 268.55,
         "csamt": 0
       },
       {
@@ -280,6 +280,19 @@
       },
       {
         "num": 7,
+        "hsn_sc": "21069099",
+        "desc": "Snacks & Namkeen (Box)",
+        "uqc": "BOX",
+        "qty": 38,
+        "val": 1520.04,
+        "txval": 1447.66,
+        "iamt": 0,
+        "camt": 36.19,
+        "samt": 36.19,
+        "csamt": 0
+      },
+      {
+        "num": 8,
         "hsn_sc": "17049020",
         "desc": "Sugar Confectionery (Pcs)",
         "uqc": "PCS",
@@ -292,7 +305,7 @@
         "csamt": 0
       },
       {
-        "num": 8,
+        "num": 9,
         "hsn_sc": "18069010",
         "desc": "Chocolates & Cocoa (Pcs)",
         "uqc": "PCS",
@@ -305,7 +318,20 @@
         "csamt": 0
       },
       {
-        "num": 9,
+        "num": 10,
+        "hsn_sc": "210690",
+        "desc": "Snacks & Namkeen (Box)",
+        "uqc": "BOX",
+        "qty": 704,
+        "val": 139608.61,
+        "txval": 132960.57,
+        "iamt": 0,
+        "camt": 3324.02,
+        "samt": 3324.02,
+        "csamt": 0
+      },
+      {
+        "num": 11,
         "hsn_sc": "19053100",
         "desc": "Wafers & Biscuits (Box)",
         "uqc": "BOX",
@@ -315,19 +341,6 @@
         "iamt": 0,
         "camt": 2.29,
         "samt": 2.29,
-        "csamt": 0
-      },
-      {
-        "num": 10,
-        "hsn_sc": "210690",
-        "desc": "Snacks & Namkeen (Box)",
-        "uqc": "BOX",
-        "qty": 500,
-        "val": 83055,
-        "txval": 79100,
-        "iamt": 0,
-        "camt": 1977.5,
-        "samt": 1977.5,
         "csamt": 0
       }
     ]
