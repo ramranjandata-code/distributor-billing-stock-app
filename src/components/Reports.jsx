@@ -60,7 +60,10 @@ import {
 import { 
   generateGstr1Payload, 
   validateGstr1Payload, 
-  downloadGstr1Json 
+  downloadGstr1Json,
+  mapToGstnUqc,
+  resolveItemUqc,
+  getHsnPackagingDescription
 } from '../utils/gstr1Generator';
 
 
@@ -585,47 +588,91 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     gstMonthRegularInvoices.forEach(inv => {
       (inv.items || []).forEach(item => {
         if (item.isSection || item.isNote) return;
-        const hsn = (item.hsn || '1905').trim();
-        if (!map[hsn]) {
-          map[hsn] = {
+        const rawHsn = String(item.hsn || item.hsnCode || '1905').replace(/[^0-9]/g, '');
+        const hsn = rawHsn.length >= 2 ? rawHsn : '1905';
+        const uqc = resolveItemUqc(item);
+        const key = `${hsn}___${uqc}`;
+
+        const isInter = inv.supplyType === 'INTER' || (inv.pos && business?.gstin && !inv.pos.startsWith(business.gstin.substring(0, 2)));
+        const rate = item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 5;
+
+        if (!map[key]) {
+          map[key] = {
             hsn,
-            description: item.name || 'General FMCG Item',
-            uqc: item.unit || 'BOX',
+            description: getHsnPackagingDescription(hsn, uqc, item.name),
+            uqc,
             totalQty: 0,
             taxableValue: 0,
-            rate: item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 5,
-            isInter: inv.supplyType === 'INTER' || (inv.pos && business?.gstin && !inv.pos.startsWith(business.gstin.substring(0, 2)))
+            cgst: 0,
+            sgst: 0,
+            igst: 0,
+            totalTax: 0,
+            rate,
+            isInter
           };
         }
         const qty = Number(item.qty) || 0;
         const taxVal = Number(item.taxableAmount !== undefined ? item.taxableAmount : (item.taxableVal !== undefined ? item.taxableVal : (item.total || 0))) || 0;
 
-        map[hsn].totalQty += qty;
-        map[hsn].taxableValue += taxVal;
+        let itemCamt = 0, itemSamt = 0, itemIgst = 0;
+        if (isInter) {
+          itemIgst = (taxVal * rate) / 100;
+        } else {
+          itemCamt = (taxVal * (rate / 2)) / 100;
+          itemSamt = itemCamt;
+        }
+
+        map[key].totalQty += qty;
+        map[key].taxableValue += taxVal;
+        map[key].cgst += itemCamt;
+        map[key].sgst += itemSamt;
+        map[key].igst += itemIgst;
+        map[key].totalTax += (itemCamt + itemSamt + itemIgst);
       });
     });
 
-    return Object.values(map).map(h => {
-      const taxableValue = Number(h.taxableValue.toFixed(2));
-      let cgst = 0, sgst = 0, igst = 0;
-      if (h.isInter) {
-        igst = Number(((taxableValue * h.rate) / 100).toFixed(2));
-      } else {
-        cgst = Number(((taxableValue * (h.rate / 2)) / 100).toFixed(2));
-        sgst = cgst; // 100% mathematical parity: SGST == CGST
-      }
-      const totalTax = Number((cgst + sgst + igst).toFixed(2));
-      return {
-        ...h,
-        totalQty: Number(h.totalQty.toFixed(2)),
-        taxableValue,
-        cgst,
-        sgst,
-        igst,
-        totalTax
-      };
+    // Deduct credit notes from matching composite key (hsn, uqc)
+    (gstMonthCreditNotes || []).forEach(cn => {
+      (cn.items || []).forEach(item => {
+        if (item.isSection || item.isNote) return;
+        const rawHsn = String(item.hsn || item.hsnCode || '1905').replace(/[^0-9]/g, '');
+        const hsn = rawHsn.length >= 2 ? rawHsn : '1905';
+        const uqc = resolveItemUqc(item);
+        const key = `${hsn}___${uqc}`;
+
+        if (map[key]) {
+          const qty = Number(item.qty) || 0;
+          const taxVal = Number(item.taxableAmount !== undefined ? item.taxableAmount : (item.taxableVal !== undefined ? item.taxableVal : (item.total || 0))) || 0;
+          const rate = map[key].rate;
+
+          let itemCamt = 0, itemSamt = 0, itemIgst = 0;
+          if (map[key].isInter) {
+            itemIgst = (taxVal * rate) / 100;
+          } else {
+            itemCamt = (taxVal * (rate / 2)) / 100;
+            itemSamt = itemCamt;
+          }
+
+          map[key].totalQty = Math.max(0, map[key].totalQty - qty);
+          map[key].taxableValue = Math.max(0, map[key].taxableValue - taxVal);
+          map[key].cgst = Math.max(0, map[key].cgst - itemCamt);
+          map[key].sgst = Math.max(0, map[key].sgst - itemSamt);
+          map[key].igst = Math.max(0, map[key].igst - itemIgst);
+          map[key].totalTax = Math.max(0, map[key].totalTax - (itemCamt + itemSamt + itemIgst));
+        }
+      });
     });
-  }, [gstMonthRegularInvoices, business]);
+
+    return Object.values(map).map(h => ({
+      ...h,
+      totalQty: Number(h.totalQty.toFixed(2)),
+      taxableValue: Number(h.taxableValue.toFixed(2)),
+      cgst: Number(h.cgst.toFixed(2)),
+      sgst: Number(h.sgst.toFixed(2)),
+      igst: Number(h.igst.toFixed(2)),
+      totalTax: Number(h.totalTax.toFixed(2))
+    }));
+  }, [gstMonthRegularInvoices, gstMonthCreditNotes, business]);
 
   const handleValidateGstr1 = () => {
     const fp = getFpSixDigit();
@@ -1235,17 +1282,21 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
   const b2bInvoices = regularInvoices.filter(inv => inv.partyGstin && inv.partyGstin.trim().length >= 10 && inv.partyGstin.trim().toUpperCase() !== 'URP');
   const b2cInvoices = regularInvoices.filter(inv => !inv.partyGstin || inv.partyGstin.trim().length < 10 || inv.partyGstin.trim().toUpperCase() === 'URP');
 
-  // HSN Summary Map
+  // HSN Summary Map with Composite (hsn, uqc) Grouping
   const hsnMap = useMemo(() => {
     const map = {};
     regularInvoices.forEach(inv => {
       (inv.items || []).forEach(item => {
-        const hsn = item.hsn || '1905';
-        if (!map[hsn]) {
-          map[hsn] = {
+        const rawHsn = String(item.hsn || item.hsnCode || '1905').replace(/[^0-9]/g, '');
+        const hsn = rawHsn.length >= 2 ? rawHsn : '1905';
+        const uqc = resolveItemUqc(item);
+        const key = `${hsn}___${uqc}`;
+
+        if (!map[key]) {
+          map[key] = {
             hsn,
-            description: item.name || 'General FMCG Item',
-            uqc: item.unit || 'BOX',
+            description: getHsnPackagingDescription(hsn, uqc, item.name),
+            uqc,
             totalQty: 0,
             taxableValue: 0,
             cgst: 0,
@@ -1259,11 +1310,11 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
         const rate = item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 0;
         const itemTax = (taxVal * rate) / 100;
 
-        map[hsn].totalQty += qty;
-        map[hsn].taxableValue += taxVal;
-        map[hsn].cgst += itemTax / 2;
-        map[hsn].sgst += itemTax / 2;
-        map[hsn].totalTax += itemTax;
+        map[key].totalQty += qty;
+        map[key].taxableValue += taxVal;
+        map[key].cgst += itemTax / 2;
+        map[key].sgst += itemTax / 2;
+        map[key].totalTax += itemTax;
       });
     });
     return Object.values(map);
@@ -3272,7 +3323,20 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '8px', fontWeight: '700', color: 'var(--primary)' }}>{h.hsn}</td>
                         <td style={{ padding: '8px' }}>{h.description}</td>
-                        <td style={{ padding: '8px', textAlign: 'center' }}>{h.uqc}</td>
+                        <td style={{ padding: '8px', textAlign: 'center' }}>
+                          <span style={{ 
+                            padding: '3px 8px', 
+                            borderRadius: '4px', 
+                            fontWeight: '700', 
+                            fontSize: '0.76rem',
+                            letterSpacing: '0.5px',
+                            background: h.uqc === 'BOX' ? '#eff6ff' : (h.uqc === 'PCS' ? '#ecfdf5' : '#fef3c7'),
+                            color: h.uqc === 'BOX' ? '#2563eb' : (h.uqc === 'PCS' ? '#059669' : '#d97706'),
+                            border: `1px solid ${h.uqc === 'BOX' ? '#bfdbfe' : (h.uqc === 'PCS' ? '#a7f3d0' : '#fde68a')}`
+                          }}>
+                            {h.uqc}
+                          </span>
+                        </td>
                         <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{h.totalQty}</td>
                         <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>₹{h.taxableValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                         <td style={{ padding: '8px', textAlign: 'right' }}>₹{h.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
@@ -4309,7 +4373,20 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                             <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                               <td style={{ padding: '8px', fontWeight: '800', color: 'var(--primary)', fontFamily: 'monospace' }}>{h.hsn}</td>
                               <td style={{ padding: '8px' }}>{h.description}</td>
-                              <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{h.uqc}</td>
+                              <td style={{ padding: '8px', textAlign: 'center' }}>
+                                <span style={{ 
+                                  padding: '3px 8px', 
+                                  borderRadius: '4px', 
+                                  fontWeight: '700', 
+                                  fontSize: '0.76rem',
+                                  letterSpacing: '0.5px',
+                                  background: h.uqc === 'BOX' ? '#eff6ff' : (h.uqc === 'PCS' ? '#ecfdf5' : '#fef3c7'),
+                                  color: h.uqc === 'BOX' ? '#2563eb' : (h.uqc === 'PCS' ? '#059669' : '#d97706'),
+                                  border: `1px solid ${h.uqc === 'BOX' ? '#bfdbfe' : (h.uqc === 'PCS' ? '#a7f3d0' : '#fde68a')}`
+                                }}>
+                                  {h.uqc}
+                                </span>
+                              </td>
                               <td style={{ padding: '8px', textAlign: 'center', fontWeight: '700' }}>{h.totalQty}</td>
                               <td style={{ padding: '8px', textAlign: 'right', fontWeight: '700' }}>₹{h.taxableValue.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                               <td style={{ padding: '8px', textAlign: 'right' }}>₹{h.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>

@@ -36,7 +36,9 @@ export const mapToGstnUqc = (unitStr) => {
     'BOX': 'BOX', 'BOXES': 'BOX', 'JAR': 'BOX', 'JARS': 'BOX',
     'CTN': 'CTN', 'CARTON': 'CTN', 'CARTONS': 'CTN',
     'PAC': 'PAC', 'PACK': 'PAC', 'PACKS': 'PAC', 'PACKET': 'PAC', 'PACKETS': 'PAC',
-    'POUCH': 'PAC', 'POUCHES': 'PAC', 'CHAIN POUCH': 'PAC', 'C. POUCH': 'PAC', 'C.POUCH': 'PAC',
+    'BOX': 'BOX', 'BOXES': 'BOX', 'JAR': 'BOX', 'JARS': 'BOX', 'GIFT PACK': 'BOX', 'GIFT PACKS': 'BOX', 'BOX/CTN': 'BOX', 'BOX/CARTON': 'BOX',
+    'PAC': 'PAC', 'PACK': 'PAC', 'PACKS': 'PAC', 'PACKET': 'PAC', 'PACKETS': 'PAC',
+    'POUCH': 'PAC', 'POUCHES': 'PAC', 'CHAIN POUCH': 'PAC', 'C. POUCH': 'PAC', 'C.POUCH': 'PAC', 'CHAIN': 'PAC', 'CHAINS': 'PAC',
     'BTL': 'BTL', 'BOTTLE': 'BTL', 'BOTTLES': 'BTL',
     'KGS': 'KGS', 'KG': 'KGS', 'KILOGRAM': 'KGS', 'KILOGRAMS': 'KGS',
     'GMS': 'GMS', 'GM': 'GMS', 'GRAM': 'GMS', 'GRAMS': 'GMS',
@@ -60,6 +62,74 @@ export const mapToGstnUqc = (unitStr) => {
   if (OFFICIAL_GSTN_UQC.has(clean)) return clean;
   if (clean.length === 3 && OFFICIAL_GSTN_UQC.has(clean)) return clean;
   return 'OTH';
+};
+
+/**
+ * Resolves item-level packaging into an official GSTN UQC code strictly:
+ * - If source unit is explicitly provided (Box, Pcs, Chain Pouch, etc.), map it strictly.
+ * - Boxes (e.g. Gift Packs, 510 GM Boxes, bulk box items) strictly map to 'BOX'.
+ * - Pieces / Individual Packs (e.g. ₹20 MRP packets) strictly map to 'PCS'.
+ * - Chain Pouches strictly map to 'PAC'.
+ * - Source unit integrity is protected; never coerce Pcs or Boxes into pouches.
+ */
+export const resolveItemUqc = (item) => {
+  if (!item) return 'OTH';
+  const unitStr = item.unit || item.uom || item.pkg || item.packaging;
+  if (unitStr && typeof unitStr === 'string' && unitStr.trim().length > 0) {
+    return mapToGstnUqc(unitStr);
+  }
+
+  // Fallback heuristic based on product name if unit is completely omitted
+  const name = String(item.name || item.description || item.productName || '').toUpperCase();
+  if (name.includes('CHAIN POUCH') || name.includes('C. POUCH') || name.includes('C.POUCH')) {
+    return 'PAC';
+  }
+  if (name.includes('GIFT PACK') || name.includes('BOX') || name.includes('JAR') || name.includes('510 GM') || name.includes('510GM')) {
+    return 'BOX';
+  }
+  if (name.includes('POUCH') || name.includes('PACKET') || name.includes('PACK')) {
+    return 'PAC';
+  }
+  if (name.includes('PCS') || name.includes('PIECE') || name.includes('UNIT')) {
+    return 'PCS';
+  }
+  return 'PCS';
+};
+
+/**
+ * Generates an official, descriptive, packaging-aware Goods Description
+ * strictly complying with GSTN Table 12 schema constraints (max 30 characters).
+ */
+export const getHsnPackagingDescription = (hsnCode, uqc, sampleName = '') => {
+  const hsn = String(hsnCode || '').trim();
+  const cleanUqc = String(uqc || 'OTH').toUpperCase();
+  const pkgLabel = cleanUqc === 'BOX' ? 'Box' : (cleanUqc === 'PAC' ? 'Pouch' : (cleanUqc === 'PCS' ? 'Pcs' : cleanUqc));
+
+  if (hsn.startsWith('2106')) {
+    return `Snacks & Namkeen (${pkgLabel})`.slice(0, 30);
+  }
+  if (hsn.startsWith('1905')) {
+    return `Wafers & Biscuits (${pkgLabel})`.slice(0, 30);
+  }
+  if (hsn.startsWith('1806')) {
+    return `Chocolates & Cocoa (${pkgLabel})`.slice(0, 30);
+  }
+  if (hsn.startsWith('1704')) {
+    return `Sugar Confectionery (${pkgLabel})`.slice(0, 30);
+  }
+  if (hsn.startsWith('1507') || hsn.startsWith('1512') || hsn.startsWith('1515')) {
+    return `Edible Oils & Supplies (${pkgLabel})`.slice(0, 30);
+  }
+
+  if (sampleName) {
+    const cleanName = sampleName.replace(/[-_–].*$/, '').replace(/\s+/g, ' ').trim();
+    if (cleanName.length > 0) {
+      const combined = `${cleanName} (${pkgLabel})`;
+      return combined.length <= 30 ? combined : cleanName.slice(0, 30);
+    }
+  }
+
+  return `Goods & Supplies (${pkgLabel})`.slice(0, 30);
 };
 
 /**
@@ -582,14 +652,30 @@ export const generateGstr1Payload = ({
         const g = rateGroupMap.get(rate);
         g.txval = round2(g.txval + txval);
 
-        // Record for HSN
+        let itemCamt = 0, itemSamt = 0, itemIamt = 0;
+        if (isIntra) {
+          itemCamt = round2((txval * (rate / 2)) / 100);
+          itemSamt = itemCamt;
+        } else {
+          itemIamt = round2((txval * rate) / 100);
+        }
+
+        const rawHsn = String(item.hsn || item.hsnCode || '1507').replace(/[^0-9]/g, '');
+        const hsnCode = rawHsn.length >= 2 ? rawHsn : '1507';
+        const itemUqc = resolveItemUqc(item);
+
+        // Record for HSN with strict composite key (HSN, UQC)
         outwardHsnItems.push({
-          hsn: String(item.hsn || item.hsnCode || '1507').replace(/\s+/g, ''),
+          hsn: hsnCode,
           desc: item.name || 'FMCG Goods',
           unit: item.unit || 'PCS',
+          uqc: itemUqc,
           qty: round2(qty),
           rate,
           txval,
+          camt: itemCamt,
+          samt: itemSamt,
+          iamt: itemIamt,
           isIntra,
           pos
         });
@@ -600,13 +686,24 @@ export const generateGstr1Payload = ({
       const txval = round2(inv.taxableTotal || (invTotal / 1.05));
       rateGroupMap.set(rate, { rt: rate, txval });
 
+      let itemCamt = 0, itemSamt = 0, itemIamt = 0;
+      if (isIntra) {
+        itemCamt = round2((txval * (rate / 2)) / 100);
+        itemSamt = itemCamt;
+      } else {
+        itemIamt = round2((txval * rate) / 100);
+      }
       outwardHsnItems.push({
         hsn: '1507',
         desc: 'General FMCG Supplies',
         unit: 'PCS',
+        uqc: 'PCS',
         qty: 1,
         rate,
         txval,
+        camt: itemCamt,
+        samt: itemSamt,
+        iamt: itemIamt,
         isIntra,
         pos
       });
@@ -785,12 +882,21 @@ export const generateGstr1Payload = ({
         });
         noteCalculatedVal = round2(noteCalculatedVal + txval + iamt + camt + samt);
 
+        const rawHsn = String(item.hsn || item.hsnCode || '1507').replace(/[^0-9]/g, '');
+        const hsnCode = rawHsn.length >= 2 ? rawHsn : '1507';
+        const itemUqc = resolveItemUqc(item);
+
         returnHsnItems.push({
-          hsn: String(item.hsn || item.hsnCode || '1507').replace(/\s+/g, ''),
+          hsn: hsnCode,
+          desc: item.name || 'FMCG Goods',
           unit: item.unit || 'PCS',
+          uqc: itemUqc,
           qty: round2(qty),
           rate,
           txval,
+          camt,
+          samt,
+          iamt,
           isIntra
         });
       });
@@ -818,10 +924,15 @@ export const generateGstr1Payload = ({
 
       returnHsnItems.push({
         hsn: '1507',
+        desc: 'General FMCG Supplies',
         unit: 'PCS',
+        uqc: 'PCS',
         qty: 1,
         rate,
         txval,
+        camt,
+        samt,
+        iamt,
         isIntra
       });
     }
@@ -857,21 +968,26 @@ export const generateGstr1Payload = ({
   });
 
   // --- SECTION 3: HSN SUMMARY TABLE (Table 12) & CROSS-RECONCILIATION ---
+  // Composite Grouping Key: (hsn_sc, uqc) guarantees distinct rows for Box, Pcs, Chain Pouch
   const hsnMap = new Map();
 
   outwardHsnItems.forEach(item => {
-    const rawHsn = String(item.hsn || '1507').replace(/[^0-9]/g, '');
-    const hsnCode = rawHsn.length >= 2 ? rawHsn : '1507';
-    const uqc = mapToGstnUqc(item.unit);
+    const hsnCode = item.hsn;
+    const uqc = item.uqc || mapToGstnUqc(item.unit);
     const key = `${hsnCode}_${uqc}`;
 
     if (!hsnMap.has(key)) {
       hsnMap.set(key, {
         hsn_sc: hsnCode,
-        desc: (item.desc || 'FMCG Goods').substring(0, 30),
+        desc: getHsnPackagingDescription(hsnCode, uqc, item.desc),
         uqc,
         qty: 0,
         txval: 0,
+        camt: 0,
+        samt: 0,
+        iamt: 0,
+        csamt: 0,
+        val: 0,
         rate: item.rate,
         isIntra: item.isIntra
       });
@@ -879,19 +995,26 @@ export const generateGstr1Payload = ({
     const h = hsnMap.get(key);
     h.qty = round2(h.qty + item.qty);
     h.txval = round2(h.txval + item.txval);
+    h.camt = round2(h.camt + (item.camt || 0));
+    h.samt = round2(h.samt + (item.samt || 0));
+    h.iamt = round2(h.iamt + (item.iamt || 0));
+    h.val = round2(h.val + item.txval + (item.camt || 0) + (item.samt || 0) + (item.iamt || 0));
   });
 
-  // Deduct credit notes from HSN
+  // Deduct credit notes from HSN strictly matching composite key (hsn_sc, uqc)
   returnHsnItems.forEach(item => {
-    const rawHsn = String(item.hsn || '1507').replace(/[^0-9]/g, '');
-    const hsnCode = rawHsn.length >= 2 ? rawHsn : '1507';
-    const uqc = mapToGstnUqc(item.unit);
+    const hsnCode = item.hsn;
+    const uqc = item.uqc || mapToGstnUqc(item.unit);
     const key = `${hsnCode}_${uqc}`;
 
     if (hsnMap.has(key)) {
       const h = hsnMap.get(key);
       h.qty = round2(Math.max(0, h.qty - item.qty));
       h.txval = round2(Math.max(0, h.txval - item.txval));
+      h.camt = round2(Math.max(0, h.camt - (item.camt || 0)));
+      h.samt = round2(Math.max(0, h.samt - (item.samt || 0)));
+      h.iamt = round2(Math.max(0, h.iamt - (item.iamt || 0)));
+      h.val = round2(Math.max(0, h.val - (item.txval + (item.camt || 0) + (item.samt || 0) + (item.iamt || 0))));
     }
   });
 
@@ -916,7 +1039,7 @@ export const generateGstr1Payload = ({
       {
         num: 1,
         hsn_sc: '1507',
-        desc: 'General FMCG Supplies',
+        desc: 'General FMCG Supplies (Pcs)',
         uqc: 'PCS',
         qty: 1,
         val: round2(targetTotals.txval + targetTotals.iamt + targetTotals.camt + targetTotals.samt + targetTotals.csamt),
@@ -930,19 +1053,11 @@ export const generateGstr1Payload = ({
   } else if (hsnEntries.length > 0) {
     hsnData = hsnEntries.map((h, index) => {
       const txval = round2(h.txval);
-      let camt = 0, samt = 0, iamt = 0;
-
-      if (h.isIntra) {
-        camt = round2((txval * (h.rate / 2)) / 100);
-        samt = camt; // Enforce 100% mathematical parity: SGST == CGST for POS 07
-        iamt = 0.00;
-      } else {
-        iamt = round2((txval * h.rate) / 100);
-        camt = 0.00;
-        samt = 0.00;
-      }
-
-      const val = round2(txval + iamt + camt + samt);
+      const camt = round2(h.camt);
+      const samt = round2(h.samt);
+      const iamt = round2(h.iamt);
+      const csamt = 0.00;
+      const val = round2(txval + iamt + camt + samt + csamt);
 
       return {
         num: index + 1,
@@ -955,42 +1070,36 @@ export const generateGstr1Payload = ({
         iamt,
         camt,
         samt,
-        csamt: 0.00,
+        csamt,
         _isIntra: Boolean(h.isIntra)
       };
     });
 
-    // Dynamic Outward Balance: Force Table 12 HSN totals to match targetTotals exactly
-    const primaryHsn = hsnData.reduce((prev, curr) => (curr.txval > prev.txval ? curr : prev), hsnData[0]);
+    // Zero-loss delta reconciliation with targetTotals (B2B + B2C) to preserve independent group integrity
+    const sumHsnTxval = round2(hsnData.reduce((acc, curr) => acc + curr.txval, 0));
+    const sumHsnCamt = round2(hsnData.reduce((acc, curr) => acc + curr.camt, 0));
+    const sumHsnSamt = round2(hsnData.reduce((acc, curr) => acc + curr.samt, 0));
+    const sumHsnIamt = round2(hsnData.reduce((acc, curr) => acc + curr.iamt, 0));
 
-    let otherTxval = 0;
-    let otherIamt = 0;
-    let otherCamt = 0;
-    let otherSamt = 0;
-    let otherCsamt = 0;
+    const deltaTxval = round2(targetTotals.txval - sumHsnTxval);
+    const deltaCamt = round2(targetTotals.camt - sumHsnCamt);
+    const deltaSamt = round2(targetTotals.samt - sumHsnSamt);
+    const deltaIamt = round2(targetTotals.iamt - sumHsnIamt);
 
-    hsnData.forEach(item => {
-      if (item !== primaryHsn) {
-        otherTxval = round2(otherTxval + item.txval);
-        otherIamt = round2(otherIamt + item.iamt);
-        otherCamt = round2(otherCamt + item.camt);
-        otherSamt = round2(otherSamt + item.samt);
-        otherCsamt = round2(otherCsamt + item.csamt);
+    if (deltaTxval !== 0 || deltaCamt !== 0 || deltaSamt !== 0 || deltaIamt !== 0) {
+      const primaryHsn = hsnData.reduce((prev, curr) => (curr.txval > prev.txval ? curr : prev), hsnData[0]);
+      if (primaryHsn) {
+        primaryHsn.txval = round2(primaryHsn.txval + deltaTxval);
+        primaryHsn.camt = round2(primaryHsn.camt + deltaCamt);
+        if (primaryHsn._isIntra || primaryHsn.iamt === 0) {
+          primaryHsn.samt = primaryHsn.camt; // Enforce 100% CGST == SGST symmetry for POS 07
+        } else {
+          primaryHsn.samt = round2(primaryHsn.samt + deltaSamt);
+        }
+        primaryHsn.iamt = round2(primaryHsn.iamt + deltaIamt);
+        primaryHsn.val = round2(primaryHsn.txval + primaryHsn.iamt + primaryHsn.camt + primaryHsn.samt + primaryHsn.csamt);
       }
-    });
-
-    primaryHsn.txval = round2(targetTotals.txval - otherTxval);
-    primaryHsn.iamt = round2(targetTotals.iamt - otherIamt);
-    primaryHsn.camt = round2(targetTotals.camt - otherCamt);
-
-    // Enforce 100% CGST == SGST symmetry for Intra-state (POS 07)
-    if (primaryHsn._isIntra || primaryHsn.iamt === 0) {
-      primaryHsn.samt = primaryHsn.camt;
-    } else {
-      primaryHsn.samt = round2(targetTotals.samt - otherSamt);
     }
-    primaryHsn.csamt = round2(targetTotals.csamt - otherCsamt);
-    primaryHsn.val = round2(primaryHsn.txval + primaryHsn.iamt + primaryHsn.camt + primaryHsn.samt + primaryHsn.csamt);
 
     hsnData.forEach(h => {
       delete h._isIntra;
@@ -1213,14 +1322,25 @@ export const validateGstr1Payload = (payload) => {
 
   let totalHsnTxval = 0, totalHsnIamt = 0, totalHsnCamt = 0, totalHsnSamt = 0;
 
+  const seenHsnCompositeKeys = new Set();
   (payload.hsn?.data || []).forEach((h, hIdx) => {
     totalHsnTxval = round2(totalHsnTxval + (Number(h.txval) || 0));
     totalHsnIamt = round2(totalHsnIamt + (Number(h.iamt) || 0));
     totalHsnCamt = round2(totalHsnCamt + (Number(h.camt) || 0));
     totalHsnSamt = round2(totalHsnSamt + (Number(h.samt) || 0));
 
+    const compositeKey = `${h.hsn_sc}_${h.uqc}`;
+    if (seenHsnCompositeKeys.has(compositeKey)) {
+      errors.push(`Table 12 duplicate composite key: (${h.hsn_sc}, ${h.uqc}) appears multiple times.`);
+    }
+    seenHsnCompositeKeys.add(compositeKey);
+
     if (!OFFICIAL_GSTN_UQC.has(h.uqc)) {
       errors.push(`HSN item #${h.num || hIdx + 1} (${h.hsn_sc}): uqc "${h.uqc}" is not an official GSTN UQC code.`);
+    }
+
+    if (!h.desc || h.desc.length > 30) {
+      errors.push(`HSN item #${h.num || hIdx + 1} (${h.hsn_sc}): desc "${h.desc}" must be non-empty and max 30 characters.`);
     }
 
     const calcHsnVal = round2((Number(h.txval) || 0) + (Number(h.iamt) || 0) + (Number(h.camt) || 0) + (Number(h.samt) || 0) + (Number(h.csamt) || 0));
