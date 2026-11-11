@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { saveInvoice, updateInvoice, saveParty, saveProduct, formatCartonStock, fetchWarehouses, getCurrentOperator, calculateDueDate, getNextInvoiceNumber, findInvoiceByNumber } from '../utils/storage';
 import { generateUpiQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl } from '../utils/qrUtils';
 import { calculateBillTotals, detectSupplyType } from '../utils/taxUtils';
+import { uploadInvoiceToGoogleDrive, getGoogleDriveConfig } from '../utils/googleDriveService';
 import {
   Search,
   ShieldAlert,
@@ -907,6 +908,14 @@ export default function Billing({
       const savedInv = updateInvoice(editingInvoice, updatedPayload);
       if (refreshAllData) refreshAllData();
 
+      // Real-Time Google Drive Cloud Archiver (Within 2-3 seconds)
+      try {
+        const gdriveCfg = getGoogleDriveConfig();
+        if (gdriveCfg.enabled && gdriveCfg.autoUploadOnBill) {
+          uploadInvoiceToGoogleDrive(savedInv, business).catch(e => console.warn(e));
+        }
+      } catch (e) {}
+
       if (onSaveEditedInvoice) {
         onSaveEditedInvoice(savedInv);
       }
@@ -920,6 +929,16 @@ export default function Billing({
       isVerified: true
     });
     refreshAllData();
+
+    // Real-Time Google Drive Cloud Archiver (Within 2-3 seconds)
+    if (!asDraft) {
+      try {
+        const gdriveCfg = getGoogleDriveConfig();
+        if (gdriveCfg.enabled && gdriveCfg.autoUploadOnBill) {
+          uploadInvoiceToGoogleDrive(savedInv, business).catch(e => console.warn(e));
+        }
+      } catch (e) {}
+    }
 
     if (asDraft) {
       // Save draft state to localStorage so it is NOT wiped when returning to Invoicing

@@ -20,8 +20,10 @@ import {
   Layers,
   Edit3,
   Ban,
-  X
+  X,
+  HardDrive
 } from 'lucide-react';
+import { uploadInvoiceToGoogleDrive } from '../utils/googleDriveService';
 import { deleteInvoice, formatDateDDMMYY, compareInvoicesDesc, extractInvoiceNumericValue } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
 import Billing from './Billing';
@@ -144,6 +146,24 @@ export default function InvoiceHistory({
 
   const paidCount = normalizedInvoices.filter(i => i.state === 'paid').length;
   const paidTotal = normalizedInvoices.filter(i => i.state === 'paid').reduce((sum, i) => sum + (Number(i.grandTotal) || 0), 0);
+
+  const handleUploadSingleBillToDrive = async (e, inv) => {
+    e.stopPropagation();
+    if (inv.driveFileUrl) {
+      window.open(inv.driveFileUrl, '_blank');
+      return;
+    }
+    try {
+      const res = await uploadInvoiceToGoogleDrive(inv, business);
+      if (res && res.success) {
+        if (refreshAllData) refreshAllData();
+      } else {
+        alert('Notice: ' + (res.error || 'Saved in queue. Please verify Google Drive Webhook in Cloud Settings.'));
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  };
 
   const handleDelete = (e, inv) => {
     e.stopPropagation();
@@ -549,6 +569,21 @@ export default function InvoiceHistory({
                               <RotateCcw size={13} />
                             </button>
                           )}
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleUploadSingleBillToDrive(e, inv)}
+                            className="btn btn-sm"
+                            title={inv.driveFileUrl ? "Open PDF on Google Drive" : "Upload to Google Drive"}
+                            style={{
+                              padding: '4px 8px',
+                              background: inv.driveFileUrl ? '#ecfdf5' : '#f8fafc',
+                              color: inv.driveFileUrl ? '#059669' : '#64748b',
+                              border: inv.driveFileUrl ? '1px solid #a7f3d0' : '1px solid #e2e8f0'
+                            }}
+                          >
+                            <HardDrive size={13} />
+                          </button>
 
                           <button 
                             onClick={() => handlePrintInvoice && handlePrintInvoice(inv)}

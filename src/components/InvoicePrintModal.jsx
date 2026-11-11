@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle } from 'lucide-react';
+import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle, HardDrive } from 'lucide-react';
+import { uploadInvoiceToGoogleDrive } from '../utils/googleDriveService';
 import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, fetchInvoices, updateInvoice, saveParty } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
@@ -98,6 +99,31 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
 
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
+  const [driveUploading, setDriveUploading] = useState(false);
+
+  const handleUploadToDrive = async () => {
+    if (invoice.driveFileUrl) {
+      window.open(invoice.driveFileUrl, '_blank');
+      return;
+    }
+    setDriveUploading(true);
+    try {
+      const res = await uploadInvoiceToGoogleDrive(invoice, business);
+      if (res && res.success) {
+        if (res.fileUrl) {
+          setInvoice(prev => ({ ...prev, driveFileUrl: res.fileUrl }));
+        }
+        alert(`✓ Bill #${invoice.invoiceNo} successfully archived to Google Drive in ${(res.durationMs / 1000).toFixed(1)}s!`);
+        if (refreshAllData) refreshAllData();
+      } else {
+        alert('Google Drive notice: ' + (res.error || 'Saved in queue. Please verify your Google Drive Webhook URL in Cloud Settings.'));
+      }
+    } catch (err) {
+      alert('Drive upload error: ' + err.message);
+    } finally {
+      setDriveUploading(false);
+    }
+  };
   const [editInvoiceNo, setEditInvoiceNo] = useState('');
   const [editItems, setEditItems] = useState([]);
   const [editPartyId, setEditPartyId] = useState('');
@@ -762,6 +788,28 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
                 <span>Edit Bill</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={handleUploadToDrive}
+              disabled={driveUploading}
+              className="btn btn-sm"
+              style={{
+                background: invoice.driveFileUrl ? '#ecfdf5' : '#eff6ff',
+                color: invoice.driveFileUrl ? '#059669' : '#2563eb',
+                border: invoice.driveFileUrl ? '1px solid #a7f3d0' : '1px solid #bfdbfe',
+                padding: '6px 12px',
+                fontSize: '0.78rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontWeight: '700'
+              }}
+              title={invoice.driveFileUrl ? "Open PDF on Google Drive" : "Upload this bill to Google Drive"}
+            >
+              <HardDrive size={14} />
+              <span>{driveUploading ? 'Uploading...' : invoice.driveFileUrl ? 'In Drive ↗' : 'Upload to Drive'}</span>
+            </button>
 
             <button 
               onClick={handlePrint} 

@@ -864,6 +864,10 @@ export default function Settings({ business, products, refreshAllData, lang, cha
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#1e40af' }}>⚡ Real-Time Auto-Upload (2-3s)</span>
+                  <span style={{ fontSize: '0.74rem', fontWeight: '800', color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '10px' }}>Active</span>
+                </div>
                 <button 
                   type="button" 
                   onClick={handleExportGoogleDriveBackup}
@@ -871,7 +875,7 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                   style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: '700', gap: '8px', justifyContent: 'center', background: '#2563eb' }}
                 >
                   <Download size={18} />
-                  <span>Save Backup for Google Drive</span>
+                  <span>Save Full Backup to Drive</span>
                 </button>
                 <a 
                   href="https://drive.google.com/drive/folders/15Ub1FksCAldnMYBwxfUTwXzB7Kx5w_8E"

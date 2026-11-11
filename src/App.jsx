@@ -233,6 +233,15 @@ export default function App() {
     window.addEventListener('distro_data_changed', handleDataChange);
     window.addEventListener('storage', handleDataChange);
 
+    const handleDriveUploadCompleted = (e) => {
+      const detail = e.detail;
+      if (detail && detail.success) {
+        setSyncToast(`☁️ Bill #${detail.invoiceNo} saved to Google Drive in ${(detail.durationMs / 1000).toFixed(1)}s!`);
+        setTimeout(() => setSyncToast(''), 4500);
+      }
+    };
+    window.addEventListener('distro_drive_upload_completed', handleDriveUploadCompleted);
+
     // 4. Background Heartbeat Polling (Relaxed 30s active, 60s hidden)
     // Instant multi-device synchronization is handled via Supabase WebSocket (<50ms) and BroadcastChannel (0ms).
     // This heartbeat only serves as a fallback safety net for offline re-connections.
@@ -287,6 +296,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('distro_data_changed', handleDataChange);
       window.removeEventListener('storage', handleDataChange);
+      window.removeEventListener('distro_drive_upload_completed', handleDriveUploadCompleted);
       window.removeEventListener('focus', handleThrottledSync);
       window.removeEventListener('online', handleThrottledSync);
       document.removeEventListener('visibilitychange', handleVisibilityChange);

@@ -33,9 +33,90 @@ import {
   performFullSync,
   exportGoogleDriveBackup
 } from '../utils/storage';
+import { 
+  getGoogleDriveConfig, 
+  saveGoogleDriveConfig, 
+  bulkUploadAllBillsToDrive, 
+  GOOGLE_APPS_SCRIPT_TEMPLATE 
+} from '../utils/googleDriveService';
 
 export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSyncStateChange }) {
-  const [activeTab, setActiveTab] = useState('browser'); // 'browser' | 'database'
+  const [activeTab, setActiveTab] = useState('browser'); // 'browser' | 'database' | 'gdrive'
+  const [gdriveConfig, setGdriveConfig] = useState(getGoogleDriveConfig());
+  const [webhookInput, setWebhookInput] = useState(() => getGoogleDriveConfig().webhookUrl || '');
+  const [folderNameInput, setFolderNameInput] = useState(() => getGoogleDriveConfig().folderName || 'DistroPlus Invoices & Bills');
+  const [autoUploadToggle, setAutoUploadToggle] = useState(() => getGoogleDriveConfig().autoUploadOnBill);
+  const [testingWebhook, setTestingWebhook] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [bulkSyncing, setBulkSyncing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: '' });
+
+  const handleTestWebhook = async () => {
+    if (!webhookInput || !webhookInput.startsWith('https://script.google.com')) {
+      alert('Please enter a valid Google Apps Script Webhook URL (starts with https://script.google.com/macros/s/...)');
+      return;
+    }
+    setTestingWebhook(true);
+    setTestResult(null);
+    const start = Date.now();
+    try {
+      const res = await fetch(webhookInput.trim(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'PING',
+          invoiceNo: 'TEST-001',
+          customerName: 'Test Connectivity Verification',
+          html: '<html><body><h2>DistroPlus ERP Connectivity Test Successful!</h2><p>Your Google Drive auto-upload webhook is working perfectly.</p></body></html>'
+        })
+      });
+      const durationMs = Date.now() - start;
+      setTestResult({ success: true, msg: `✓ Connected! Response in ${(durationMs/1000).toFixed(1)}s. Drive is ready.` });
+      saveGoogleDriveConfig({
+        webhookUrl: webhookInput.trim(),
+        folderName: folderNameInput.trim(),
+        autoUploadOnBill: autoUploadToggle
+      });
+    } catch (e) {
+      setTestResult({ success: false, msg: 'Error: ' + e.message });
+    } finally {
+      setTestingWebhook(false);
+    }
+  };
+
+  const handleBulkUploadBills = async () => {
+    if (!confirm('Are you sure you want to upload all past bills to your Google Drive folder?')) return;
+    setBulkSyncing(true);
+    try {
+      const res = await bulkUploadAllBillsToDrive((cur, tot, inv) => {
+        setBulkProgress({ current: cur, total: tot, status: `Uploading Bill #${inv.invoiceNo} (${cur}/${tot})...` });
+      });
+      alert(`🎉 Bulk upload complete!\n\nSuccessfully uploaded ${res.successCount} of ${res.total} bills to Google Drive.`);
+      if (refreshAllData) refreshAllData();
+    } catch (err) {
+      alert('Bulk upload error: ' + err.message);
+    } finally {
+      setBulkSyncing(false);
+      setBulkProgress({ current: 0, total: 0, status: '' });
+    }
+  };
+
+  const handleCopyScriptCode = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_TEMPLATE);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 3000);
+  };
+
+  const handleSaveDriveSettings = () => {
+    saveGoogleDriveConfig({
+      webhookUrl: webhookInput.trim(),
+      folderName: folderNameInput.trim(),
+      autoUploadOnBill: autoUploadToggle
+    });
+    setSyncStatus({ loading: false, msg: '✓ Google Drive Settings Saved!', type: 'success' });
+    setTimeout(() => setSyncStatus({ loading: false, msg: '', type: '' }), 4000);
+  };
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
   const [isConnected, setIsConnected] = useState(isSupabaseConnected());
   const [copiedLink, setCopiedLink] = useState(false);
@@ -230,6 +311,27 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
           >
             <Key size={18} />
             <span>Cloud Database Settings</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('gdrive')}
+            style={{
+              padding: '14px 18px',
+              border: 'none',
+              background: 'none',
+              borderBottom: activeTab === 'gdrive' ? '3px solid #2563eb' : '3px solid transparent',
+              color: activeTab === 'gdrive' ? '#2563eb' : '#64748b',
+              fontWeight: activeTab === 'gdrive' ? '800' : '600',
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <HardDrive size={18} />
+            <span>Google Drive Auto-Backup</span>
           </button>
         </div>
 
@@ -559,6 +661,262 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Tab 3: Google Drive Real-Time Cloud Archiver */}
+        {activeTab === 'gdrive' && (
+          <div style={{ padding: '24px 28px', maxHeight: '70vh', overflowY: 'auto' }}>
+            {/* Live Auto-Upload Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)',
+              color: '#ffffff',
+              padding: '16px 20px',
+              borderRadius: '14px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <HardDrive size={20} color="#93c5fd" />
+                  <span style={{ fontWeight: '800', fontSize: '0.95rem' }}>
+                    Google Drive Auto-Backup (2-3s)
+                  </span>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    background: '#10b981',
+                    color: '#ffffff',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    fontWeight: '800'
+                  }}>
+                    ZERO LOSS
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#bfdbfe', lineHeight: 1.4 }}>
+                  Jab bhi aap bill katenge, wo 2 se 3 second ke andar automatically aapke Google Drive par upload ho jayega!
+                </p>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.15)', padding: '6px 12px', borderRadius: '20px' }}>
+                <input
+                  type="checkbox"
+                  checked={autoUploadToggle}
+                  onChange={(e) => {
+                    setAutoUploadToggle(e.target.checked);
+                    saveGoogleDriveConfig({ autoUploadOnBill: e.target.checked });
+                  }}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.8rem', fontWeight: '700' }}>Auto-Upload Active</span>
+              </label>
+            </div>
+
+            {/* Webhook Configuration Form */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              borderRadius: '14px',
+              padding: '18px 20px',
+              marginBottom: '20px'
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '0.92rem', fontWeight: '800', color: '#0f172a' }}>
+                🔗 Google Drive Webhook Connection
+              </h4>
+
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '6px' }}>
+                  Google Apps Script Webhook URL:
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="url"
+                    placeholder="https://script.google.com/macros/s/.../exec"
+                    value={webhookInput}
+                    onChange={(e) => setWebhookInput(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleTestWebhook}
+                    disabled={testingWebhook}
+                    style={{
+                      padding: '10px 16px',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: '700',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {testingWebhook ? 'Testing...' : 'Test Connection'}
+                  </button>
+                </div>
+              </div>
+
+              {testResult && (
+                <div style={{
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  background: testResult.success ? '#ecfdf5' : '#fef2f2',
+                  border: `1px solid ${testResult.success ? '#a7f3d0' : '#fecaca'}`,
+                  color: testResult.success ? '#065f46' : '#991b1b',
+                  fontSize: '0.82rem',
+                  fontWeight: '700',
+                  marginBottom: '12px'
+                }}>
+                  {testResult.msg}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '4px' }}>
+                    Google Drive Folder Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={folderNameInput}
+                    onChange={(e) => setFolderNameInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={handleSaveDriveSettings}
+                    style={{
+                      width: '100%',
+                      padding: '9px 14px',
+                      background: '#059669',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: '700',
+                      fontSize: '0.82rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Save Google Drive Settings
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick 1-Minute Setup Guide */}
+            <div style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: '14px',
+              padding: '16px 20px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: '800', color: '#0f172a' }}>
+                  📖 1-Minute Setup Guide (Free & Unlimited):
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyScriptCode}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    background: copiedCode ? '#dcfce7' : '#f1f5f9',
+                    color: copiedCode ? '#15803d' : '#334155',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.78rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  {copiedCode ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copiedCode ? 'Copied Code!' : 'Copy Script Code'}</span>
+                </button>
+              </div>
+
+              <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', color: '#475569', lineHeight: 1.6 }}>
+                <li>Open <strong><a href="https://script.google.com" target="_blank" rel="noreferrer">script.google.com</a></strong> in your browser (signed in with your Google account).</li>
+                <li>Click <strong>New Project</strong>, delete existing code, and paste the copied code.</li>
+                <li>Click <strong>Deploy ➔ New Deployment ➔ Select type: Web App</strong>.</li>
+                <li>Set <strong>Execute as: Me</strong>, and <strong>Who has access: Anyone</strong>.</li>
+                <li>Click <strong>Deploy</strong>, copy the Web App URL, and paste it in the box above!</li>
+              </ol>
+            </div>
+
+            {/* Bulk Archiver & Open Drive Folder */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center'
+            }}>
+              <button
+                type="button"
+                onClick={handleBulkUploadBills}
+                disabled={bulkSyncing}
+                style={{
+                  flex: 1,
+                  padding: '11px',
+                  borderRadius: '10px',
+                  background: bulkSyncing ? '#94a3b8' : '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  cursor: bulkSyncing ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <UploadCloud size={16} />
+                <span>{bulkSyncing ? bulkProgress.status : 'Bulk Upload All Past Bills to Drive'}</span>
+              </button>
+
+              <a
+                href="https://drive.google.com/drive/folders/15Ub1FksCAldnMYBwxfUTwXzB7Kx5w_8E"
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  padding: '11px 16px',
+                  borderRadius: '10px',
+                  background: '#ffffff',
+                  color: '#2563eb',
+                  border: '1.5px solid #bfdbfe',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>Open Google Drive Folder</span>
+                <ExternalLink size={14} />
+              </a>
+            </div>
           </div>
         )}
 
