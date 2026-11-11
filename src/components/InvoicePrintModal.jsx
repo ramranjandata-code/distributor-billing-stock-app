@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle, HardDrive } from 'lucide-react';
+import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle, HardDrive, Ban } from 'lucide-react';
 import { uploadInvoiceToGoogleDrive } from '../utils/googleDriveService';
-import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, fetchInvoices, updateInvoice, saveParty } from '../utils/storage';
+import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, fetchInvoices, updateInvoice, saveParty, voidInvoice } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
 import Billing from './Billing';
@@ -228,6 +228,22 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
 
     document.title = pdfTitle;
     window.print();
+  };
+
+
+  const handleVoidInvoice = () => {
+    if (invoice?.state === 'cancel' || invoice?.isVoid) {
+      alert(`Invoice #${invoice.invoiceNo} is already VOID.`);
+      return;
+    }
+    const reason = window.prompt(`⛔ VOID INVOICE #${invoice.invoiceNo}?\n\n• All goods will be returned to godown stock.\n• Customer ledger balance will be cleared.\n\nEnter Reason for Voiding:`, 'Customer refused delivery / Store closed');
+    if (reason && reason.trim()) {
+      const cancelled = voidInvoice(invoice.id, reason.trim());
+      if (cancelled) {
+        setInvoice(cancelled);
+        if (refreshAllData) refreshAllData();
+      }
+    }
   };
 
   const handleDelete = () => {
