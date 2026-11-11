@@ -100,6 +100,8 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
   // Edit mode state
   const [editMode, setEditMode] = useState(false);
   const [driveUploading, setDriveUploading] = useState(false);
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidReasonText, setVoidReasonText] = useState('Customer refused delivery / Store closed');
 
   const handleUploadToDrive = async () => {
     if (invoice.driveFileUrl) {
@@ -246,6 +248,30 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
     }
   };
 
+
+  const handleOpenVoid = () => {
+    if (invoice?.state === 'cancel' || invoice?.isVoid) {
+      alert(`Invoice #${invoice.invoiceNo} is already VOID.`);
+      return;
+    }
+    setVoidReasonText('Customer refused delivery / Store closed');
+    setVoidDialogOpen(true);
+  };
+
+  const handleConfirmVoid = (e) => {
+    e?.preventDefault();
+    if (!voidReasonText || !voidReasonText.trim()) {
+      alert('Please enter a reason for voiding this invoice.');
+      return;
+    }
+    const cancelled = voidInvoice(invoice.id, voidReasonText.trim());
+    if (cancelled) {
+      setInvoice(cancelled);
+      setVoidDialogOpen(false);
+      if (refreshAllData) refreshAllData();
+    }
+  };
+
   const handleDelete = () => {
     if (window.confirm(`⚠️ Are you sure you want to delete Invoice #${invoice.invoiceNo}?\n\n• All stock items will be automatically returned to the warehouse.\n• Retailer outstanding balance will be automatically adjusted.`)) {
       deleteInvoice(invoice.id);
@@ -336,6 +362,7 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
 
 
 
+  const isVoid = invoice?.state === 'cancel' || invoice?.isVoid;
   const formattedDate = new Date(invoice.date).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -793,16 +820,71 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
               <span>Email</span>
             </button>
 
-            {onEditInvoice && (
+            {/* Edit Bill Button (Always available on open bill) */}
+            {!isVoid && (
               <button
-                onClick={handleEditInvoice}
+                type="button"
+                onClick={() => setEditMode(true)}
                 className="btn btn-sm"
-                style={{ background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d', padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: '700' }}
-                title="Edit this bill — correct any mistake"
+                style={{ 
+                  background: '#fffbeb', 
+                  color: '#d97706', 
+                  border: '1.5px solid #fcd34d', 
+                  padding: '6px 14px', 
+                  fontSize: '0.8rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '5px', 
+                  fontWeight: '700',
+                  boxShadow: '0 1px 2px rgba(217, 119, 6, 0.15)'
+                }}
+                title="Edit this bill — change items, quantities, rates"
               >
                 <Edit3 size={14} />
                 <span>Edit Bill</span>
               </button>
+            )}
+
+            {/* Void Bill Button (Above the bill) */}
+            {!isVoid ? (
+              <button
+                type="button"
+                onClick={handleOpenVoid}
+                className="btn btn-sm"
+                style={{ 
+                  background: '#fef2f2', 
+                  color: '#dc2626', 
+                  border: '1.5px solid #fca5a5', 
+                  padding: '6px 14px', 
+                  fontSize: '0.8rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '5px', 
+                  fontWeight: '700',
+                  boxShadow: '0 1px 2px rgba(220, 38, 38, 0.15)'
+                }}
+                title="Void / Cancel this Bill (Restore stock to godown)"
+              >
+                <Ban size={14} />
+                <span>Void Bill</span>
+              </button>
+            ) : (
+              <span
+                style={{
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1.5px solid #fca5a5',
+                  padding: '5px 12px',
+                  fontSize: '0.8rem',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontWeight: '800'
+                }}
+              >
+                <Ban size={14} /> VOIDED
+              </span>
             )}
 
             <button
@@ -1564,6 +1646,155 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
 
       </div>
     </div>
+
+    
+      {/* Void Bill Dialog Popup */}
+      {voidDialogOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(3px)',
+          zIndex: 4000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '14px',
+            maxWidth: '500px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+            border: '2px solid #dc2626'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '14px 18px',
+              background: '#fef2f2',
+              borderBottom: '1px solid #fee2e2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626' }}>
+                <Ban size={22} />
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800' }}>
+                  Void / Cancel Invoice #{invoice.invoiceNo}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVoidDialogOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleConfirmVoid} style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.84rem' }}>
+                <div style={{ fontWeight: '800', color: '#1e293b' }}>
+                  Party: {invoice.partyName || invoice.customerName}
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '3px' }}>
+                  Bill Total: <strong style={{ color: '#0f172a' }}>₹{Number(invoice.grandTotal || 0).toFixed(2)}</strong> • Date: {formattedDate}
+                </div>
+              </div>
+
+              {/* Notice */}
+              <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px', padding: '10px 12px', fontSize: '0.8rem', color: '#9f1239' }}>
+                <div style={{ fontWeight: '800', marginBottom: '4px' }}>⚠️ Void / Cancel karne par:</div>
+                <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <li>Is bill ke saare items <strong>godown stock me wapas add</strong> ho jayenge.</li>
+                  <li>Customer ledger ka outstanding balance <strong>reverse / clear</strong> ho jayega.</li>
+                  <li>Bill par official <strong>VOID</strong> watermark permanent record ho jayega.</li>
+                </ul>
+              </div>
+
+              {/* Preset buttons */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                  Reason for Voiding *
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                  {[
+                    'Customer refused delivery / Store closed',
+                    'Order cancelled by party',
+                    'Billed wrong items / rate error',
+                    'Duplicate bill created by mistake',
+                    'Goods damaged in transit'
+                  ].map((preset, pIdx) => (
+                    <button
+                      key={pIdx}
+                      type="button"
+                      onClick={() => setVoidReasonText(preset)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        border: voidReasonText === preset ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
+                        background: voidReasonText === preset ? '#fee2e2' : '#f8fafc',
+                        color: voidReasonText === preset ? '#dc2626' : '#475569'
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  className="input-field"
+                  rows={2}
+                  required
+                  value={voidReasonText}
+                  onChange={e => setVoidReasonText(e.target.value)}
+                  placeholder="Enter reason for voiding..."
+                  style={{ width: '100%', fontSize: '0.84rem' }}
+                />
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setVoidDialogOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 16px', fontSize: '0.84rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-sm"
+                  style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '8px 18px',
+                    fontSize: '0.84rem',
+                    fontWeight: '800',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Ban size={16} />
+                  <span>Confirm Void (⛔ Cancel Bill)</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     {/* Full POS Billing Edit Bill Modal */}
     {editMode && (
