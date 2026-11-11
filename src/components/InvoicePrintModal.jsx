@@ -272,9 +272,19 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
       sgst: totalTax / 2,
     };
 
-    updateInvoice(invoice, {
+    const savedInv = updateInvoice(invoice, {
       ...updatedInvoiceData,
-      invoiceNo: finalInvNo
+      invoiceNo: finalInvNo,
+      updatedAt: Date.now(),
+      isUserEdited: true,
+      isVerified: true
+    });
+    setInvoice(savedInv || {
+      ...updatedInvoiceData,
+      invoiceNo: finalInvNo,
+      updatedAt: Date.now(),
+      isUserEdited: true,
+      isVerified: true
     });
     if (refreshAllData) refreshAllData();
     setEditMode(false);

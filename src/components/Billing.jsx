@@ -898,7 +898,10 @@ export default function Billing({
         id: editingInvoice.id,
         invoiceNo: (customInvoiceNo && customInvoiceNo.trim()) ? customInvoiceNo.trim() : editingInvoice.invoiceNo,
         partyGstin: finalGstin,
-        partyAddress: finalAddress
+        partyAddress: finalAddress,
+        updatedAt: Date.now(),
+        isUserEdited: true,
+        isVerified: true
       };
 
       const savedInv = updateInvoice(editingInvoice, updatedPayload);
@@ -910,7 +913,12 @@ export default function Billing({
       return savedInv;
     }
 
-    const savedInv = saveInvoice(invoicePayload);
+    const savedInv = saveInvoice({
+      ...invoicePayload,
+      updatedAt: Date.now(),
+      isUserEdited: true,
+      isVerified: true
+    });
     refreshAllData();
 
     if (asDraft) {

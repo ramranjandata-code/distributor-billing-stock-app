@@ -1174,23 +1174,44 @@ export const mergeInvoices = (localArr = [], remoteArr = [], customDeletedSet = 
     if (!id || SAMPLE_IDS.includes(id) || delSet.has(id)) return;
     const invNo = inv.invoiceNo ? String(inv.invoiceNo).trim().toUpperCase() : null;
 
+    // Strip dummy summary items if real items are present on the invoice
+    if (inv && Array.isArray(inv.items) && inv.items.length > 1) {
+      const hasRealItems = inv.items.some(it => it && it.productId !== 'prod_restored_summary' && (!it.name || !it.name.startsWith('Goods Sold / Items as billed to')));
+      if (hasRealItems) {
+        const filteredItems = inv.items.filter(it => it && it.productId !== 'prod_restored_summary' && (!it.name || !it.name.startsWith('Goods Sold / Items as billed to')));
+        const itemsTotal = filteredItems.reduce((sum, it) => sum + (Number(it.total) || (Number(it.price || 0) * Number(it.qty || 0))), 0);
+        inv = {
+          ...inv,
+          items: filteredItems,
+          grandTotal: itemsTotal > 0 ? itemsTotal : inv.grandTotal
+        };
+      }
+    }
+
     const resolvePreferNew = (existing, incoming) => {
-      const isIncomingVerified = !!(incoming?.isVerified || (incoming?.notes && incoming?.notes.toLowerCase().includes('verified')));
-      const isExistingVerified = !!(existing?.isVerified || (existing?.notes && existing?.notes.toLowerCase().includes('verified')));
-
-      if (isIncomingVerified && !isExistingVerified) return true;
-      if (isExistingVerified && !isIncomingVerified) return false;
-
-      const existingIsDummy = isDummyItems(existing?.items);
-      const incomingIsDummy = isDummyItems(incoming?.items);
-      if (existingIsDummy && !incomingIsDummy) return true;
-      if (!existingIsDummy && incomingIsDummy) return false;
-
+      // 1. Strict Timestamp Precedence: A newer update/edit timestamp ALWAYS takes priority
       const existingTs = Number(existing?.updatedAt || existing?.lastUpdated || 0);
       const incomingTs = Number(incoming?.updatedAt || incoming?.lastUpdated || 0);
       if (incomingTs > existingTs) return true;
       if (existingTs > incomingTs) return false;
 
+      // 2. Explicit User Edit Flag: A bill explicitly updated/created by the user wins over automated logs
+      if (incoming?.isUserEdited && !existing?.isUserEdited) return true;
+      if (existing?.isUserEdited && !incoming?.isUserEdited) return false;
+
+      // 3. Real Items vs Dummy Restored Items: Real product line items always beat dummy summary items
+      const existingIsDummy = isDummyItems(existing?.items);
+      const incomingIsDummy = isDummyItems(incoming?.items);
+      if (existingIsDummy && !incomingIsDummy) return true;
+      if (!existingIsDummy && incomingIsDummy) return false;
+
+      // 4. Verified Status: explicit boolean isVerified
+      const isIncomingVerified = !!incoming?.isVerified;
+      const isExistingVerified = !!existing?.isVerified;
+      if (isIncomingVerified && !isExistingVerified) return true;
+      if (isExistingVerified && !isIncomingVerified) return false;
+
+      // 5. Line items count fallback
       const existingItems = Array.isArray(existing?.items) ? existing.items.length : 0;
       const incomingItems = Array.isArray(incoming?.items) ? incoming.items.length : 0;
       return incomingItems >= existingItems;
@@ -3340,7 +3361,10 @@ export const saveInvoice = (invoiceData) => {
     balanceAmount: amountDue,
     state: odooState,
     payments: initialPayments,
-    chatter: initialChatter
+    chatter: initialChatter,
+    updatedAt: Number(invoiceData.updatedAt) || Date.now(),
+    isUserEdited: true,
+    isVerified: true
   };
 
   // If NOT draft, commit inventory, FIFO lot consumption, and party ledger
@@ -3459,6 +3483,9 @@ export const updateInvoice = (originalInvoice, updatedData) => {
     irn: originalInvoice.irn,
     ackNo: originalInvoice.ackNo,
     ackDate: originalInvoice.ackDate,
+    updatedAt: Date.now(),
+    isUserEdited: true,
+    isVerified: true
   });
 };
 
