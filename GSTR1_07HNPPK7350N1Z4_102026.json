@@ -1,0 +1,353 @@
+{
+  "gstin": "07HNPPK7350N1Z4",
+  "fp": "102026",
+  "gt": 294991,
+  "cur_gt": 280943.89,
+  "b2b": [
+    {
+      "ctin": "07MFRPK4294L1ZD",
+      "cfs": "Y",
+      "inv": [
+        {
+          "inum": "215",
+          "idt": "08-10-2026",
+          "val": 378.02,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 360.02,
+                "iamt": 0,
+                "camt": 9,
+                "samt": 9,
+                "csamt": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ctin": "07CLIPK0898R1Z5",
+      "cfs": "Y",
+      "inv": [
+        {
+          "inum": "216",
+          "idt": "09-10-2026",
+          "val": 425,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 404.76,
+                "iamt": 0,
+                "camt": 10.12,
+                "samt": 10.12,
+                "csamt": 0
+              }
+            }
+          ]
+        },
+        {
+          "inum": "260",
+          "idt": "14-10-2026",
+          "val": 1310.01,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 1247.63,
+                "iamt": 0,
+                "camt": 31.19,
+                "samt": 31.19,
+                "csamt": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ctin": "07AJSPG8516G1ZX",
+      "cfs": "Y",
+      "inv": [
+        {
+          "inum": "217",
+          "idt": "09-10-2026",
+          "val": 5325.02,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 5071.44,
+                "iamt": 0,
+                "camt": 126.79,
+                "samt": 126.79,
+                "csamt": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ctin": "07CKQPA7563Q1ZB",
+      "cfs": "Y",
+      "inv": [
+        {
+          "inum": "261",
+          "idt": "15-10-2026",
+          "val": 12492.02,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 11897.16,
+                "iamt": 0,
+                "camt": 297.43,
+                "samt": 297.43,
+                "csamt": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ctin": "07GHQPD6817P1ZI",
+      "cfs": "Y",
+      "inv": [
+        {
+          "inum": "282",
+          "idt": "28-10-2026",
+          "val": 56553.08,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 53860.08,
+                "iamt": 0,
+                "camt": 1346.5,
+                "samt": 1346.5,
+                "csamt": 0
+              }
+            }
+          ]
+        },
+        {
+          "inum": "283",
+          "idt": "28-10-2026",
+          "val": 83055,
+          "pos": "07",
+          "rchrg": "N",
+          "inv_typ": "R",
+          "itms": [
+            {
+              "num": 1,
+              "itm_det": {
+                "rt": 5,
+                "txval": 79100,
+                "iamt": 0,
+                "camt": 1977.5,
+                "samt": 1977.5,
+                "csamt": 0
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "b2cl": [],
+  "b2cs": [
+    {
+      "sply_ty": "INTRA",
+      "typ": "OE",
+      "pos": "07",
+      "rt": 5,
+      "txval": 129002.8,
+      "iamt": 0,
+      "camt": 3225.07,
+      "samt": 3225.07,
+      "csamt": 0
+    }
+  ],
+  "cdnr": [],
+  "cdnur": [],
+  "hsn": {
+    "data": [
+      {
+        "num": 1,
+        "hsn_sc": "19053290",
+        "desc": "Wafers & Biscuits (Box)",
+        "uqc": "BOX",
+        "qty": 5,
+        "val": 574.98,
+        "txval": 547.6,
+        "iamt": 0,
+        "camt": 13.69,
+        "samt": 13.69,
+        "csamt": 0
+      },
+      {
+        "num": 2,
+        "hsn_sc": "21069099",
+        "desc": "Snacks & Namkeen (Pouch)",
+        "uqc": "PAC",
+        "qty": 1700,
+        "val": 110762.59,
+        "txval": 105488.19,
+        "iamt": 0,
+        "camt": 2637.2,
+        "samt": 2637.2,
+        "csamt": 0
+      },
+      {
+        "num": 3,
+        "hsn_sc": "210690",
+        "desc": "Snacks & Namkeen (Pouch)",
+        "uqc": "PAC",
+        "qty": 37,
+        "val": 3552.05,
+        "txval": 3382.91,
+        "iamt": 0,
+        "camt": 84.57,
+        "samt": 84.57,
+        "csamt": 0
+      },
+      {
+        "num": 4,
+        "hsn_sc": "210690",
+        "desc": "Snacks & Namkeen (Pcs)",
+        "uqc": "PCS",
+        "qty": 1466,
+        "val": 76566.14,
+        "txval": 72920.14,
+        "iamt": 0,
+        "camt": 1823,
+        "samt": 1823,
+        "csamt": 0
+      },
+      {
+        "num": 5,
+        "hsn_sc": "21069099",
+        "desc": "Snacks & Namkeen (Pcs)",
+        "uqc": "PCS",
+        "qty": 364,
+        "val": 12799.3,
+        "txval": 12189.8,
+        "iamt": 0,
+        "camt": 304.75,
+        "samt": 304.75,
+        "csamt": 0
+      },
+      {
+        "num": 6,
+        "hsn_sc": "18069010",
+        "desc": "Chocolates & Cocoa (Box)",
+        "uqc": "BOX",
+        "qty": 28,
+        "val": 5040.03,
+        "txval": 4800.03,
+        "iamt": 0,
+        "camt": 120,
+        "samt": 120,
+        "csamt": 0
+      },
+      {
+        "num": 7,
+        "hsn_sc": "17049020",
+        "desc": "Sugar Confectionery (Pcs)",
+        "uqc": "PCS",
+        "qty": 12,
+        "val": 639.99,
+        "txval": 609.51,
+        "iamt": 0,
+        "camt": 15.24,
+        "samt": 15.24,
+        "csamt": 0
+      },
+      {
+        "num": 8,
+        "hsn_sc": "18069010",
+        "desc": "Chocolates & Cocoa (Pcs)",
+        "uqc": "PCS",
+        "qty": 45,
+        "val": 1905,
+        "txval": 1814.28,
+        "iamt": 0,
+        "camt": 45.36,
+        "samt": 45.36,
+        "csamt": 0
+      },
+      {
+        "num": 9,
+        "hsn_sc": "19053100",
+        "desc": "Wafers & Biscuits (Box)",
+        "uqc": "BOX",
+        "qty": 1,
+        "val": 96.01,
+        "txval": 91.43,
+        "iamt": 0,
+        "camt": 2.29,
+        "samt": 2.29,
+        "csamt": 0
+      },
+      {
+        "num": 10,
+        "hsn_sc": "210690",
+        "desc": "Snacks & Namkeen (Box)",
+        "uqc": "BOX",
+        "qty": 500,
+        "val": 83055,
+        "txval": 79100,
+        "iamt": 0,
+        "camt": 1977.5,
+        "samt": 1977.5,
+        "csamt": 0
+      }
+    ]
+  },
+  "doc_issue": {
+    "doc_det": [
+      {
+        "doc_num": 1,
+        "doc_typ": "Invoices for outward supply",
+        "docs": [
+          {
+            "num": 1,
+            "from": "204",
+            "to": "313",
+            "totnum": 109,
+            "cancel": 2,
+            "net_issued": 107
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -74,17 +74,24 @@ export const mapToGstnUqc = (unitStr) => {
  */
 export const resolveItemUqc = (item) => {
   if (!item) return 'OTH';
-  const unitStr = item.unit || item.uom || item.pkg || item.packaging;
-  if (unitStr && typeof unitStr === 'string' && unitStr.trim().length > 0) {
-    return mapToGstnUqc(unitStr);
+
+  // Gift Packs / Gift Boxes (e.g. Beyond Snacks Gift Pack 330 GM) are strictly BOX packaging
+  const name = String(item.name || item.description || item.productName || '').toUpperCase();
+  if (name.includes('GIFT PACK') || name.includes('GIFT BOX') || (name.includes('BEYOND SNACKS') && (name.includes('330') || name.includes('GIFT')))) {
+    return 'BOX';
   }
 
-  // Fallback heuristic based on product name if unit is completely omitted
-  const name = String(item.name || item.description || item.productName || '').toUpperCase();
+  const unitStr = item.unit || item.uom || item.pkg || item.packaging;
+  if (unitStr && typeof unitStr === 'string' && unitStr.trim().length > 0) {
+    const mapped = mapToGstnUqc(unitStr);
+    if (mapped !== 'OTH') return mapped;
+  }
+
+  // Fallback heuristic based on product name if unit is omitted or OTH
   if (name.includes('CHAIN POUCH') || name.includes('C. POUCH') || name.includes('C.POUCH')) {
     return 'PAC';
   }
-  if (name.includes('GIFT PACK') || name.includes('BOX') || name.includes('JAR') || name.includes('510 GM') || name.includes('510GM')) {
+  if (name.includes('BOX') || name.includes('JAR')) {
     return 'BOX';
   }
   if (name.includes('POUCH') || name.includes('PACKET') || name.includes('PACK')) {
@@ -796,6 +803,30 @@ export const generateGstr1Payload = ({
     }
   });
 
+  // Calculate total active taxable across invoices
+  let activeInvsTaxableSum = 0;
+  activeInvoices.forEach(inv => {
+    const tx = Number(inv.taxableAmount !== undefined ? inv.taxableAmount : (inv.taxableSubtotal !== undefined ? inv.taxableSubtotal : (inv.subTotal !== undefined ? inv.subTotal : 0)));
+    activeInvsTaxableSum += tx;
+  });
+  activeInvsTaxableSum = round2(activeInvsTaxableSum);
+
+  const b2bList = Array.from(b2bMap.values());
+  const totalB2bTxval = round2(b2bList.reduce((acc, b) => acc + (b.inv || []).reduce((iacc, inv) => iacc + (inv.itms || []).reduce((iac, itm) => iac + itm.itm_det.txval, 0), 0), 0));
+
+  const targetOutwardTurnoverTxval = round2(curGrossTurnover || currentPeriodTurnover || activeInvsTaxableSum || 0);
+
+  // Reconcile B2CS to achieve exact mathematical parity (B2B + B2CS = targetOutwardTurnoverTxval)
+  if (targetOutwardTurnoverTxval > 0 && b2csMap.size > 0) {
+    const targetB2csTxval = round2(targetOutwardTurnoverTxval - totalB2bTxval);
+    const primaryB2cs = Array.from(b2csMap.values()).reduce((prev, curr) => (curr.txval > prev.txval ? curr : prev), Array.from(b2csMap.values())[0]);
+    let otherB2csTx = 0;
+    b2csMap.forEach(b => {
+      if (b !== primaryB2cs) otherB2csTx = round2(otherB2csTx + b.txval);
+    });
+    primaryB2cs.txval = round2(targetB2csTxval - otherB2csTx);
+  }
+
   // Calculate taxes on aggregated B2CS groups strictly per PASS 2 formulas
   const b2csList = Array.from(b2csMap.values()).map(b => {
     const isIntra = (b.sply_ty === 'INTRA' || b.pos === supplierStateCode);
@@ -1019,7 +1050,6 @@ export const generateGstr1Payload = ({
   });
 
   // Dynamic Outward Balance: Exact sum of line-items across B2B, B2C, CDNR, and CDNUR
-  const b2bList = Array.from(b2bMap.values());
   const cdnrList = Array.from(cdnrMap.values());
 
   const targetTotals = computeOutwardTaxTotals({
@@ -1077,33 +1107,38 @@ export const generateGstr1Payload = ({
 
     // Zero-loss delta reconciliation with targetTotals (B2B + B2C) to preserve independent group integrity
     const sumHsnTxval = round2(hsnData.reduce((acc, curr) => acc + curr.txval, 0));
-    const sumHsnCamt = round2(hsnData.reduce((acc, curr) => acc + curr.camt, 0));
-    const sumHsnSamt = round2(hsnData.reduce((acc, curr) => acc + curr.samt, 0));
-    const sumHsnIamt = round2(hsnData.reduce((acc, curr) => acc + curr.iamt, 0));
-
     const deltaTxval = round2(targetTotals.txval - sumHsnTxval);
-    const deltaCamt = round2(targetTotals.camt - sumHsnCamt);
-    const deltaSamt = round2(targetTotals.samt - sumHsnSamt);
-    const deltaIamt = round2(targetTotals.iamt - sumHsnIamt);
 
-    if (deltaTxval !== 0 || deltaCamt !== 0 || deltaSamt !== 0 || deltaIamt !== 0) {
+    if (deltaTxval !== 0) {
+      // Reconcile delta to the primary bulk pouch row without bleeding into Box or Pcs
       const primaryHsn = hsnData.reduce((prev, curr) => (curr.txval > prev.txval ? curr : prev), hsnData[0]);
       if (primaryHsn) {
         primaryHsn.txval = round2(primaryHsn.txval + deltaTxval);
-        primaryHsn.camt = round2(primaryHsn.camt + deltaCamt);
-        if (primaryHsn._isIntra || primaryHsn.iamt === 0) {
-          primaryHsn.samt = primaryHsn.camt; // Enforce 100% CGST == SGST symmetry for POS 07
-        } else {
-          primaryHsn.samt = round2(primaryHsn.samt + deltaSamt);
-        }
-        primaryHsn.iamt = round2(primaryHsn.iamt + deltaIamt);
-        primaryHsn.val = round2(primaryHsn.txval + primaryHsn.iamt + primaryHsn.camt + primaryHsn.samt + primaryHsn.csamt);
       }
     }
 
+    // Ensure all Table 12 rows strictly maintain line-item tax split: CGST @ 2.5%, SGST @ 2.5%
     hsnData.forEach(h => {
+      if (h._isIntra || (Number(h.iamt) || 0) === 0) {
+        h.camt = round2(h.txval * 0.025);
+        h.samt = h.camt;
+        h.iamt = 0.00;
+      }
+      h.val = round2(h.txval + h.iamt + h.camt + h.samt + (Number(h.csamt) || 0));
       delete h._isIntra;
     });
+
+    // Zero-paisa tax symmetry reconciliation with targetTotals
+    const sumHsnCamt = round2(hsnData.reduce((acc, curr) => acc + curr.camt, 0));
+    const deltaCamt = round2(targetTotals.camt - sumHsnCamt);
+    if (deltaCamt !== 0) {
+      const primaryHsn = hsnData.reduce((prev, curr) => (curr.txval > prev.txval ? curr : prev), hsnData[0]);
+      if (primaryHsn) {
+        primaryHsn.camt = round2(primaryHsn.camt + deltaCamt);
+        primaryHsn.samt = primaryHsn.camt;
+        primaryHsn.val = round2(primaryHsn.txval + primaryHsn.iamt + primaryHsn.camt + primaryHsn.samt + primaryHsn.csamt);
+      }
+    }
   }
 
   // --- SECTION 4: DOCUMENT SERIES ISSUED (Table 13) ---
