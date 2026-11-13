@@ -76,6 +76,12 @@ export default function App() {
   const [lastSyncedTime, setLastSyncedTime] = useState(null);
   const [cloudConnected, setCloudConnected] = useState(isSupabaseConnected());
   const [cloudModalOpen, setCloudModalOpen] = useState(false);
+  const [cloudModalTab, setCloudModalTab] = useState('browser');
+
+  const handleOpenCloudModal = (tab = 'browser') => {
+    setCloudModalTab(tab);
+    setCloudModalOpen(true);
+  };
 
   const translate = (key) => t(key, lang);
 
@@ -358,7 +364,8 @@ export default function App() {
           cloudConnected={cloudConnected}
           lastSyncedTime={lastSyncedTime}
           triggerManualSync={triggerManualSync}
-          onOpenCloudModal={() => setCloudModalOpen(true)}
+          onOpenCloudModal={() => handleOpenCloudModal('browser')}
+          onOpenDriveModal={() => handleOpenCloudModal('gdrive')}
           onLogout={handleLogout}
         />
         {selectedInvoiceForPrint && (
@@ -375,6 +382,7 @@ export default function App() {
           onClose={() => setCloudModalOpen(false)} 
           refreshAllData={refreshAllData}
           onSyncStateChange={(conn) => setCloudConnected(conn)}
+          initialTab={cloudModalTab}
         />
       </Suspense>
     );
@@ -389,7 +397,8 @@ export default function App() {
         business={business}
         lowStockCount={lowStockProducts.length}
         t={translate}
-        onOpenCloudModal={() => setCloudModalOpen(true)}
+        onOpenCloudModal={() => handleOpenCloudModal('browser')}
+        onOpenDriveModal={() => handleOpenCloudModal('gdrive')}
         isCloudConnected={cloudConnected}
         onLogout={handleLogout}
         onSyncCloud={triggerManualSync}
@@ -679,6 +688,8 @@ export default function App() {
               lang={lang}
               changeLanguage={changeLanguage}
               t={translate}
+              onOpenDriveModal={() => handleOpenCloudModal('gdrive')}
+              onOpenCloudModal={() => handleOpenCloudModal('browser')}
             />
           )}
         </Suspense>
@@ -795,6 +806,7 @@ export default function App() {
           onClose={() => setCloudModalOpen(false)} 
           refreshAllData={refreshAllData}
           onSyncStateChange={(conn) => setCloudConnected(conn)}
+          initialTab={cloudModalTab}
         />
       </Suspense>
     </div>

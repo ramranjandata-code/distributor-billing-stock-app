@@ -13,6 +13,7 @@ export const DEFAULT_DRIVE_CONFIG = {
   enabled: true,
   webhookUrl: '', // Google Apps Script Web App URL
   folderName: 'DistroPlus Invoices & Bills',
+  lastDriveFolderUrl: '',
   autoUploadOnBill: true,
   uploadFormat: 'PDF', // 'PDF' or 'HTML'
   localServerUrl: 'http://localhost:3000',
@@ -231,6 +232,9 @@ export const uploadInvoiceToGoogleDrive = async (invoice, customBusiness = null)
       }
 
       if (resultData && (resultData.success || resultData.fileUrl || resultData.fileId)) {
+        if (resultData.folderUrl) {
+          saveGoogleDriveConfig({ lastDriveFolderUrl: resultData.folderUrl });
+        }
         // Attach Google Drive metadata to local invoice record
         recordDriveUploadSuccess(invoice.id, {
           driveFileUrl: resultData.fileUrl || '',
@@ -441,7 +445,7 @@ export const bulkUploadAllBillsToDrive = async (onProgress = null) => {
 
 // Ready-to-copy Google Apps Script Code template for user
 export const GOOGLE_APPS_SCRIPT_TEMPLATE = `// ====================================================================
-// DISTROPULSE ERP: OFFICIAL GOOGLE DRIVE AUTO-BACKUP WEBHOOK SCRIPT
+// DISTROPLUS ERP: OFFICIAL GOOGLE DRIVE AUTO-BACKUP WEBHOOK SCRIPT
 // Paste this in https://script.google.com and deploy as Web App
 // ====================================================================
 
@@ -449,10 +453,27 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     
-    // 1. Target Folder in Google Drive (created automatically if missing)
-    var folderName = data.folderName || "DistroPlus Invoices & Bills";
-    var folders = DriveApp.getFoldersByName(folderName);
-    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    // 1. Resolve Target Folder (Supports Name, Drive URL, or Folder ID)
+    var folderInput = (data.folderName || data.folderId || "DistroPlus Invoices & Bills").trim();
+    var folder = null;
+    
+    // Check if user provided a full Google Drive URL or direct Folder ID
+    var urlMatch = folderInput.match(/folders\/([a-zA-Z0-9_-]+)/);
+    var candidateId = urlMatch ? urlMatch[1] : (folderInput.length >= 25 && folderInput.indexOf(" ") === -1 ? folderInput : null);
+    
+    if (candidateId) {
+      try {
+        folder = DriveApp.getFolderById(candidateId);
+      } catch (fErr) {
+        // Fallback to name search if ID not accessible
+      }
+    }
+    
+    if (!folder) {
+      var folderName = folderInput.replace(/^https?:\\/\\/.*$/, "DistroPlus Invoices & Bills");
+      var folders = DriveApp.getFoldersByName(folderName);
+      folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    }
     
     // 2. Clean File Name
     var invNo = (data.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -460,18 +481,20 @@ function doPost(e) {
     var fileName = "Bill_" + invNo + "_" + custName;
     
     // 3. Convert HTML to High-Res Vector PDF natively in Google Drive!
-    var htmlContent = data.html;
+    var htmlContent = data.html || ("<h1>Tax Invoice #" + invNo + "</h1>");
     var htmlBlob = Utilities.newBlob(htmlContent, 'text/html', fileName + '.html');
     var pdfBlob = htmlBlob.getAs('application/pdf').setName(fileName + '.pdf');
     
-    // 4. Update existing bill file or create fresh
+    // 4. Update existing bill file or create fresh (Avoids duplicate files)
     var existingFiles = folder.getFilesByName(fileName + '.pdf');
     while (existingFiles.hasNext()) {
       existingFiles.next().setTrashed(true);
     }
     
     var file = folder.createFile(pdfBlob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    try {
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (shareErr) {}
     
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
@@ -479,6 +502,7 @@ function doPost(e) {
       fileUrl: file.getUrl(),
       fileName: file.getName(),
       folderUrl: folder.getUrl(),
+      folderName: folder.getName(),
       timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
     

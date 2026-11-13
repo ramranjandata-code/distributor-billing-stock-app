@@ -15,6 +15,7 @@ import {
 } from '../utils/storage';
 import { getSupabaseConfig, updateSupabaseCredentials, isSupabaseConnected, testSupabaseConnection } from '../utils/supabaseClient';
 import { setupRealtimeSubscription } from '../utils/realtimeSync';
+import { getGoogleDriveConfig } from '../utils/googleDriveService';
 import { 
   Store, 
   Plus, 
@@ -37,7 +38,7 @@ import {
   HardDrive
 } from 'lucide-react';
 
-export default function Settings({ business, products, refreshAllData, lang, changeLanguage, t }) {
+export default function Settings({ business, products, refreshAllData, lang, changeLanguage, t, onOpenDriveModal, onOpenCloudModal }) {
   const [activeSubTab, setActiveSubTab] = useState('profile'); // 'profile', 'items', 'cloud', 'language'
 
   // Supabase State
@@ -870,15 +871,23 @@ export default function Settings({ business, products, refreshAllData, lang, cha
                 </div>
                 <button 
                   type="button" 
+                  onClick={onOpenDriveModal}
+                  style={{ width: '100%', padding: '10px', fontSize: '0.86rem', fontWeight: '700', gap: '8px', justifyContent: 'center', background: '#059669', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  <HardDrive size={16} />
+                  <span>Connect Google Drive & Choose Folder</span>
+                </button>
+                <button 
+                  type="button" 
                   onClick={handleExportGoogleDriveBackup}
                   className="btn btn-primary"
-                  style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: '700', gap: '8px', justifyContent: 'center', background: '#2563eb' }}
+                  style={{ width: '100%', padding: '10px', fontSize: '0.86rem', fontWeight: '700', gap: '8px', justifyContent: 'center', background: '#2563eb' }}
                 >
-                  <Download size={18} />
+                  <Download size={16} />
                   <span>Save Full Backup to Drive</span>
                 </button>
                 <a 
-                  href="https://drive.google.com/drive/folders/15Ub1FksCAldnMYBwxfUTwXzB7Kx5w_8E"
+                  href={getGoogleDriveConfig().lastDriveFolderUrl || 'https://drive.google.com'}
                   target="_blank"
                   rel="noreferrer"
                   style={{ textAlign: 'center', fontSize: '0.78rem', color: '#2563eb', textDecoration: 'none', fontWeight: '700', padding: '4px' }}

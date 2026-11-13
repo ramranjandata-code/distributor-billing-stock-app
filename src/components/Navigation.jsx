@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutGrid,
   LayoutDashboard, 
@@ -15,10 +15,41 @@ import {
   RotateCcw,
   Cloud,
   Smartphone,
-  LogOut
+  LogOut,
+  HardDrive
 } from 'lucide-react';
+import { getGoogleDriveConfig } from '../utils/googleDriveService';
 
-export default function Navigation({ activeTab, setActiveTab, business, lowStockCount, t, onOpenCloudModal, isCloudConnected, onLogout, onSyncCloud, isSyncing }) {
+export default function Navigation({ 
+  activeTab, 
+  setActiveTab, 
+  business, 
+  lowStockCount, 
+  t, 
+  onOpenCloudModal, 
+  onOpenDriveModal,
+  isCloudConnected, 
+  onLogout, 
+  onSyncCloud, 
+  isSyncing 
+}) {
+  const [isDriveActive, setIsDriveActive] = useState(() => {
+    try {
+      const cfg = getGoogleDriveConfig();
+      return Boolean(cfg.webhookUrl && cfg.webhookUrl.startsWith('https://script.google.com') && cfg.autoUploadOnBill);
+    } catch(e) {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleCfgChange = (e) => {
+      const cfg = e.detail || getGoogleDriveConfig();
+      setIsDriveActive(Boolean(cfg.webhookUrl && cfg.webhookUrl.startsWith('https://script.google.com') && cfg.autoUploadOnBill));
+    };
+    window.addEventListener('distro_gdrive_config_changed', handleCfgChange);
+    return () => window.removeEventListener('distro_gdrive_config_changed', handleCfgChange);
+  }, []);
   const navItems = [
     { id: 'dashboard', label: t('dashboard') || 'Dashboard', icon: LayoutDashboard },
     { id: 'billing', label: 'Invoicing', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
@@ -154,10 +185,41 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
         })}
       </div>
 
+      {/* Google Drive Real-Time Auto-Backup Quick Button */}
+      <button
+        type="button"
+        onClick={onOpenDriveModal || onOpenCloudModal}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 12px',
+          borderRadius: '20px',
+          border: isDriveActive ? '1px solid #86efac' : '1px solid #cbd5e1',
+          background: isDriveActive ? '#f0fdf4' : '#f8fafc',
+          color: isDriveActive ? '#15803d' : '#475569',
+          fontSize: '0.78rem',
+          fontWeight: '700',
+          cursor: 'pointer',
+          flexShrink: 0
+        }}
+        title="Google Drive Auto-Backup (Instant 2-3s Bill Uploads)"
+      >
+        <span style={{ 
+          width: '7px', 
+          height: '7px', 
+          borderRadius: '50%', 
+          background: isDriveActive ? '#22c55e' : '#94a3b8',
+          boxShadow: isDriveActive ? '0 0 6px #22c55e' : 'none'
+        }} />
+        <HardDrive size={14} color={isDriveActive ? '#15803d' : '#64748b'} />
+        <span>{isDriveActive ? 'Drive Live' : 'Connect Drive'}</span>
+      </button>
+
       {/* Cloud Sync & Multi-Device Access Quick Button */}
       <button
         type="button"
-        onClick={onSyncCloud || onOpenCloudModal}
+        onClick={onOpenCloudModal}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -172,7 +234,7 @@ export default function Navigation({ activeTab, setActiveTab, business, lowStock
           cursor: 'pointer',
           flexShrink: 0
         }}
-        title="Tap to Sync Cloud Instantly (Phone & Laptops)"
+        title="Multi-Device Cloud Access & Database Settings"
       >
         <span style={{ 
           width: '7px', 

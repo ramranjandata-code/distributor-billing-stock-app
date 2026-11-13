@@ -40,8 +40,8 @@ import {
   GOOGLE_APPS_SCRIPT_TEMPLATE 
 } from '../utils/googleDriveService';
 
-export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSyncStateChange }) {
-  const [activeTab, setActiveTab] = useState('browser'); // 'browser' | 'database' | 'gdrive'
+export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSyncStateChange, initialTab = 'browser' }) {
+  const [activeTab, setActiveTab] = useState(initialTab); // 'browser' | 'database' | 'gdrive'
   const [gdriveConfig, setGdriveConfig] = useState(getGoogleDriveConfig());
   const [webhookInput, setWebhookInput] = useState(() => getGoogleDriveConfig().webhookUrl || '');
   const [folderNameInput, setFolderNameInput] = useState(() => getGoogleDriveConfig().folderName || 'DistroPlus Invoices & Bills');
@@ -68,15 +68,29 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
           action: 'PING',
           invoiceNo: 'TEST-001',
           customerName: 'Test Connectivity Verification',
+          folderName: folderNameInput.trim() || 'DistroPlus Invoices & Bills',
           html: '<html><body><h2>DistroPlus ERP Connectivity Test Successful!</h2><p>Your Google Drive auto-upload webhook is working perfectly.</p></body></html>'
         })
       });
       const durationMs = Date.now() - start;
-      setTestResult({ success: true, msg: `✓ Connected! Response in ${(durationMs/1000).toFixed(1)}s. Drive is ready.` });
-      saveGoogleDriveConfig({
+      let gasRes = null;
+      try {
+        gasRes = await res.json();
+      } catch (parseErr) {}
+
+      const detectedFolderUrl = (gasRes && gasRes.folderUrl) || '';
+      const detectedFolderName = (gasRes && gasRes.folderName) || folderNameInput.trim();
+
+      const updated = saveGoogleDriveConfig({
         webhookUrl: webhookInput.trim(),
         folderName: folderNameInput.trim(),
+        lastDriveFolderUrl: detectedFolderUrl || getGoogleDriveConfig().lastDriveFolderUrl,
         autoUploadOnBill: autoUploadToggle
+      });
+      setGdriveConfig(updated);
+      setTestResult({ 
+        success: true, 
+        msg: `✓ Connected! Folder ready: "${detectedFolderName}" in ${(durationMs/1000).toFixed(1)}s. Drive is ready for automatic bill uploads.` 
       });
     } catch (e) {
       setTestResult({ success: false, msg: 'Error: ' + e.message });
@@ -109,12 +123,13 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
   };
 
   const handleSaveDriveSettings = () => {
-    saveGoogleDriveConfig({
+    const updated = saveGoogleDriveConfig({
       webhookUrl: webhookInput.trim(),
       folderName: folderNameInput.trim(),
       autoUploadOnBill: autoUploadToggle
     });
-    setSyncStatus({ loading: false, msg: '✓ Google Drive Settings Saved!', type: 'success' });
+    setGdriveConfig(updated);
+    setSyncStatus({ loading: false, msg: '✓ Google Drive Settings Saved! Every new bill will auto-upload in 2-3s.', type: 'success' });
     setTimeout(() => setSyncStatus({ loading: false, msg: '', type: '' }), 4000);
   };
   const [supabaseConfig, setSupabaseConfig] = useState(getSupabaseConfig());
@@ -127,13 +142,21 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
 
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
       const cfg = getSupabaseConfig();
       setSupabaseConfig(cfg);
       const conn = isSupabaseConnected();
       setIsConnected(conn);
+      const gCfg = getGoogleDriveConfig();
+      setGdriveConfig(gCfg);
+      setWebhookInput(gCfg.webhookUrl || '');
+      setFolderNameInput(gCfg.folderName || 'DistroPlus Invoices & Bills');
+      setAutoUploadToggle(gCfg.autoUploadOnBill);
       setSyncStatus({ loading: false, msg: '', type: '' });
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -512,7 +535,7 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
                   Save to Drive
                 </button>
                 <a
-                  href="https://drive.google.com/drive/folders/15Ub1FksCAldnMYBwxfUTwXzB7Kx5w_8E"
+                  href={gdriveConfig.lastDriveFolderUrl || (folderNameInput.startsWith('http') ? folderNameInput : 'https://drive.google.com')}
                   target="_blank"
                   rel="noreferrer"
                   style={{
@@ -781,42 +804,46 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#475569', marginBottom: '4px' }}>
-                    Google Drive Folder Name:
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '700', color: '#334155', marginBottom: '4px' }}>
+                    Google Drive Folder Name OR Folder Link (URL):
                   </label>
                   <input
                     type="text"
                     value={folderNameInput}
                     onChange={(e) => setFolderNameInput(e.target.value)}
+                    placeholder="e.g. Jai Maa Shardey Bills or paste your Google Drive folder link"
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
+                      padding: '9px 12px',
                       borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '0.82rem',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.84rem',
                       boxSizing: 'border-box'
                     }}
                   />
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px' }}>
+                    💡 <strong>Smart Folder Selection:</strong> Aap jo bhi folder name likhenge (jaise <em>"Jai Maa Shardey Bills"</em> ya <em>"October Invoices"</em>), Google Drive use automatically dhoond lega ya naya folder bana dega. Agar aapke paas already Drive ka folder open hai, toh uska browser link bhi yaha paste kar sakte hain.
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
                   <button
                     type="button"
                     onClick={handleSaveDriveSettings}
                     style={{
-                      width: '100%',
-                      padding: '9px 14px',
+                      flex: 1,
+                      padding: '10px 16px',
                       background: '#059669',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '8px',
                       fontWeight: '700',
-                      fontSize: '0.82rem',
+                      fontSize: '0.84rem',
                       cursor: 'pointer'
                     }}
                   >
-                    Save Google Drive Settings
+                    Save Google Drive Folder & Settings
                   </button>
                 </div>
               </div>
@@ -856,12 +883,12 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
                 </button>
               </div>
 
-              <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', color: '#475569', lineHeight: 1.6 }}>
-                <li>Open <strong><a href="https://script.google.com" target="_blank" rel="noreferrer">script.google.com</a></strong> in your browser (signed in with your Google account).</li>
-                <li>Click <strong>New Project</strong>, delete existing code, and paste the copied code.</li>
-                <li>Click <strong>Deploy ➔ New Deployment ➔ Select type: Web App</strong>.</li>
-                <li>Set <strong>Execute as: Me</strong>, and <strong>Who has access: Anyone</strong>.</li>
-                <li>Click <strong>Deploy</strong>, copy the Web App URL, and paste it in the box above!</li>
+              <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', color: '#475569', lineHeight: 1.7 }}>
+                <li>Open <strong><a href="https://script.google.com" target="_blank" rel="noreferrer">script.google.com</a></strong> in your browser (signed in with your Google account / apne Google account se login karein).</li>
+                <li>Click <strong>+ New Project</strong>, puraana code hata kar upar diye gaye <strong>"Copy Script Code"</strong> button se code paste karein.</li>
+                <li>Top right me <strong>Deploy ➔ New Deployment</strong> par click karein, aur type me <strong>Web App</strong> chunein.</li>
+                <li><strong>Execute as: "Me"</strong> aur <strong>Who has access: "Anyone"</strong> select karein.</li>
+                <li>Click <strong>Deploy</strong>, Google dwara diya gaya <strong>Web App URL</strong> copy karein aur upar paste karke <strong>"Test Connection"</strong> dabayein!</li>
               </ol>
             </div>
 
@@ -896,7 +923,7 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
               </button>
 
               <a
-                href="https://drive.google.com/drive/folders/15Ub1FksCAldnMYBwxfUTwXzB7Kx5w_8E"
+                href={gdriveConfig.lastDriveFolderUrl || (folderNameInput.startsWith('http') ? folderNameInput : 'https://drive.google.com')}
                 target="_blank"
                 rel="noreferrer"
                 style={{
