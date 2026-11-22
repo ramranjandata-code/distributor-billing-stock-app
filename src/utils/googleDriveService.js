@@ -454,12 +454,16 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     
     // 1. Resolve Target Folder (Supports Name, Drive URL, or Folder ID)
-    var folderInput = (data.folderName || data.folderId || "DistroPlus Invoices & Bills").trim();
+    var folderInput = String(data.folderName || data.folderId || "DistroPlus Invoices & Bills").trim();
     var folder = null;
     
     // Check if user provided a full Google Drive URL or direct Folder ID
-    var urlMatch = folderInput.match(/folders\/([a-zA-Z0-9_-]+)/);
-    var candidateId = urlMatch ? urlMatch[1] : (folderInput.length >= 25 && folderInput.indexOf(" ") === -1 ? folderInput : null);
+    var candidateId = null;
+    if (folderInput.indexOf("folders/") !== -1) {
+      candidateId = folderInput.split("folders/")[1].split("/")[0].split("?")[0].trim();
+    } else if (folderInput.length >= 25 && folderInput.indexOf(" ") === -1 && folderInput.indexOf("http") === -1) {
+      candidateId = folderInput.trim();
+    }
     
     if (candidateId) {
       try {
@@ -470,14 +474,17 @@ function doPost(e) {
     }
     
     if (!folder) {
-      var folderName = folderInput.replace(/^https?:\\/\\/.*$/, "DistroPlus Invoices & Bills");
+      var folderName = folderInput;
+      if (folderName.indexOf("http") === 0) {
+        folderName = "DistroPlus Invoices & Bills";
+      }
       var folders = DriveApp.getFoldersByName(folderName);
       folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
     }
     
     // 2. Clean File Name
-    var invNo = (data.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9_-]/g, "_");
-    var custName = (data.customerName || "Customer").replace(/[^a-zA-Z0-9_-]/g, "_");
+    var invNo = String(data.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9]/g, "_");
+    var custName = String(data.customerName || "Customer").replace(/[^a-zA-Z0-9]/g, "_");
     var fileName = "Bill_" + invNo + "_" + custName;
     
     // 3. Convert HTML to High-Res Vector PDF natively in Google Drive!
