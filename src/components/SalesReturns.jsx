@@ -18,7 +18,9 @@ import {
   ArrowUpRight,
   ShieldCheck,
   X,
-  PackageCheck
+  PackageCheck,
+  Printer,
+  Download
 } from 'lucide-react';
 import {
   fetchSalesReturns,
@@ -30,8 +32,10 @@ import {
   fetchInvoices,
   fetchProducts,
   fetchParties,
+  fetchBusinessInfo,
   getNextReturnNumber
 } from '../utils/storage';
+import CreditNoteModal from './CreditNoteModal';
 
 export default function SalesReturns({ onNavigateToInvoice }) {
   const [returns, setReturns] = useState([]);
@@ -48,6 +52,7 @@ export default function SalesReturns({ onNavigateToInvoice }) {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isReplacementModalOpen, setIsReplacementModalOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState(null);
+  const [selectedCreditNoteReturn, setSelectedCreditNoteReturn] = useState(null);
 
   // New Return Form State
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
@@ -158,8 +163,12 @@ export default function SalesReturns({ onNavigateToInvoice }) {
     if (window.confirm('Issue official Credit Note reversing invoice amount and adjusting customer balance?')) {
       const res = issueReturnCreditNote(returnId);
       loadData();
+      const updated = res?.returnObj || res;
       if (selectedReturn && selectedReturn.id === returnId) {
-        setSelectedReturn(res?.returnObj);
+        setSelectedReturn(updated);
+      }
+      if (updated) {
+        setSelectedCreditNoteReturn(updated);
       }
     }
   };
@@ -680,12 +689,31 @@ export default function SalesReturns({ onNavigateToInvoice }) {
 
                       {/* Linked Documents */}
                       <td style={{ padding: '10px 14px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.76rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.76rem' }}>
                           {ret.creditNoteNo && (
-                            <span style={{ color: '#7e22ce', fontWeight: '700', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedCreditNoteReturn(ret)}
+                              title="Click to Print & Download Credit Note"
+                              style={{
+                                background: '#faf5ff',
+                                border: '1px solid #d8b4fe',
+                                borderRadius: '6px',
+                                padding: '3px 8px',
+                                color: '#7e22ce',
+                                fontWeight: '800',
+                                fontFamily: 'monospace',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: 'fit-content'
+                              }}
+                            >
                               <CreditCard size={12} />
-                              {ret.creditNoteNo}
-                            </span>
+                              <span>{ret.creditNoteNo}</span>
+                            </button>
                           )}
                           {ret.replacementInvoiceNo && (
                             <span style={{ color: '#0d9488', fontWeight: '700', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -715,6 +743,29 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                             <Eye size={12} />
                             <span>View</span>
                           </button>
+
+                          {ret.creditNoteNo && (
+                            <button
+                              type="button"
+                              title="Print & Download Credit Note"
+                              onClick={() => setSelectedCreditNoteReturn(ret)}
+                              className="btn btn-secondary btn-sm"
+                              style={{ 
+                                padding: '4px 8px', 
+                                fontSize: '0.74rem', 
+                                fontWeight: '800', 
+                                color: '#7e22ce', 
+                                borderColor: '#d8b4fe', 
+                                background: '#faf5ff', 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px' 
+                              }}
+                            >
+                              <Printer size={12} />
+                              <span>Print CN</span>
+                            </button>
+                          )}
 
                           {ret.status === 'Draft' && (
                             <button
@@ -1379,15 +1430,43 @@ export default function SalesReturns({ onNavigateToInvoice }) {
               {/* Linked Documents Box */}
               {(selectedReturn.creditNoteNo || selectedReturn.replacementInvoiceNo) && (
                 <div style={{ padding: '14px', background: '#faf5ff', borderRadius: '10px', border: '1px solid #e9d5ff', fontSize: '0.82rem' }}>
-                  <span style={{ fontWeight: '800', color: '#7e22ce', display: 'block', marginBottom: '4px' }}>
-                    Linked Accounting Documents:
-                  </span>
-                  <div style={{ display: 'flex', gap: '16px', fontFamily: 'monospace' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <span style={{ fontWeight: '800', color: '#7e22ce', display: 'block', marginBottom: '4px' }}>
+                        Linked Accounting Documents:
+                      </span>
+                      <div style={{ display: 'flex', gap: '16px', fontFamily: 'monospace' }}>
+                        {selectedReturn.creditNoteNo && (
+                          <span style={{ color: '#7c3aed', fontWeight: '800' }}>Credit Note: {selectedReturn.creditNoteNo}</span>
+                        )}
+                        {selectedReturn.replacementInvoiceNo && (
+                          <span style={{ color: '#0d9488', fontWeight: '800' }}>Replacement Invoice: {selectedReturn.replacementInvoiceNo}</span>
+                        )}
+                      </div>
+                    </div>
+
                     {selectedReturn.creditNoteNo && (
-                      <span style={{ color: '#7c3aed', fontWeight: '800' }}>Credit Note: {selectedReturn.creditNoteNo}</span>
-                    )}
-                    {selectedReturn.replacementInvoiceNo && (
-                      <span style={{ color: '#0d9488', fontWeight: '800' }}>Replacement Invoice: {selectedReturn.replacementInvoiceNo}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCreditNoteReturn(selectedReturn)}
+                        style={{
+                          padding: '7px 14px',
+                          background: '#7c3aed',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '0.82rem',
+                          fontWeight: '800',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)'
+                        }}
+                      >
+                        <Printer size={15} />
+                        <span>Print & Download Credit Note</span>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1437,14 +1516,28 @@ export default function SalesReturns({ onNavigateToInvoice }) {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsDetailModalOpen(false)}
-                className="btn btn-secondary"
-                style={{ padding: '6px 18px', fontSize: '0.82rem', fontWeight: '700' }}
-              >
-                Close
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {selectedReturn.creditNoteNo && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCreditNoteReturn(selectedReturn)}
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 14px', fontSize: '0.82rem', fontWeight: '800', color: '#7c3aed', borderColor: '#d8b4fe', background: '#faf5ff', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Printer size={14} />
+                    <span>Print / Download CN</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 18px', fontSize: '0.82rem', fontWeight: '700' }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1666,6 +1759,17 @@ export default function SalesReturns({ onNavigateToInvoice }) {
             </form>
           </div>
         </div>
+      )}
+      {/* Credit Note Document Modal */}
+      {selectedCreditNoteReturn && (
+        <CreditNoteModal
+          isOpen={Boolean(selectedCreditNoteReturn)}
+          onClose={() => setSelectedCreditNoteReturn(null)}
+          returnData={selectedCreditNoteReturn}
+          invoiceData={invoices.find(i => i.invoiceNo === selectedCreditNoteReturn?.creditNoteNo || i.id === selectedCreditNoteReturn?.creditNoteId)}
+          business={fetchBusinessInfo()}
+          party={parties.find(p => p.id === selectedCreditNoteReturn?.customerId || p.name === selectedCreditNoteReturn?.customerName)}
+        />
       )}
     </div>
   );

@@ -86,7 +86,7 @@ export default function InvoiceHistory({
     if (odooStatusFilter === 'ALL') {
       matchesStatus = true;
     } else if (odooStatusFilter === 'credit_note') {
-      matchesStatus = inv.documentType === 'out_refund' || (inv.invoiceNo && inv.invoiceNo.startsWith('RINV'));
+      matchesStatus = inv.documentType === 'out_refund' || (inv.invoiceNo && (inv.invoiceNo.startsWith('RINV') || inv.invoiceNo.startsWith('CN/')));
     } else {
       matchesStatus = inv.state === odooStatusFilter;
     }
@@ -459,7 +459,7 @@ export default function InvoiceHistory({
               <tbody>
                 {sortedInvoices.map(inv => {
                   const isVoid = inv.state === 'cancel' || inv.isVoid;
-                  const isCreditNote = !isVoid && (inv.documentType === 'out_refund' || (inv.invoiceNo && inv.invoiceNo.startsWith('RINV')));
+                  const isCreditNote = !isVoid && (inv.documentType === 'out_refund' || (inv.invoiceNo && (inv.invoiceNo.startsWith('RINV') || inv.invoiceNo.startsWith('CN/'))));
                   const isOverdue = !isVoid && inv.dueDate && new Date(inv.dueDate) < new Date() && inv.amountDue > 0;
 
                   return (

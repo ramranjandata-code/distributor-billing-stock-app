@@ -27,6 +27,7 @@ const Reports = lazy(() => import('./components/Reports'));
 const AuditSecurity = lazy(() => import('./components/AuditSecurity'));
 const Settings = lazy(() => import('./components/Settings'));
 const InvoicePrintModal = lazy(() => import('./components/InvoicePrintModal'));
+const CreditNoteModal = lazy(() => import('./components/CreditNoteModal'));
 const AppLauncher = lazy(() => import('./components/AppLauncher'));
 const SalesReturns = lazy(() => import('./components/SalesReturns'));
 const PurchaseReturns = lazy(() => import('./components/PurchaseReturns'));
@@ -792,13 +793,23 @@ export default function App() {
       {/* Invoice Printable Modal & Cloud Modal */}
       <Suspense fallback={null}>
         {selectedInvoiceForPrint && (
-          <InvoicePrintModal 
-            invoice={selectedInvoiceForPrint} 
-            business={business}
-            onClose={() => setSelectedInvoiceForPrint(null)}
-            refreshAllData={refreshAllData}
-            onEditInvoice={() => { setSelectedInvoiceForPrint(null); navigateToTab('billing'); }}
-          />
+          (selectedInvoiceForPrint.documentType === 'out_refund' || (selectedInvoiceForPrint.invoiceNo && (selectedInvoiceForPrint.invoiceNo.startsWith('CN/') || selectedInvoiceForPrint.invoiceNo.startsWith('RINV')))) ? (
+            <CreditNoteModal
+              isOpen={Boolean(selectedInvoiceForPrint)}
+              onClose={() => setSelectedInvoiceForPrint(null)}
+              invoiceData={selectedInvoiceForPrint}
+              business={business}
+              party={parties.find(p => p.id === selectedInvoiceForPrint.partyId || p.name === (selectedInvoiceForPrint.partyName || selectedInvoiceForPrint.customerName))}
+            />
+          ) : (
+            <InvoicePrintModal 
+              invoice={selectedInvoiceForPrint} 
+              business={business}
+              onClose={() => setSelectedInvoiceForPrint(null)}
+              refreshAllData={refreshAllData}
+              onEditInvoice={() => { setSelectedInvoiceForPrint(null); navigateToTab('billing'); }}
+            />
+          )
         )}
 
         <CloudSyncModal 
