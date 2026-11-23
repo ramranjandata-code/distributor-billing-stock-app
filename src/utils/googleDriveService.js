@@ -549,4 +549,8 @@ function doGet(e) {
     timestamp: new Date().toISOString()
   })).setMimeType(ContentService.MimeType.JSON);
 }
+
+function testWebhook() {
+  Logger.log("DistroPlus Webhook Script is active and working properly!");
+}
 `;
