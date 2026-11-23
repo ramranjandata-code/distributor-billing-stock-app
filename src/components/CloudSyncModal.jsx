@@ -52,16 +52,27 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
   const [bulkSyncing, setBulkSyncing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, status: '' });
 
+  const normalizeWebhookUrl = (raw) => {
+    if (!raw) return '';
+    let clean = raw.trim().replace(/[\r\n\t ]/g, '');
+    if (clean.includes('/edit')) clean = clean.split('/edit')[0];
+    clean = clean.replace(/\/+$/, '');
+    if (!clean.endsWith('/exec')) clean += '/exec';
+    return clean;
+  };
+
   const handleTestWebhook = async () => {
-    if (!webhookInput || !webhookInput.startsWith('https://script.google.com')) {
-      alert('Please enter a valid Google Apps Script Webhook URL (starts with https://script.google.com/macros/s/...)');
+    const cleanUrl = normalizeWebhookUrl(webhookInput);
+    if (!cleanUrl || !cleanUrl.startsWith('https://script.google.com/macros/s/')) {
+      alert('Please enter a valid Google Apps Script Webhook URL (starts with https://script.google.com/macros/s/.../exec)');
       return;
     }
+    setWebhookInput(cleanUrl);
     setTestingWebhook(true);
     setTestResult(null);
     const start = Date.now();
     try {
-      const res = await fetch(webhookInput.trim(), {
+      const res = await fetch(cleanUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
@@ -82,7 +93,7 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
       const detectedFolderName = (gasRes && gasRes.folderName) || folderNameInput.trim();
 
       const updated = saveGoogleDriveConfig({
-        webhookUrl: webhookInput.trim(),
+        webhookUrl: cleanUrl,
         folderName: folderNameInput.trim(),
         lastDriveFolderUrl: detectedFolderUrl || getGoogleDriveConfig().lastDriveFolderUrl,
         autoUploadOnBill: autoUploadToggle
@@ -95,7 +106,7 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
     } catch (e) {
       setTestResult({ 
         success: false, 
-        msg: `Connection Error (${e.message}): Google Apps Script me code Save (Ctrl+S) nahi hua ya "New version" deploy nahi hua. Kripya Apps Script me Ctrl+S se Save karein aur Deploy > Manage Deployments me Version: "New version" select karke Deploy karein.` 
+        msg: `⚠️ Connection Blocked (${e.message}):\nGoogle Apps Script me 'Who has access' ko 'Anyone' karein (agar 'Only myself' hai toh Google access block kar deta hai). 'Deploy > Manage deployments > Edit' me 'Who has access: Anyone' aur Version: 'New version' chunein.` 
       });
     } finally {
       setTestingWebhook(false);
@@ -126,11 +137,13 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
   };
 
   const handleSaveDriveSettings = () => {
+    const cleanUrl = normalizeWebhookUrl(webhookInput);
     const updated = saveGoogleDriveConfig({
-      webhookUrl: webhookInput.trim(),
+      webhookUrl: cleanUrl,
       folderName: folderNameInput.trim(),
       autoUploadOnBill: autoUploadToggle
     });
+    setWebhookInput(cleanUrl);
     setGdriveConfig(updated);
     setSyncStatus({ loading: false, msg: '✓ Google Drive Settings Saved! Every new bill will auto-upload in 2-3s.', type: 'success' });
     setTimeout(() => setSyncStatus({ loading: false, msg: '', type: '' }), 4000);
