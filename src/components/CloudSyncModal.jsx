@@ -93,7 +93,10 @@ export default function CloudSyncModal({ isOpen, onClose, refreshAllData, onSync
         msg: `✓ Connected! Folder ready: "${detectedFolderName}" in ${(durationMs/1000).toFixed(1)}s. Drive is ready for automatic bill uploads.` 
       });
     } catch (e) {
-      setTestResult({ success: false, msg: 'Error: ' + e.message });
+      setTestResult({ 
+        success: false, 
+        msg: `Connection Error (${e.message}): Google Apps Script me code Save (Ctrl+S) nahi hua ya "New version" deploy nahi hua. Kripya Apps Script me Ctrl+S se Save karein aur Deploy > Manage Deployments me Version: "New version" select karke Deploy karein.` 
+      });
     } finally {
       setTestingWebhook(false);
     }
