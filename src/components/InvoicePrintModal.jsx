@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Printer, X, Zap, Trash2, Send, MessageSquare, Mail, Palette, Truck, QrCode, FileText, Edit3, Plus, Minus, Save, CheckCircle, HardDrive, Ban } from 'lucide-react';
-import { uploadInvoiceToGoogleDrive } from '../utils/googleDriveService';
+import { uploadInvoiceToGoogleDrive, deleteInvoiceFromGoogleDrive } from '../utils/googleDriveService';
+import DeleteInvoiceModal from './DeleteInvoiceModal';
 import { formatCartonStock, deleteInvoice, fetchParties, fetchProducts, fetchInvoices, updateInvoice, saveParty, voidInvoice } from '../utils/storage';
 import { generateUpiQrDataUrl, generateEInvoiceQrDataUrl, buildInvoiceShareText, buildWhatsAppUrl, buildSmsUrl, buildEmailUrl } from '../utils/qrUtils';
 import firmLogo from '../assets/firm_logo.png';
@@ -102,6 +103,7 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
   const [driveUploading, setDriveUploading] = useState(false);
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [voidReasonText, setVoidReasonText] = useState('Customer refused delivery / Store closed');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const handleUploadToDrive = async () => {
     if (invoice.driveFileUrl) {
@@ -273,11 +275,21 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
   };
 
   const handleDelete = () => {
-    if (window.confirm(`⚠️ Are you sure you want to delete Invoice #${invoice.invoiceNo}?\n\n• All stock items will be automatically returned to the warehouse.\n• Retailer outstanding balance will be automatically adjusted.`)) {
-      deleteInvoice(invoice.id);
-      if (refreshAllData) refreshAllData();
-      onClose();
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDeleteModal = async ({ deleteFromDrive }) => {
+    deleteInvoice(invoice.id);
+    if (deleteFromDrive) {
+      try {
+        await deleteInvoiceFromGoogleDrive(invoice);
+      } catch (err) {
+        console.warn('Google Drive delete error:', err);
+      }
     }
+    setIsDeleteModalOpen(false);
+    if (refreshAllData) refreshAllData();
+    onClose();
   };
 
   const handleEditInvoice = () => {
@@ -1997,6 +2009,14 @@ export default function InvoicePrintModal({ invoice: initialInvoice, business, o
         </div>
       </div>
     )}
+
+    {/* 2-Step Secure Invoice Deletion Modal with Google Drive Sync */}
+    <DeleteInvoiceModal
+      isOpen={isDeleteModalOpen}
+      invoice={invoice}
+      onClose={() => setIsDeleteModalOpen(false)}
+      onConfirm={handleConfirmDeleteModal}
+    />
 
     </>
   );

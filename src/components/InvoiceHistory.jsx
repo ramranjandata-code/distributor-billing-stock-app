@@ -23,11 +23,12 @@ import {
   X,
   HardDrive
 } from 'lucide-react';
-import { uploadInvoiceToGoogleDrive } from '../utils/googleDriveService';
+import { uploadInvoiceToGoogleDrive, deleteInvoiceFromGoogleDrive } from '../utils/googleDriveService';
 import { deleteInvoice, formatDateDDMMYY, compareInvoicesDesc, extractInvoiceNumericValue, voidInvoice } from '../utils/storage';
 import OdooInvoiceForm from './OdooInvoiceForm';
 import Billing from './Billing';
 import ErrorBoundary from './ErrorBoundary';
+import DeleteInvoiceModal from './DeleteInvoiceModal';
 
 export default function InvoiceHistory({ 
   invoices = [], 
@@ -45,6 +46,7 @@ export default function InvoiceHistory({
   const [voidReason, setVoidReason] = useState('Customer refused delivery / Store closed');
   const [sortField, setSortField] = useState('date'); // 'date', 'invoiceNo', 'partyName', 'grandTotal', 'amountDue'
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -192,10 +194,22 @@ export default function InvoiceHistory({
 
   const handleDelete = (e, inv) => {
     e.stopPropagation();
-    if (window.confirm(`⚠️ Are you sure you want to delete Invoice #${inv.invoiceNo} (${inv.partyName || inv.customerName})?\n\n• Stock will be automatically restored to the warehouse.\n• Retailer balance ledger will be adjusted.`)) {
-      deleteInvoice(inv.id);
-      if (refreshAllData) refreshAllData();
+    setInvoiceToDelete(inv);
+  };
+
+  const handleConfirmDelete = async ({ deleteFromDrive }) => {
+    if (!invoiceToDelete) return;
+    const inv = invoiceToDelete;
+    deleteInvoice(inv.id);
+    if (deleteFromDrive) {
+      try {
+        await deleteInvoiceFromGoogleDrive(inv);
+      } catch (err) {
+        console.warn('Google Drive delete error:', err);
+      }
     }
+    setInvoiceToDelete(null);
+    if (refreshAllData) refreshAllData();
   };
 
   return (
@@ -734,6 +748,14 @@ export default function InvoiceHistory({
           </div>
         </div>
       )}
+
+      {/* 2-Step Secure Invoice Deletion Modal with Google Drive Sync */}
+      <DeleteInvoiceModal
+        isOpen={Boolean(invoiceToDelete)}
+        invoice={invoiceToDelete}
+        onClose={() => setInvoiceToDelete(null)}
+        onConfirm={handleConfirmDelete}
+      />
 
     </div>
   );

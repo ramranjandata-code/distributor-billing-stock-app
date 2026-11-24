@@ -343,6 +343,60 @@ export const uploadInvoiceToGoogleDrive = async (invoice, customBusiness = null)
 };
 
 /**
+ * Removes / Trashes an invoice PDF from Google Drive when confirmed by user
+ */
+export const deleteInvoiceFromGoogleDrive = async (invoice) => {
+  const config = getGoogleDriveConfig();
+  if (!config.webhookUrl || !config.webhookUrl.trim().startsWith('https://script.google.com')) {
+    return { success: false, error: 'Google Drive webhook not configured' };
+  }
+
+  try {
+    let cleanWebhookUrl = config.webhookUrl.trim().replace(/[\r\n\t ]/g, '');
+    if (cleanWebhookUrl.includes('/edit')) cleanWebhookUrl = cleanWebhookUrl.split('/edit')[0];
+    cleanWebhookUrl = cleanWebhookUrl.replace(/\/+$/, '');
+    if (!cleanWebhookUrl.endsWith('/exec')) cleanWebhookUrl += '/exec';
+
+    const payload = {
+      action: 'DELETE_BILL',
+      invoiceNo: String(invoice.invoiceNo || ''),
+      customerName: invoice.customerName || invoice.partyName || 'Customer',
+      driveFileId: invoice.driveFileId || '',
+      folderName: config.folderName || 'DistroPlus Invoices & Bills'
+    };
+
+    let res = null;
+    try {
+      res = await fetch(cleanWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+    } catch (postErr) {
+      // Fallback with no-cors so execution still runs on Apps Script
+      await fetch(cleanWebhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      res = { ok: true, json: async () => ({ success: true }) };
+    }
+
+    let result = null;
+    try {
+      result = await res.json();
+    } catch (e) {
+      result = { success: true };
+    }
+    return result || { success: true };
+  } catch (err) {
+    console.warn('[GoogleDriveService] Error deleting file from Drive:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+/**
  * Updates stored invoice with drive URL without triggering full recursive cloud loops
  */
 function recordDriveUploadSuccess(invoiceId, driveMeta) {
@@ -503,7 +557,45 @@ function doPost(e) {
       folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
     }
     
-    // 2. Clean File Name
+    // 2. Handle DELETE_BILL Action (User confirmed deletion from Drive)
+    if (data.action === "DELETE_BILL" || data.action === "delete") {
+      var invNo = String(data.invoiceNo || "").replace(/[^a-zA-Z0-9]/g, "_");
+      var trashedCount = 0;
+      
+      // A. If driveFileId passed directly, trash it immediately
+      if (data.driveFileId) {
+        try {
+          var targetFile = DriveApp.getFileById(data.driveFileId);
+          if (targetFile) {
+            targetFile.setTrashed(true);
+            trashedCount++;
+          }
+        } catch(fErr) {}
+      }
+      
+      // B. Also search inside folder for matching invoice files (by invoice number)
+      if (folder && invNo) {
+        var files = folder.getFiles();
+        while (files.hasNext()) {
+          var f = files.next();
+          var fn = f.getName();
+          if (fn.indexOf(invNo) !== -1) {
+            f.setTrashed(true);
+            trashedCount++;
+          }
+        }
+      }
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        action: "DELETED",
+        trashedCount: trashedCount,
+        invoiceNo: data.invoiceNo,
+        timestamp: new Date().toISOString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Clean File Name for Upload
     var invNo = String(data.invoiceNo || "Invoice").replace(/[^a-zA-Z0-9]/g, "_");
     var custName = String(data.customerName || "Customer").replace(/[^a-zA-Z0-9]/g, "_");
     var fileName = "Bill_" + invNo + "_" + custName;
