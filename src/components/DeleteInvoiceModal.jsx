@@ -322,7 +322,7 @@ export default function DeleteInvoiceModal({
                 type="button"
                 onClick={onClose}
                 className="btn btn-secondary"
-                style={{ padding: '8px 16px', fontSize: '0.84rem', fontWeight: '600' }}
+                style={{ padding: '9px 18px', fontSize: '0.86rem', fontWeight: '600' }}
               >
                 Cancel
               </button>
@@ -330,20 +330,23 @@ export default function DeleteInvoiceModal({
               <button
                 type="button"
                 onClick={handleProceedToStep2}
-                className="btn btn-primary"
                 style={{
-                  padding: '8px 18px',
-                  fontSize: '0.84rem',
-                  fontWeight: '700',
+                  padding: '9px 20px',
+                  fontSize: '0.86rem',
+                  fontWeight: '800',
+                  color: '#ffffff',
                   background: '#dc2626',
-                  borderColor: '#dc2626',
-                  display: 'flex',
+                  border: '1px solid #b91c1c',
+                  borderRadius: '8px',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.3)'
                 }}
               >
-                <span>Next: Confirm Deletion (1/2)</span>
-                <ArrowRight size={15} />
+                <span style={{ color: '#ffffff', fontWeight: '800' }}>Next: Confirm Deletion (1/2)</span>
+                <ArrowRight size={15} color="#ffffff" />
               </button>
             </>
           ) : (
@@ -354,8 +357,8 @@ export default function DeleteInvoiceModal({
                 disabled={isProcessing}
                 className="btn btn-secondary"
                 style={{
-                  padding: '8px 16px',
-                  fontSize: '0.84rem',
+                  padding: '9px 18px',
+                  fontSize: '0.86rem',
                   fontWeight: '600',
                   display: 'flex',
                   alignItems: 'center',
@@ -370,22 +373,25 @@ export default function DeleteInvoiceModal({
                 type="button"
                 onClick={handleFinalConfirm}
                 disabled={isProcessing}
-                className="btn btn-danger"
                 style={{
-                  padding: '8px 20px',
-                  fontSize: '0.84rem',
-                  fontWeight: '800',
+                  padding: '9px 22px',
+                  fontSize: '0.86rem',
+                  fontWeight: '900',
+                  color: '#ffffff',
                   background: '#dc2626',
-                  borderColor: '#b91c1c',
-                  display: 'flex',
+                  border: '1px solid #991b1b',
+                  borderRadius: '8px',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.35)',
+                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.45)',
                   cursor: isProcessing ? 'wait' : 'pointer'
                 }}
               >
-                <Trash2 size={16} />
-                <span>{isProcessing ? 'Deleting...' : 'Yes, Permanently Delete (2/2)'}</span>
+                <Trash2 size={16} color="#ffffff" />
+                <span style={{ color: '#ffffff', fontWeight: '900', letterSpacing: '0.3px' }}>
+                  {isProcessing ? 'Deleting Bill...' : 'Delete Permanently (2/2)'}
+                </span>
               </button>
             </>
           )}
