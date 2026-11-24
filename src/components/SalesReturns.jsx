@@ -338,7 +338,7 @@ export default function SalesReturns({ onNavigateToInvoice }) {
               Sales Returns & Replacements (RMA)
             </h2>
             <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Zoho-grade RMA: Resalable restocks, damaged scrap write-offs, credit notes & replacement billing
+              GST Credit Notes & RMA: Resalable restocks, damaged scrap write-offs & replacement billing
             </p>
           </div>
         </div>

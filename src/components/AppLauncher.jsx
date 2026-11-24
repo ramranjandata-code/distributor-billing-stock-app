@@ -126,7 +126,7 @@ export default function AppLauncher({
       description: 'Undamaged Restocks, Scrap Loss Write-Offs & Replacement Billing',
       gradient: 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
       shadowColor: 'rgba(124, 58, 237, 0.25)',
-      badge: 'Zoho Flow',
+      badge: 'Cr. Note',
       badgeBg: '#ede9fe',
       badgeColor: '#7c3aed',
       icon: (
