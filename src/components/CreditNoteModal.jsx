@@ -2,29 +2,19 @@ import React, { useState } from 'react';
 import { 
   Printer, 
   Download, 
-  Share2, 
   MessageSquare, 
   X, 
   HardDrive, 
-  CheckCircle2, 
-  FileText, 
-  ArrowLeft, 
-  ExternalLink,
-  ShieldCheck,
-  Building2,
-  Phone,
-  Mail,
-  Calendar,
-  AlertCircle
+  FileText
 } from 'lucide-react';
 import { uploadInvoiceToGoogleDrive } from '../utils/googleDriveService';
-import { fetchBusinessInfo } from '../utils/storage';
+import { fetchBusinessInfo, fetchInvoices } from '../utils/storage';
 
-// Number to Words Converter for Indian Currency
-function numToWordsIndian(num) {
-  if (!num || isNaN(num) || Number(num) === 0) return 'ZERO RUPEES ONLY';
-  const a = ['', 'ONE ', 'TWO ', 'THREE ', 'FOUR ', 'FIVE ', 'SIX ', 'SEVEN ', 'EIGHT ', 'NINE ', 'TEN ', 'ELEVEN ', 'TWELVE ', 'THIRTEEN ', 'FOURTEEN ', 'FIFTEEN ', 'SIXTEEN ', 'SEVENTEEN ', 'EIGHTEEN ', 'NINETEEN '];
-  const b = ['', '', 'TWENTY ', 'THIRTY ', 'FORTY ', 'FIFTY ', 'SIXTY ', 'SEVENTY ', 'EIGHTY ', 'NINETY '];
+// Number to Words in Title Case format (e.g. Rupees Sixteen Thousand Seven Hundred Seventy Five Only)
+function numToWordsTitleCase(num) {
+  if (!num || isNaN(num) || Number(num) === 0) return 'Rupees Zero Only';
+  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  const b = ['', '', 'Twenty ', 'Thirty ', 'Forty ', 'Fifty ', 'Sixty ', 'Seventy ', 'Eighty ', 'Ninety '];
 
   function inWords(n) {
     let str = '';
@@ -38,23 +28,36 @@ function numToWordsIndian(num) {
     let hundred = Number(match[4]);
     let rest = Number(match[5]);
 
-    if (crore) str += (a[crore] || b[Math.floor(crore / 10)] + a[crore % 10]) + 'CRORE ';
-    if (lakh) str += (a[lakh] || b[Math.floor(lakh / 10)] + a[lakh % 10]) + 'LAKH ';
-    if (thousand) str += (a[thousand] || b[Math.floor(thousand / 10)] + a[thousand % 10]) + 'THOUSAND ';
-    if (hundred) str += (a[hundred] || b[Math.floor(hundred / 10)] + a[hundred % 10]) + 'HUNDRED ';
-    if (rest) str += (str ? 'AND ' : '') + (a[rest] || b[Math.floor(rest / 10)] + a[rest % 10]);
+    if (crore) str += (a[crore] || b[Math.floor(crore / 10)] + a[crore % 10]) + 'Crore ';
+    if (lakh) str += (a[lakh] || b[Math.floor(lakh / 10)] + a[lakh % 10]) + 'Lakh ';
+    if (thousand) str += (a[thousand] || b[Math.floor(thousand / 10)] + a[thousand % 10]) + 'Thousand ';
+    if (hundred) str += (a[hundred] || b[Math.floor(hundred / 10)] + a[hundred % 10]) + 'Hundred ';
+    if (rest) str += (str ? 'and ' : '') + (a[rest] || b[Math.floor(rest / 10)] + a[rest % 10]);
 
     return str.trim();
   }
 
-  const integerPart = Math.floor(num);
-  const decimalPart = Math.round((num - integerPart) * 100);
-  let words = inWords(integerPart) || 'ZERO';
-  words += ' RUPEES';
+  const integerPart = Math.floor(Math.abs(num));
+  const decimalPart = Math.round((Math.abs(num) - integerPart) * 100);
+  let words = 'Rupees ' + (inWords(integerPart) || 'Zero');
   if (decimalPart > 0) {
-    words += ' AND ' + (inWords(decimalPart) || decimalPart) + ' PAISE';
+    words += ' and ' + (inWords(decimalPart) || decimalPart) + ' Paise';
   }
-  return words + ' ONLY';
+  return words + ' Only';
+}
+
+function formatDateDDMMYYYY(dateVal) {
+  if (!dateVal) return '-';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  } catch (e) {
+    return String(dateVal);
+  }
 }
 
 export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceData, business, party }) {
@@ -64,33 +67,125 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
   if (!isOpen || (!returnData && !invoiceData)) return null;
 
   const biz = business || fetchBusinessInfo() || {};
+  const allInvoices = fetchInvoices ? fetchInvoices() : [];
+
+  const bizName = biz.name || 'PREETI ENTERPRISES';
+  const bizGstin = biz.gstin || '07GHQPD6817P1ZI';
+  const bizPan = biz.pan || (bizGstin && bizGstin.length >= 12 ? bizGstin.substring(2, 12) : 'GHQPD6817P');
+  const bizPhone = biz.phone || '9871789615';
+  
+  // Format business address into 2 lines
+  const rawBizAddr = biz.address || 'Building No.:plot No.78 A, Kh No., 29/24 Road Agar Nagar Prem Nagar\nNear by Chanchal Hospital, New Delhi 110086';
+  const addrLines = rawBizAddr.split(/\n|\r\n/);
+  const bizAddrLine1 = addrLines[0] || rawBizAddr;
+  const bizAddrLine2 = addrLines.slice(1).join(', ') || '';
+
+  // Credit Note Numbers & Dates
   const cnNumber = returnData?.creditNoteNo || invoiceData?.invoiceNo || 'CN/2026/001';
-  const cnDate = returnData?.creditNoteDate || returnData?.date || invoiceData?.date || new Date().toISOString();
-  const dateFormatted = new Date(cnDate).toLocaleDateString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  const cnDateRaw = returnData?.creditNoteDate || returnData?.date || invoiceData?.date || new Date().toISOString();
+  const cnDateFormatted = formatDateDDMMYYYY(cnDateRaw);
 
   const originalInvNo = returnData?.invoiceNo || returnData?.originalInvoiceNo || invoiceData?.reversalOf || '-';
-  const returnRef = returnData?.returnNumber || 'RMA Return';
-  const customerName = returnData?.customerName || invoiceData?.customerName || invoiceData?.partyName || 'Customer';
-  const customerAddress = party?.address || returnData?.customerAddress || invoiceData?.partyAddress || 'Local Market';
+  const parentInv = allInvoices.find(i => i.invoiceNo === originalInvNo || i.id === returnData?.invoiceId);
+  const orgInvDateRaw = parentInv?.date || returnData?.originalInvoiceDate || returnData?.invoiceDate || '';
+  const orgInvDateFormatted = orgInvDateRaw ? formatDateDDMMYYYY(orgInvDateRaw) : cnDateFormatted;
+
+  // Party Details
+  const customerName = returnData?.customerName || invoiceData?.customerName || invoiceData?.partyName || party?.name || 'Customer';
+  const customerAddress = party?.address || returnData?.customerAddress || invoiceData?.partyAddress || '';
   const customerGstin = party?.gstin || returnData?.customerGstin || invoiceData?.partyGstin || '';
   const customerPhone = party?.phone || returnData?.customerPhone || invoiceData?.partyPhone || '';
 
-  const items = Array.isArray(returnData?.items) && returnData.items.length > 0
+  // Items processing
+  const rawItems = Array.isArray(returnData?.items) && returnData.items.length > 0
     ? returnData.items
     : (Array.isArray(invoiceData?.items) ? invoiceData.items : []);
 
-  const grandTotal = Number(returnData?.totalAmount || invoiceData?.grandTotal || 0);
-  
-  // Tax calculation (default 5% GST for confectionery/snacks)
-  const gstRate = items[0]?.gstRate !== undefined ? Number(items[0].gstRate) : 5;
-  const taxableSubtotal = gstRate > 0 ? Number((grandTotal / (1 + gstRate / 100)).toFixed(2)) : grandTotal;
-  const totalTax = Number((grandTotal - taxableSubtotal).toFixed(2));
-  const cgst = Number((totalTax / 2).toFixed(2));
-  const sgst = Number((totalTax - cgst).toFixed(2));
+  const defaultGstRate = rawItems[0]?.gstRate !== undefined ? Number(rawItems[0].gstRate) : 5;
+
+  const processedItems = rawItems.map((it, idx) => {
+    const qty = Number(it.quantity !== undefined ? it.quantity : (it.qty !== undefined ? it.qty : 1)) || 0;
+    const unit = it.unit || 'PCS';
+    const hsn = it.hsn || it.hsnCode || '21069099';
+    const taxRate = Number(it.taxRate !== undefined ? it.taxRate : (it.gstRate !== undefined ? it.gstRate : defaultGstRate)) || 0;
+    const cgstRatePercent = Number((taxRate / 2).toFixed(2));
+    const sgstRatePercent = Number((taxRate / 2).toFixed(2));
+
+    let itemTotal = Number(it.amount !== undefined ? it.amount : (it.total !== undefined ? it.total : 0));
+    let unitPrice = Number(it.unitPrice !== undefined ? it.unitPrice : (it.salePrice || it.rate || it.price || 0));
+
+    if (!itemTotal && unitPrice && qty) {
+      itemTotal = qty * unitPrice * (1 + taxRate / 100);
+    }
+
+    let taxableAmount = 0;
+    let cgstAmount = 0;
+    let sgstAmount = 0;
+    let basicPrice = 0;
+
+    if (itemTotal > 0) {
+      taxableAmount = taxRate > 0 ? Number((itemTotal / (1 + taxRate / 100)).toFixed(2)) : itemTotal;
+      const totalTax = Number((itemTotal - taxableAmount).toFixed(2));
+      cgstAmount = Number((totalTax / 2).toFixed(2));
+      sgstAmount = Number((totalTax - cgstAmount).toFixed(2));
+      basicPrice = qty > 0 ? Number((taxableAmount / qty).toFixed(2)) : 0;
+    } else if (unitPrice > 0 && qty > 0) {
+      basicPrice = unitPrice;
+      taxableAmount = Number((qty * basicPrice).toFixed(2));
+      cgstAmount = Number((taxableAmount * (cgstRatePercent / 100)).toFixed(2));
+      sgstAmount = Number((taxableAmount * (sgstRatePercent / 100)).toFixed(2));
+      itemTotal = Number((taxableAmount + cgstAmount + sgstAmount).toFixed(2));
+    }
+
+    return {
+      sn: idx + 1,
+      name: it.productName || it.name || 'Item',
+      hsn,
+      qty,
+      unit,
+      basicPrice,
+      cgstRatePercent,
+      cgstAmount,
+      sgstRatePercent,
+      sgstAmount,
+      taxableAmount,
+      taxRate,
+      itemTotal
+    };
+  });
+
+  const totalItemAmount = processedItems.reduce((acc, it) => acc + it.itemTotal, 0);
+  const totalQty = processedItems.reduce((acc, it) => acc + it.qty, 0);
+  const grandTotal = Number(returnData?.totalAmount || invoiceData?.grandTotal || totalItemAmount);
+
+  const rawTotal = totalItemAmount > 0 ? totalItemAmount : grandTotal;
+  const roundedGrandTotal = Math.round(rawTotal);
+  const roundOffVal = Number((roundedGrandTotal - rawTotal).toFixed(2));
+
+  // Group by HSN for Tax Summary table
+  const hsnGroups = {};
+  processedItems.forEach(it => {
+    const key = `${it.hsn}_${it.taxRate}`;
+    if (!hsnGroups[key]) {
+      hsnGroups[key] = {
+        hsn: it.hsn,
+        taxRate: it.taxRate,
+        taxableAmt: 0,
+        cgstAmt: 0,
+        sgstAmt: 0,
+        totalTax: 0
+      };
+    }
+    hsnGroups[key].taxableAmt += it.taxableAmount;
+    hsnGroups[key].cgstAmt += it.cgstAmount;
+    hsnGroups[key].sgstAmt += it.sgstAmount;
+    hsnGroups[key].totalTax += (it.cgstAmount + it.sgstAmount);
+  });
+  const hsnSummaryList = Object.values(hsnGroups);
+
+  // Pad empty rows to maintain professional Tally/Busy paper form height
+  const minRows = 8;
+  const emptyRowsCount = Math.max(0, minRows - processedItems.length);
 
   const handlePrint = () => {
     const origTitle = document.title;
@@ -108,24 +203,16 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
   <meta charset="utf-8">
   <title>Credit Note #${cnNumber} - ${customerName}</title>
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; background: #ffffff; }
-    .cn-card { max-width: 820px; margin: 0 auto; border: 1.5px solid #000000; padding: 20px; box-sizing: border-box; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000000; padding-bottom: 12px; margin-bottom: 14px; }
-    .firm-title { font-size: 22px; font-weight: 900; margin: 0; text-transform: uppercase; }
-    .firm-sub { font-size: 11px; color: #334155; margin: 3px 0 0 0; }
-    .doc-type { text-align: right; }
-    .doc-badge { display: inline-block; padding: 4px 12px; background: #6b21a8; color: #ffffff; font-weight: 900; font-size: 13px; letter-spacing: 1px; border-radius: 4px; }
-    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; font-size: 11px; }
-    .box { border: 1px solid #cbd5e1; padding: 10px; border-radius: 6px; background: #faf5ff; }
-    .box-title { font-size: 10px; font-weight: 800; color: #6b21a8; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #e9d5ff; padding-bottom: 3px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
-    th { background: #581c87; color: #ffffff; padding: 8px 6px; font-size: 10.5px; text-transform: uppercase; }
-    td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; }
-    .totals-area { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px; padding-top: 10px; border-top: 2px solid #000000; font-size: 11px; }
-    .grand-total-box { background: #faf5ff; border: 1.5px solid #6b21a8; padding: 12px 18px; border-radius: 6px; text-align: right; min-width: 220px; }
-    .paid-stamp { display: inline-block; padding: 3px 10px; background: #f3e8ff; color: #6b21a8; font-weight: 900; font-size: 11px; border: 1px solid #d8b4fe; border-radius: 4px; margin-top: 6px; }
-    .footer { margin-top: 24px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: space-between; font-size: 10px; color: #64748b; }
-    @media print { body { padding: 0; } .cn-card { border: none; } }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; margin: 0; padding: 20px; color: #000000; background: #ffffff; font-size: 11px; }
+    .cn-page { max-width: 820px; margin: 0 auto; border: 1px solid #000000; padding: 14px 18px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #000000; padding: 4px 6px; }
+    .no-border-side { border-left: none; border-right: none; }
+    @media print {
+      body { padding: 0; }
+      .cn-page { border: 1px solid #000000 !important; width: 100% !important; max-width: 100% !important; }
+    }
   </style>
 </head>
 <body>
@@ -144,23 +231,23 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
   };
 
   const handleShareWhatsApp = () => {
-    const itemsList = items.map((it, idx) => `• ${it.productName || it.name} (${it.quantity || it.qty || 1} ${it.unit || 'Pcs'}) - ₹${Number(it.amount || it.total || 0).toFixed(2)}`).join('\n');
+    const itemsList = processedItems.map(it => `• ${it.name} (${it.qty.toFixed(2)} ${it.unit}) - ₹${it.itemTotal.toFixed(2)}`).join('\n');
     
     const msg = `*GST CREDIT NOTE* 📄\n` +
-      `*${biz.name || 'JAI MAA SHARDEY ENTERPRISES'}*\n` +
-      `GSTIN: ${biz.gstin || '07HNPPK7350N1Z4'}\n` +
+      `*${bizName}*\n` +
+      `GSTIN: ${bizGstin}\n` +
       `-----------------------------------------\n` +
-      `M/s: *${customerName}*\n` +
-      `Credit Note No: *${cnNumber}*\n` +
-      `Date: *${dateFormatted}*\n` +
-      `Against Original Bill: *#${originalInvNo}*\n` +
-      `Return RMA Ref: *${returnRef}*\n\n` +
-      `*Returned Item(s):* \n${itemsList}\n\n` +
-      `*Total Credit Note Amount:* *₹${grandTotal.toFixed(2)}*\n` +
-      `(${numToWordsIndian(grandTotal)})\n\n` +
-      `*Khata Ledger Status:* ₹${grandTotal.toFixed(2)} aapke khata balance me credit kar diye gaye hain.\n` +
+      `Party: *${customerName}*\n` +
+      `Cr. Note No: *${cnNumber}*\n` +
+      `Cr. Note Date: *${cnDateFormatted}*\n` +
+      `Org. Inv. No: *${originalInvNo}*\n` +
+      `Org. Inv. Date: *${orgInvDateFormatted}*\n\n` +
+      `*Items Returned:* \n${itemsList}\n\n` +
+      `*Grand Total:* *₹${roundedGrandTotal.toFixed(2)}*\n` +
+      `(${numToWordsTitleCase(roundedGrandTotal)})\n\n` +
+      `Ledger balance has been credited accordingly.\n` +
       `-----------------------------------------\n` +
-      `Dhanyawad,\n*${biz.name || 'JAI MAA SHARDEY ENTERPRISES'}*`;
+      `*${bizName}*`;
 
     const cleanPhone = (customerPhone || '').replace(/[^0-9]/g, '');
     const waUrl = cleanPhone.length >= 10
@@ -180,20 +267,20 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
         partyAddress: customerAddress,
         partyGstin: customerGstin,
         partyPhone: customerPhone,
-        date: cnDate,
-        grandTotal: grandTotal,
-        taxTotal: totalTax,
-        taxableSubtotal: taxableSubtotal,
+        date: cnDateRaw,
+        grandTotal: roundedGrandTotal,
+        taxTotal: processedItems.reduce((acc, it) => acc + it.cgstAmount + it.sgstAmount, 0),
+        taxableSubtotal: processedItems.reduce((acc, it) => acc + it.taxableAmount, 0),
         placeOfSupply: 'Delhi (07)',
         paymentTerms: 'Credit Adjustment',
-        items: items.map(it => ({
-          name: it.productName || it.name,
-          qty: it.quantity || it.qty || 1,
-          unit: it.unit || 'Pcs',
-          price: it.unitPrice || it.rate || it.price || 0,
-          total: it.amount || it.total || 0,
-          gstRate: gstRate,
-          hsn: it.hsn || '-'
+        items: processedItems.map(it => ({
+          name: it.name,
+          qty: it.qty,
+          unit: it.unit,
+          price: it.basicPrice,
+          total: it.itemTotal,
+          gstRate: it.taxRate,
+          hsn: it.hsn
         })),
         documentType: 'out_refund'
       };
@@ -234,20 +321,20 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
           width: '100%',
           maxWidth: '860px',
           background: '#ffffff',
-          borderRadius: '16px',
+          borderRadius: '12px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          maxHeight: '92vh'
+          maxHeight: '94vh'
         }}
       >
         {/* Top Control Bar (Hidden during Print) */}
         <div 
           className="no-print"
           style={{
-            padding: '12px 20px',
-            background: 'linear-gradient(135deg, #4c1d95 0%, #6b21a8 100%)',
+            padding: '10px 18px',
+            background: '#1e293b',
             color: '#ffffff',
             display: 'flex',
             alignItems: 'center',
@@ -256,16 +343,14 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
             flexWrap: 'wrap'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <FileText size={20} color="#e9d5ff" />
-            <div>
-              <span style={{ fontWeight: '800', fontSize: '0.96rem' }}>
-                Credit Note: {cnNumber}
-              </span>
-              <span style={{ fontSize: '0.74rem', color: '#e9d5ff', marginLeft: '8px' }}>
-                Against Invoice #{originalInvNo}
-              </span>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={18} color="#93c5fd" />
+            <span style={{ fontWeight: '700', fontSize: '0.92rem' }}>
+              Credit Note: {cnNumber}
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: '6px' }}>
+              (Against Bill #{originalInvNo})
+            </span>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -275,11 +360,11 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '8px',
+                gap: '5px',
+                padding: '6px 14px',
+                borderRadius: '6px',
                 background: '#ffffff',
-                color: '#6b21a8',
+                color: '#0f172a',
                 border: 'none',
                 fontWeight: '700',
                 fontSize: '0.82rem',
@@ -287,7 +372,7 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               }}
               title="Print Credit Note (Ctrl + P)"
             >
-              <Printer size={15} />
+              <Printer size={14} />
               <span>Print</span>
             </button>
 
@@ -297,19 +382,19 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.2)',
+                gap: '5px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                background: '#334155',
                 color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                border: '1px solid #475569',
                 fontWeight: '700',
                 fontSize: '0.82rem',
                 cursor: 'pointer'
               }}
-              title="Download Document"
+              title="Download Offline HTML"
             >
-              <Download size={15} />
+              <Download size={14} />
               <span>Download</span>
             </button>
 
@@ -319,10 +404,10 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '8px',
-                background: '#22c55e',
+                gap: '5px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                background: '#16a34a',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: '700',
@@ -331,7 +416,7 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               }}
               title="Share on WhatsApp"
             >
-              <MessageSquare size={15} />
+              <MessageSquare size={14} />
               <span>WhatsApp</span>
             </button>
 
@@ -342,20 +427,20 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '8px',
-                background: driveUploaded ? '#10b981' : 'rgba(255, 255, 255, 0.2)',
+                gap: '5px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                background: driveUploaded ? '#059669' : '#334155',
                 color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                border: '1px solid #475569',
                 fontWeight: '700',
                 fontSize: '0.82rem',
                 cursor: uploadingDrive ? 'not-allowed' : 'pointer'
               }}
               title="Save to Connected Google Drive Folder"
             >
-              <HardDrive size={15} />
-              <span>{uploadingDrive ? 'Saving...' : driveUploaded ? 'Saved to Drive ✓' : 'Save to Drive'}</span>
+              <HardDrive size={14} />
+              <span>{uploadingDrive ? 'Saving...' : driveUploaded ? 'Saved ✓' : 'Save to Drive'}</span>
             </button>
 
             <button
@@ -364,7 +449,7 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#e9d5ff',
+                color: '#94a3b8',
                 cursor: 'pointer',
                 padding: '4px',
                 borderRadius: '6px',
@@ -380,185 +465,249 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
         </div>
 
         {/* Scrollable Printable Document Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#f8fafc' }}>
+        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, background: '#f1f5f9' }}>
           <div 
             id="printable-credit-note"
             style={{
               background: '#ffffff',
-              border: '1.5px solid #000000',
-              padding: '24px',
+              border: '1px solid #000000',
+              padding: '16px 20px',
               maxWidth: '800px',
               margin: '0 auto',
-              color: '#0f172a',
-              fontFamily: "'Segoe UI', Arial, sans-serif"
+              color: '#000000',
+              fontFamily: "Arial, 'Helvetica Neue', Helvetica, sans-serif",
+              fontSize: '11px',
+              lineHeight: 1.35
             }}
           >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #000000', paddingBottom: '12px', marginBottom: '14px' }}>
-              <div>
-                <h1 style={{ fontSize: '22px', fontWeight: '900', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {biz.name || 'JAI MAA SHARDEY ENTERPRISES'}
-                </h1>
-                <p style={{ fontSize: '11px', color: '#334155', margin: '3px 0 0 0' }}>
-                  {biz.address || 'Uttam Nagar, New Delhi - 110059'}
-                </p>
-                <p style={{ fontSize: '11px', color: '#334155', margin: '3px 0 0 0' }}>
-                  <strong>GSTIN:</strong> {biz.gstin || '07HNPPK7350N1Z4'} | <strong>Phone:</strong> {biz.phone || '9999999999'}
-                </p>
+            {/* 1. Header Top Row: GSTIN (Left) | Pre-auth / Copy (Right) */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+              <div style={{ fontSize: '11.5px', fontWeight: 'bold' }}>
+                GSTIN : {bizGstin}
               </div>
-
-              <div style={{ textAlign: 'right' }}>
-                <div style={{
-                  display: 'inline-block',
-                  padding: '4px 14px',
-                  background: '#6b21a8',
-                  color: '#ffffff',
-                  fontWeight: '900',
-                  fontSize: '13px',
-                  letterSpacing: '1px',
-                  borderRadius: '3px'
-                }}>
-                  GST CREDIT NOTE
-                </div>
-                <div style={{ fontSize: '10.5px', marginTop: '5px', fontWeight: '700', color: '#64748b' }}>
-                  ORIGINAL FOR RECIPIENT
-                </div>
-                <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>
-                  Section 34, CGST Act 2017
-                </div>
+              <div style={{ textAlign: 'right', fontSize: '10.5px', lineHeight: 1.3 }}>
+                <div>Original Copy</div>
+                <div>Pre Authenticated by</div>
+                <div style={{ marginTop: '2px', fontWeight: 'bold' }}>for {bizName}</div>
               </div>
             </div>
 
-            {/* Meta Grid: 2 Columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px', fontSize: '11px' }}>
-              <div style={{ border: '1px solid #cbd5e1', padding: '10px 12px', borderRadius: '6px', background: '#faf5ff' }}>
-                <div style={{ fontSize: '10px', fontWeight: '800', color: '#6b21a8', textTransform: 'uppercase', marginBottom: '6px', borderBottom: '1px solid #e9d5ff', paddingBottom: '3px' }}>
-                  Credit Note Details
+            {/* 2. Header Center: Title, Company Name, Address, PAN, Tel */}
+            <div style={{ textAlign: 'center', marginTop: '-12px', marginBottom: '10px' }}>
+              <div style={{ textDecoration: 'underline', fontSize: '13px', fontWeight: 'bold', marginBottom: '2px' }}>
+                Credit Note
+              </div>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '3px' }}>
+                {bizName}
+              </div>
+              <div style={{ fontSize: '10.5px' }}>{bizAddrLine1}</div>
+              {bizAddrLine2 && <div style={{ fontSize: '10.5px' }}>{bizAddrLine2}</div>}
+              <div style={{ fontSize: '10.5px' }}>PAN : {bizPan}</div>
+              <div style={{ fontSize: '10.5px' }}>Tel. : {bizPhone}</div>
+            </div>
+
+            {/* 3. Divider Line */}
+            <div style={{ borderTop: '1px solid #000000', margin: '0 -20px 0 -20px' }}></div>
+
+            {/* 4. Party Details (Left) & Credit Note Meta Details (Right) */}
+            <div style={{ display: 'flex', margin: '0 -20px', borderBottom: '1px solid #000000', minHeight: '110px' }}>
+              {/* Left Column: Party Details */}
+              <div style={{ width: '58%', padding: '8px 16px', fontSize: '10.5px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Party Details :</div>
+                <div style={{ fontWeight: 'bold', fontSize: '11.5px', textTransform: 'uppercase' }}>
+                  {customerName}
                 </div>
-                <div><strong>Credit Note No:</strong> <span style={{ fontFamily: 'monospace', fontWeight: '800' }}>{cnNumber}</span></div>
-                <div><strong>Date of Issue:</strong> {dateFormatted}</div>
-                <div><strong>Against Tax Invoice No:</strong> <span style={{ fontWeight: '800' }}>#{originalInvNo}</span></div>
-                <div><strong>Return RMA Ref:</strong> {returnRef}</div>
-                <div><strong>Reason:</strong> Sales Return / Stock Reversal</div>
-                <div><strong>Place of Supply:</strong> Delhi (07)</div>
+                {customerAddress ? (
+                  <div style={{ whiteSpace: 'pre-line', marginTop: '2px' }}>
+                    {customerAddress}
+                  </div>
+                ) : (
+                  <div>Local Market, Delhi</div>
+                )}
+                <div style={{ fontWeight: 'bold', marginTop: '4px' }}>
+                  GSTIN / UIN : {customerGstin || 'Unregistered'}
+                </div>
               </div>
 
-              <div style={{ border: '1px solid #cbd5e1', padding: '10px 12px', borderRadius: '6px', background: '#faf5ff' }}>
-                <div style={{ fontSize: '10px', fontWeight: '800', color: '#6b21a8', textTransform: 'uppercase', marginBottom: '6px', borderBottom: '1px solid #e9d5ff', paddingBottom: '3px' }}>
-                  Credit Issued To (Buyer Details)
-                </div>
-                <div style={{ fontWeight: '800', fontSize: '12px', color: '#0f172a' }}>{customerName}</div>
-                <div>{customerAddress}</div>
-                {customerGstin && <div><strong>GSTIN:</strong> {customerGstin}</div>}
-                {customerPhone && <div><strong>Phone:</strong> {customerPhone}</div>}
-                <div style={{ marginTop: '4px', fontSize: '10px', color: '#7e22ce', fontWeight: '700' }}>
-                  ✓ Ledger Balance Adjusted
-                </div>
+              {/* Right Column: Cr. Note No & Dates */}
+              <div style={{ width: '42%', borderLeft: '1px solid #000000', padding: '8px 14px', fontSize: '10.5px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+                  <tbody>
+                    <tr>
+                      <td style={{ border: 'none', padding: '2px 0', width: '92px' }}>Cr. Note No.</td>
+                      <td style={{ border: 'none', padding: '2px 4px', width: '10px' }}>:</td>
+                      <td style={{ border: 'none', padding: '2px 0', fontWeight: 'bold' }}>{cnNumber}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: 'none', padding: '2px 0' }}>Cr. Note Date</td>
+                      <td style={{ border: 'none', padding: '2px 4px' }}>:</td>
+                      <td style={{ border: 'none', padding: '2px 0' }}>{cnDateFormatted}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: 'none', padding: '2px 0' }}>Org. Inv. No.</td>
+                      <td style={{ border: 'none', padding: '2px 4px' }}>:</td>
+                      <td style={{ border: 'none', padding: '2px 0', fontWeight: 'bold' }}>{originalInvNo}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: 'none', padding: '2px 0' }}>Org. Inv. Date</td>
+                      <td style={{ border: 'none', padding: '2px 4px' }}>:</td>
+                      <td style={{ border: 'none', padding: '2px 0' }}>{orgInvDateFormatted}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Returned Items Table */}
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '16px', fontSize: '11px' }}>
-              <thead>
-                <tr style={{ background: '#581c87', color: '#ffffff' }}>
-                  <th style={{ padding: '8px 6px', textAlign: 'center', width: '30px' }}>#</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'left' }}>Item Description (Returned)</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'center', width: '70px' }}>HSN</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'center', width: '75px' }}>Return Qty</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'right', width: '75px' }}>Rate (₹)</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'center', width: '55px' }}>GST%</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'right', width: '85px' }}>Taxable (₹)</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'right', width: '85px' }}>Credit (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '14px', color: '#64748b' }}>
-                      Sales Return Item Adjustment
+            {/* 5. Main Items Table (11 Columns exactly matching user template) */}
+            <div style={{ margin: '0 -20px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none', fontSize: '10px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #000000' }}>
+                    <th style={{ width: '32px', textAlign: 'center', borderRight: '1px solid #000000', padding: '5px 2px' }}>S.N.</th>
+                    <th style={{ textAlign: 'left', borderRight: '1px solid #000000', padding: '5px 6px' }}>Description of Goods</th>
+                    <th style={{ width: '70px', textAlign: 'center', borderRight: '1px solid #000000', padding: '5px 2px' }}>HSN/SAC<br />Code</th>
+                    <th style={{ width: '48px', textAlign: 'right', borderRight: '1px solid #000000', padding: '5px 4px' }}>Qty.</th>
+                    <th style={{ width: '40px', textAlign: 'center', borderRight: '1px solid #000000', padding: '5px 2px' }}>Unit</th>
+                    <th style={{ width: '62px', textAlign: 'right', borderRight: '1px solid #000000', padding: '5px 4px' }}>Price</th>
+                    <th style={{ width: '46px', textAlign: 'center', borderRight: '1px solid #000000', padding: '5px 2px' }}>CGST<br />Rate</th>
+                    <th style={{ width: '56px', textAlign: 'right', borderRight: '1px solid #000000', padding: '5px 4px' }}>CGST<br />Amount</th>
+                    <th style={{ width: '46px', textAlign: 'center', borderRight: '1px solid #000000', padding: '5px 2px' }}>SGST<br />Rate</th>
+                    <th style={{ width: '56px', textAlign: 'right', borderRight: '1px solid #000000', padding: '5px 4px' }}>SGST<br />Amount</th>
+                    <th style={{ width: '75px', textAlign: 'right', padding: '5px 6px' }}>Amount(` )</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processedItems.map((item, idx) => (
+                    <tr key={idx} style={{ height: '22px' }}>
+                      <td style={{ textAlign: 'center', borderRight: '1px solid #000000', padding: '3px 2px' }}>{item.sn}.</td>
+                      <td style={{ textAlign: 'left', borderRight: '1px solid #000000', padding: '3px 6px' }}>{item.name}</td>
+                      <td style={{ textAlign: 'center', borderRight: '1px solid #000000', padding: '3px 2px' }}>{item.hsn}</td>
+                      <td style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '3px 4px' }}>{item.qty.toFixed(2)}</td>
+                      <td style={{ textAlign: 'center', borderRight: '1px solid #000000', padding: '3px 2px' }}>{item.unit}</td>
+                      <td style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '3px 4px' }}>{item.basicPrice.toFixed(2)}</td>
+                      <td style={{ textAlign: 'center', borderRight: '1px solid #000000', padding: '3px 2px' }}>{item.cgstRatePercent.toFixed(1)} %</td>
+                      <td style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '3px 4px' }}>{item.cgstAmount.toFixed(2)}</td>
+                      <td style={{ textAlign: 'center', borderRight: '1px solid #000000', padding: '3px 2px' }}>{item.sgstRatePercent.toFixed(1)} %</td>
+                      <td style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '3px 4px' }}>{item.sgstAmount.toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', padding: '3px 6px' }}>
+                        {item.itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Empty Spacer Rows for professional form height */}
+                  {Array.from({ length: emptyRowsCount }).map((_, i) => (
+                    <tr key={`empty_${i}`} style={{ height: '22px' }}>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td style={{ borderRight: '1px solid #000000' }}>&nbsp;</td>
+                      <td>&nbsp;</td>
+                    </tr>
+                  ))}
+
+                  {/* Subtotal of items */}
+                  <tr style={{ borderTop: '1px solid #000000' }}>
+                    <td colSpan="10" style={{ borderRight: '1px solid #000000', borderBottom: 'none' }}></td>
+                    <td style={{ textAlign: 'right', padding: '4px 6px', fontWeight: '500' }}>
+                      {rawTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                   </tr>
-                ) : (
-                  items.map((it, idx) => {
-                    const itQty = Number(it.quantity || it.qty || 1);
-                    const itRate = Number(it.unitPrice || it.price || it.rate || 0);
-                    const itTotal = Number(it.amount || it.total || (itQty * itRate));
-                    const itTaxable = gstRate > 0 ? Number((itTotal / (1 + gstRate / 100)).toFixed(2)) : itTotal;
 
-                    return (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '11px' }}>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
-                        <td style={{ padding: '8px 6px', fontWeight: '600', color: '#0f172a' }}>
-                          {it.productName || it.name || 'Returned Item'}
-                          {it.condition && (
-                            <span style={{ fontSize: '9px', marginLeft: '6px', padding: '1px 5px', borderRadius: '4px', background: it.condition === 'Resalable' ? '#dcfce7' : '#fee2e2', color: it.condition === 'Resalable' ? '#15803d' : '#b91c1c' }}>
-                              {it.condition}
-                            </span>
-                          )}
-                        </td>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', color: '#64748b' }}>{it.hsn || '-'}</td>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: '700' }}>{itQty} {it.unit || 'Pcs'}</td>
-                        <td style={{ padding: '8px 6px', textAlign: 'right' }}>₹{itRate.toFixed(2)}</td>
-                        <td style={{ padding: '8px 6px', textAlign: 'center', color: '#64748b' }}>{gstRate}%</td>
-                        <td style={{ padding: '8px 6px', textAlign: 'right' }}>₹{itTaxable.toFixed(2)}</td>
-                        <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: '700', color: '#6b21a8' }}>₹{itTotal.toFixed(2)}</td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                  {/* Round Off Row */}
+                  <tr>
+                    <td colSpan="8" style={{ borderRight: 'none', borderBottom: 'none' }}></td>
+                    <td colSpan="2" style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '3px 6px', fontSize: '9.5px' }}>
+                      {roundOffVal >= 0 ? 'Add  : Rounded Off (+)' : 'Less : Rounded Off (-)'}
+                    </td>
+                    <td style={{ textAlign: 'right', padding: '3px 6px', fontSize: '9.5px' }}>
+                      {Math.abs(roundOffVal).toFixed(2)}
+                    </td>
+                  </tr>
 
-            {/* Totals & Declaration Area */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '10px', paddingTop: '10px', borderTop: '2px solid #000000', fontSize: '11px' }}>
-              <div style={{ maxWidth: '440px' }}>
-                <div><strong>Amount in Words:</strong></div>
-                <div style={{ fontStyle: 'italic', fontWeight: '700', color: '#475569', marginTop: '2px', lineHeight: 1.4 }}>
-                  {numToWordsIndian(grandTotal)}
-                </div>
-
-                <div style={{ marginTop: '12px', padding: '8px 10px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '10px', color: '#475569' }}>
-                  <strong>Statutory Declaration (GST Section 34):</strong><br />
-                  This Credit Note is issued against Sales Return #{returnRef} for Tax Invoice #{originalInvNo}. Customer ledger has been credited by ₹{grandTotal.toFixed(2)}. Tax liability has been adjusted in accordance with GST Rules.
-                </div>
-              </div>
-
-              {/* Summary Box */}
-              <div style={{ background: '#faf5ff', border: '1.5px solid #6b21a8', padding: '12px 18px', borderRadius: '6px', textAlign: 'right', minWidth: '230px' }}>
-                <div style={{ fontSize: '11px', color: '#475569', marginBottom: '3px' }}>
-                  Taxable Value: <strong>₹{taxableSubtotal.toFixed(2)}</strong>
-                </div>
-                <div style={{ fontSize: '11px', color: '#475569', marginBottom: '3px' }}>
-                  CGST (2.5%): <strong>₹{cgst.toFixed(2)}</strong>
-                </div>
-                <div style={{ fontSize: '11px', color: '#475569', marginBottom: '3px' }}>
-                  SGST (2.5%): <strong>₹{sgst.toFixed(2)}</strong>
-                </div>
-                <div style={{ fontSize: '11px', color: '#475569', marginBottom: '3px' }}>
-                  Total Tax: <strong>₹{totalTax.toFixed(2)}</strong>
-                </div>
-                <div style={{ fontSize: '16px', fontWeight: '900', color: '#6b21a8', marginTop: '6px', borderTop: '1px solid #d8b4fe', paddingTop: '6px' }}>
-                  Total Credit: ₹{grandTotal.toFixed(2)}
-                </div>
-                <div style={{ display: 'inline-block', padding: '3px 10px', background: '#f3e8ff', color: '#6b21a8', fontWeight: '900', fontSize: '10px', border: '1px solid #d8b4fe', borderRadius: '4px', marginTop: '6px' }}>
-                  ✓ CREDITED TO KHATA
-                </div>
-              </div>
+                  {/* Grand Total Row */}
+                  <tr style={{ borderTop: '1px solid #000000', borderBottom: '1px solid #000000', fontWeight: 'bold' }}>
+                    <td colSpan="3" style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '4px 6px' }}>
+                      Grand Total
+                    </td>
+                    <td style={{ textAlign: 'right', borderRight: '1px solid #000000', padding: '4px 4px' }}>
+                      {totalQty.toFixed(2)}
+                    </td>
+                    <td style={{ textAlign: 'center', borderRight: '1px solid #000000', padding: '4px 2px' }}>
+                      {processedItems[0]?.unit || 'PCS'}
+                    </td>
+                    <td colSpan="5" style={{ borderRight: '1px solid #000000' }}></td>
+                    <td style={{ textAlign: 'right', padding: '4px 6px', fontSize: '11px' }}>
+                      ₹ {roundedGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
-            {/* Footer */}
-            <div style={{ marginTop: '24px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '10px', color: '#64748b' }}>
-              <div>
-                <div>Issued on: {new Date().toLocaleString('en-IN')}</div>
-                <div>Authorized RMA Accounting Document</div>
+            {/* 6. HSN/SAC Tax Summary Table */}
+            <div style={{ marginTop: '14px', marginBottom: '8px' }}>
+              <table style={{ width: '70%', borderCollapse: 'collapse', border: 'none', fontSize: '9.5px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #000000' }}>
+                    <th style={{ textAlign: 'left', padding: '3px 4px', borderBottom: '1px solid #000000' }}>HSN/SAC</th>
+                    <th style={{ textAlign: 'center', padding: '3px 4px', borderBottom: '1px solid #000000' }}>Tax Rate</th>
+                    <th style={{ textAlign: 'right', padding: '3px 4px', borderBottom: '1px solid #000000' }}>Taxable Amt.</th>
+                    <th style={{ textAlign: 'right', padding: '3px 4px', borderBottom: '1px solid #000000' }}>CGST Amt.</th>
+                    <th style={{ textAlign: 'right', padding: '3px 4px', borderBottom: '1px solid #000000' }}>SGST Amt.</th>
+                    <th style={{ textAlign: 'right', padding: '3px 4px', borderBottom: '1px solid #000000' }}>Total Tax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {hsnSummaryList.map((h, i) => (
+                    <tr key={i}>
+                      <td style={{ textAlign: 'left', padding: '3px 4px' }}>{h.hsn}</td>
+                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>{h.taxRate}%</td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px' }}>
+                        {h.taxableAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px' }}>
+                        {h.cgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px' }}>
+                        {h.sgstAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'right', padding: '3px 4px' }}>
+                        {h.totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 7. Rupees in Words */}
+            <div style={{ marginTop: '6px', marginBottom: '14px', fontSize: '10.5px', fontWeight: 'bold' }}>
+              {numToWordsTitleCase(roundedGrandTotal)}
+            </div>
+
+            {/* 8. Bottom Footer (Terms, Receiver Sign, and Authorized Signatory) */}
+            <div style={{ borderTop: '1px solid #000000', margin: '0 -20px 0 -20px' }}></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', margin: '8px -10px 0 -10px', fontSize: '10px' }}>
+              <div style={{ width: '32%', padding: '0 10px' }}>
+                <div style={{ textDecoration: 'underline', fontWeight: 'bold' }}>Terms & Conditions</div>
+                <div style={{ marginTop: '2px' }}>E.& O.E.</div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '35px' }}>
-                  For {biz.name || 'JAI MAA SHARDEY ENTERPRISES'}
-                </div>
-                <div style={{ borderTop: '1px solid #000000', paddingTop: '3px', fontWeight: '700' }}>
-                  Authorised Signatory
-                </div>
+
+              <div style={{ width: '33%', textAlign: 'left', padding: '0 10px' }}>
+                <div>Receiver's Signature :</div>
+              </div>
+
+              <div style={{ width: '35%', textAlign: 'right', padding: '0 10px' }}>
+                <div style={{ fontWeight: 'bold' }}>for {bizName}</div>
+                <div style={{ height: '48px' }}></div>
+                <div style={{ fontWeight: 'bold' }}>Authorised Signatory</div>
               </div>
             </div>
 
@@ -567,9 +716,13 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
 
       </div>
 
-      {/* Print Specific Styles */}
+      {/* Print Specific CSS */}
       <style>{`
         @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
           body * {
             visibility: hidden;
           }
@@ -598,9 +751,9 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
             top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            border: none !important;
-            padding: 0 !important;
             margin: 0 !important;
+            border: 1px solid #000000 !important;
+            padding: 14px 18px !important;
           }
         }
       `}</style>
