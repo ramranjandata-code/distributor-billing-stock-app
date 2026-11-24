@@ -63,6 +63,7 @@ function formatDateDDMMYYYY(dateVal) {
 export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceData, business, party }) {
   const [uploadingDrive, setUploadingDrive] = useState(false);
   const [driveUploaded, setDriveUploaded] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   if (!isOpen || (!returnData && !invoiceData)) return null;
 
@@ -194,40 +195,61 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
     document.title = origTitle;
   };
 
-  const handleDownloadHtml = () => {
+  const handleDownloadPdf = async () => {
     const printArea = document.getElementById('printable-credit-note');
     if (!printArea) return;
-    const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Credit Note #${cnNumber} - ${customerName}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif; margin: 0; padding: 20px; color: #000000; background: #ffffff; font-size: 11px; }
-    .cn-page { max-width: 820px; margin: 0 auto; border: 1px solid #000000; padding: 14px 18px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #000000; padding: 4px 6px; }
-    .no-border-side { border-left: none; border-right: none; }
-    @media print {
-      body { padding: 0; }
-      .cn-page { border: 1px solid #000000 !important; width: 100% !important; max-width: 100% !important; }
+    setDownloadingPdf(true);
+
+    const safeTitle = `Credit_Note_${cnNumber.replace(/[^a-zA-Z0-9]/g, '_')}_${customerName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    try {
+      let html2pdfLib = window.html2pdf;
+      if (!html2pdfLib) {
+        try {
+          const mod = await import('html2pdf.js');
+          html2pdfLib = mod.default || mod;
+        } catch (e) {
+          console.warn('html2pdf module import fallback:', e);
+        }
+      }
+
+      if (!html2pdfLib) {
+        // Dynamic CDN fallback
+        await new Promise((resolve, reject) => {
+          if (window.html2pdf) return resolve(window.html2pdf);
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+          script.onload = () => resolve(window.html2pdf);
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+        html2pdfLib = window.html2pdf;
+      }
+
+      if (html2pdfLib) {
+        const opt = {
+          margin: [8, 8, 8, 8],
+          filename: `${safeTitle}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true, 
+            letterRendering: true,
+            backgroundColor: '#ffffff'
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        await html2pdfLib().set(opt).from(printArea).save();
+      } else {
+        handlePrint();
+      }
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      handlePrint();
+    } finally {
+      setDownloadingPdf(false);
     }
-  </style>
-</head>
-<body>
-  ${printArea.innerHTML}
-</body>
-</html>`;
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Credit_Note_${cnNumber.replace(/[^a-zA-Z0-9]/g, '_')}_${customerName.replace(/[^a-zA-Z0-9]/g, '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const handleShareWhatsApp = () => {
@@ -378,24 +400,26 @@ export default function CreditNoteModal({ isOpen, onClose, returnData, invoiceDa
 
             <button
               type="button"
-              onClick={handleDownloadHtml}
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
                 padding: '6px 14px',
                 borderRadius: '6px',
-                background: '#334155',
+                background: '#2563eb',
                 color: '#ffffff',
-                border: '1px solid #475569',
+                border: 'none',
                 fontWeight: '700',
                 fontSize: '0.82rem',
-                cursor: 'pointer'
+                cursor: downloadingPdf ? 'wait' : 'pointer',
+                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
               }}
-              title="Download Offline HTML"
+              title="Download as PDF file (.pdf)"
             >
               <Download size={14} />
-              <span>Download</span>
+              <span>{downloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
             </button>
 
             <button
