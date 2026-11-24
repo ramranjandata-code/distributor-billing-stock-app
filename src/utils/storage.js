@@ -54,6 +54,8 @@ export const STORAGE_KEYS = {
   DELETED_IDS: 'distro_deleted_ids',
   RETURNS: 'distro_sales_returns',
   PURCHASE_RETURNS: 'distro_purchase_returns',
+  VENDOR_CREDITS: 'distro_purchase_returns',
+  VENDOR_CREDIT_ALLOCATIONS: 'distro_vendor_credit_allocations',
   PAYMENT_RECEIPTS: 'distro_payment_receipts',
   INVOICE_HISTORY: 'distro_invoice_history_logs',
   STOCK_LOTS: 'distro_stock_lots'
@@ -4805,9 +4807,8 @@ export const applyCreditNoteToInvoice = (creditNoteId, targetInvoiceId) => {
 // =========================================================================
 // MODULE 3: PURCHASE RETURNS & EXPIRED STOCK CLAIM ENGINE
 // =========================================================================
-export const fetchPurchaseReturns = () => {
-  const delSet = new Set(getDeletedIds());
-  return getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []).filter(r => r && !delSet.has(r.id));
+export const fetchPurchaseReturns = (forceRefresh = false) => {
+  return fetchVendorCredits(forceRefresh);
 };
 
 export const getExpiredStockLots = () => {
@@ -4942,115 +4943,581 @@ export const getReturnableStockItems = () => {
   return returnableList;
 };
 
+// =========================================================================
+// MODULE 3: PURCHASE RETURNS, VENDOR CREDITS & DEBIT NOTES ENGINE (ZOHO GRADE)
+// =========================================================================
+
+/**
+ * Log outward or inward movement in the Stock Ledger / Inventory Movement Register
+ */
+export const logStockMovement = ({
+  productId,
+  productName,
+  type = 'OUTWARD',
+  qty = 0,
+  unitCost = 0,
+  reason = 'Purchase Return / Debit Note',
+  referenceNo = ''
+}) => {
+  const ledger = getStorageData(STORAGE_KEYS.STOCK_LEDGER, []);
+  const movement = {
+    id: 'mv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    productId,
+    productName: productName || 'Product',
+    type, // 'INWARD' | 'OUTWARD' | 'TRANSFER'
+    qty: Number(qty) || 0,
+    unitCost: Number(unitCost) || 0,
+    totalValuation: Math.round(((Number(qty) || 0) * (Number(unitCost) || 0)) * 100) / 100,
+    date: new Date().toISOString(),
+    reason,
+    referenceNo
+  };
+  setStorageData(STORAGE_KEYS.STOCK_LEDGER, [movement, ...ledger].slice(0, 1000));
+};
+
+/**
+ * Generates the next sequential Debit Note number (e.g. DN-0001, DN-0002)
+ */
+export const getNextDebitNoteNumber = () => {
+  const returns = getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []);
+  let maxSeq = 0;
+  returns.forEach(r => {
+    const no = r.debit_note_number || r.debitNoteNo || '';
+    const match = no.match(/DN[-/](?:20\d\d[-/])?(\d+)/i) || no.match(/DN-(\d+)/i) || no.match(/(\d+)/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  });
+  const nextSeq = Math.max(1, maxSeq + 1);
+  return `DN-${String(nextSeq).padStart(4, '0')}`;
+};
+
+/**
+ * Fetch all Vendor Credits / Debit Notes with normalized schema
+ */
+export const fetchVendorCredits = (forceRefresh = false) => {
+  const delSet = new Set(getDeletedIds());
+  const rawList = getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []).filter(r => r && !delSet.has(r.id));
+  const allocations = getStorageData(STORAGE_KEYS.VENDOR_CREDIT_ALLOCATIONS, []);
+
+  return rawList.map(r => {
+    const debitNoteNo = r.debit_note_number || r.debitNoteNo || 'DN-0001';
+    const totalAmount = Number(r.total_credit_amount !== undefined ? r.total_credit_amount : (r.totalDebitAmount || 0));
+    const subtotal = Number(r.subtotal !== undefined ? r.subtotal : (r.taxableAmount || 0));
+    const totalTax = Number(r.total_tax !== undefined ? r.total_tax : (r.taxAmount || 0));
+    const cgst = Number(r.cgst_amount !== undefined ? r.cgst_amount : (r.taxAmount ? r.taxAmount / 2 : 0));
+    const sgst = Number(r.sgst_amount !== undefined ? r.sgst_amount : (r.taxAmount ? r.taxAmount / 2 : 0));
+    const igst = Number(r.igst_amount || 0);
+
+    const creditAllocs = allocations.filter(a => a.vendor_credit_id === r.id);
+    const totalAllocated = creditAllocs.reduce((s, a) => s + (Number(a.amount_applied) || 0), 0);
+
+    let remBalance = r.remaining_credit_balance !== undefined 
+      ? Number(r.remaining_credit_balance) 
+      : Math.max(0, totalAmount - totalAllocated);
+    remBalance = Math.max(0, Math.round(remBalance * 100) / 100);
+
+    let status = r.status || 'Open';
+    if (status === 'ISSUED') status = 'Open';
+    if (status === 'Open' && remBalance === 0 && totalAmount > 0) {
+      status = 'Closed';
+    }
+
+    return {
+      ...r,
+      id: r.id,
+      debit_note_number: debitNoteNo,
+      debitNoteNo,
+      vendor_id: r.vendor_id || r.supplierId || null,
+      supplierId: r.vendor_id || r.supplierId || null,
+      vendor_name: r.vendor_name || r.supplierName || 'Primary Vendor',
+      supplierName: r.vendor_name || r.supplierName || 'Primary Vendor',
+      purchase_bill_id: r.purchase_bill_id || r.purchaseBillId || null,
+      purchaseBillId: r.purchase_bill_id || r.purchaseBillId || null,
+      originalBillNo: r.originalBillNo || r.original_bill_no || 'Direct',
+      originalBillDate: r.originalBillDate || '',
+      return_date: r.return_date || r.date || r.createdAt,
+      date: r.return_date || r.date || r.createdAt,
+      reason: r.reason || 'Expired Stock',
+      notes: r.notes || '',
+      subtotal,
+      taxableAmount: subtotal,
+      cgst_amount: cgst,
+      sgst_amount: sgst,
+      igst_amount: igst,
+      total_tax: totalTax,
+      taxAmount: totalTax,
+      total_credit_amount: totalAmount,
+      totalDebitAmount: totalAmount,
+      remaining_credit_balance: remBalance,
+      status,
+      reverseItc: r.reverseItc !== undefined ? r.reverseItc : true,
+      itcReversalAmount: Number(r.itcReversalAmount || (r.reverseItc ? totalTax : 0)),
+      allocations: creditAllocs,
+      items: Array.isArray(r.items) ? r.items.map((it, idx) => ({
+        id: it.id || `item_${idx}`,
+        item_id: it.item_id || it.productId,
+        productId: it.item_id || it.productId,
+        productName: it.productName || it.name || 'Item',
+        name: it.productName || it.name || 'Item',
+        hsn_code: it.hsn_code || it.hsnCode || it.hsn || '21069099',
+        hsn: it.hsn_code || it.hsnCode || it.hsn || '21069099',
+        batch_number: it.batch_number || it.batchNo || '',
+        batchNo: it.batch_number || it.batchNo || '',
+        expiry_date: it.expiry_date || it.expiryDate || '',
+        expiryDate: it.expiry_date || it.expiryDate || '',
+        return_quantity: Number(it.return_quantity !== undefined ? it.return_quantity : (it.qty !== undefined ? it.qty : 1)),
+        qty: Number(it.return_quantity !== undefined ? it.return_quantity : (it.qty !== undefined ? it.qty : 1)),
+        unit_purchase_price: Number(it.unit_purchase_price !== undefined ? it.unit_purchase_price : (it.purchasePrice || it.rate || 0)),
+        purchasePrice: Number(it.unit_purchase_price !== undefined ? it.unit_purchase_price : (it.purchasePrice || it.rate || 0)),
+        tax_rate: Number(it.tax_rate !== undefined ? it.tax_rate : (it.gstRate || 5)),
+        gstRate: Number(it.tax_rate !== undefined ? it.tax_rate : (it.gstRate || 5)),
+        tax_amount: Number(it.tax_amount !== undefined ? it.tax_amount : (it.taxAmount || 0)),
+        taxAmount: Number(it.tax_amount !== undefined ? it.tax_amount : (it.taxAmount || 0)),
+        line_total: Number(it.line_total !== undefined ? it.line_total : (it.totalAmount || 0)),
+        totalAmount: Number(it.line_total !== undefined ? it.line_total : (it.totalAmount || 0)),
+        reason: it.reason || r.reason || 'Expired Stock'
+      })) : []
+    };
+  });
+};
+
+/**
+ * Fetch all allocations where Vendor Credits were applied to Purchase Bills
+ */
+export const fetchVendorCreditAllocations = () => {
+  return getStorageData(STORAGE_KEYS.VENDOR_CREDIT_ALLOCATIONS, []);
+};
+
+/**
+ * Fetch unpaid or partially paid purchase bills for a specific vendor
+ */
+export const getUnpaidPurchaseBillsForVendor = (vendorId, vendorName = '') => {
+  const purchases = fetchPurchases();
+  const vName = (vendorName || '').trim().toLowerCase();
+  return purchases.filter(bill => {
+    const matchId = vendorId && (bill.supplierId === vendorId || bill.partyId === vendorId);
+    const matchName = vName && (bill.partyName || '').trim().toLowerCase() === vName;
+    if (!matchId && !matchName) return false;
+
+    const grandTotal = Number(bill.grandTotal || 0);
+    const paid = Number(bill.paidAmount || 0);
+    const due = bill.balanceAmount !== undefined ? Number(bill.balanceAmount) : (bill.amountDue !== undefined ? Number(bill.amountDue) : grandTotal - paid);
+    return due > 0 || bill.paymentStatus !== 'PAID';
+  }).map(bill => {
+    const grandTotal = Number(bill.grandTotal || 0);
+    const paid = Number(bill.paidAmount || 0);
+    const due = bill.balanceAmount !== undefined ? Number(bill.balanceAmount) : (bill.amountDue !== undefined ? Number(bill.amountDue) : grandTotal - paid);
+    return {
+      ...bill,
+      grandTotal,
+      paidAmount: paid,
+      balanceAmount: Math.max(0, due),
+      amountDue: Math.max(0, due)
+    };
+  });
+};
+
+/**
+ * Save / Issue a Vendor Credit (Debit Note)
+ * Implements: Stock deduction, Stock Ledger valuation logging, Vendor Ledger credit, Section 17(5)(h) ITC Reversal
+ */
+export const saveVendorCredit = (creditData) => {
+  const existingReturns = getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []);
+  const id = creditData.id || 'vc_' + Date.now();
+  const existingIndex = existingReturns.findIndex(r => r.id === id);
+  const existingCredit = existingIndex >= 0 ? existingReturns[existingIndex] : null;
+
+  const debit_note_number = creditData.debit_note_number || existingCredit?.debit_note_number || creditData.debitNoteNo || existingCredit?.debitNoteNo || getNextDebitNoteNumber();
+  const return_date = creditData.return_date || creditData.date || new Date().toISOString().split('T')[0];
+  const now = new Date().toISOString();
+
+  let subtotal = 0;
+  let totalTax = 0;
+  let totalCredit = 0;
+
+  // Process line items
+  const processedItems = (creditData.items || []).map((item, idx) => {
+    const qty = Number(item.return_quantity !== undefined ? item.return_quantity : (item.qty !== undefined ? item.qty : 1)) || 0;
+    const rate = Number(item.unit_purchase_price !== undefined ? item.unit_purchase_price : (item.purchasePrice !== undefined ? item.purchasePrice : item.rate)) || 0;
+    const taxRate = Number(item.tax_rate !== undefined ? item.tax_rate : (item.gstRate !== undefined ? item.gstRate : 5));
+    const hsn = item.hsn_code || item.hsnCode || item.hsn || '21069099';
+    const batchNo = item.batch_number || item.batchNo || '';
+    const expiryDate = item.expiry_date || item.expiryDate || '';
+
+    const lineTaxable = Math.round((qty * rate) * 100) / 100;
+    const lineTax = Math.round(((lineTaxable * taxRate) / 100) * 100) / 100;
+    const lineTotal = Math.round((lineTaxable + lineTax) * 100) / 100;
+
+    subtotal += lineTaxable;
+    totalTax += lineTax;
+    totalCredit += lineTotal;
+
+    return {
+      id: item.id || `vci_${Date.now()}_${idx}`,
+      item_id: item.item_id || item.productId,
+      productId: item.item_id || item.productId,
+      productName: item.productName || item.name || 'Item',
+      name: item.productName || item.name || 'Item',
+      hsn_code: hsn,
+      hsn,
+      batch_number: batchNo,
+      batchNo,
+      expiry_date: expiryDate,
+      expiryDate,
+      return_quantity: qty,
+      qty,
+      unit_purchase_price: rate,
+      purchasePrice: rate,
+      tax_rate: taxRate,
+      gstRate: taxRate,
+      tax_amount: lineTax,
+      taxAmount: lineTax,
+      line_total: lineTotal,
+      totalAmount: lineTotal,
+      reason: item.reason || creditData.reason || 'Expired Stock'
+    };
+  });
+
+  subtotal = Math.round(subtotal * 100) / 100;
+  totalTax = Math.round(totalTax * 100) / 100;
+  totalCredit = Math.round(totalCredit * 100) / 100;
+
+  const isInterState = Boolean(creditData.isInterState);
+  const cgstAmount = isInterState ? 0 : Math.round((totalTax / 2) * 100) / 100;
+  const sgstAmount = isInterState ? 0 : Math.round((totalTax - cgstAmount) * 100) / 100;
+  const igstAmount = isInterState ? totalTax : 0;
+
+  const reverseItc = creditData.reverseItc !== undefined ? creditData.reverseItc : true;
+  const itcReversalAmount = reverseItc ? totalTax : 0;
+
+  const status = creditData.status || (existingCredit?.status) || 'Open'; // 'Draft' | 'Open' | 'Closed' | 'Void'
+  const isActivatingOpen = status === 'Open' && (!existingCredit || existingCredit.status === 'Draft');
+
+  const vendorId = creditData.vendor_id || creditData.supplierId || null;
+  const vendorName = creditData.vendor_name || creditData.supplierName || 'Primary Vendor';
+
+  let remaining_credit_balance = creditData.remaining_credit_balance !== undefined 
+    ? Number(creditData.remaining_credit_balance) 
+    : (existingCredit?.remaining_credit_balance !== undefined ? Number(existingCredit.remaining_credit_balance) : totalCredit);
+
+  // If status is Open and wasn't previously open:
+  if (isActivatingOpen) {
+    // 1. Stock reduction & Stock Ledger logging
+    processedItems.forEach(item => {
+      if (item.productId && item.return_quantity > 0) {
+        // Deduct from stock
+        updateProductStock(item.productId, -item.return_quantity, `Purchase Return / Debit Note (#${debit_note_number})`);
+        // If lot exists, consume from lot
+        consumeStockLotsForSale([{ productId: item.productId, qty: item.return_quantity, batchNo: item.batch_number }]);
+        // Log outward stock movement in Stock Ledger
+        logStockMovement({
+          productId: item.productId,
+          productName: item.productName,
+          type: 'OUTWARD',
+          qty: item.return_quantity,
+          unitCost: item.unit_purchase_price,
+          reason: `Purchase Return / Debit Note (#${debit_note_number})`,
+          referenceNo: debit_note_number
+        });
+      }
+    });
+
+    // 2. Vendor Ledger & Accounts Payable Update (reduce payable balance)
+    if (vendorId) {
+      updatePartyBalance(vendorId, -totalCredit);
+    }
+
+    // 3. Section 17(5)(h) ITC Reversal
+    if (reverseItc && itcReversalAmount > 0) {
+      saveExpense({
+        category: 'GST Section 17(5)(h) ITC Reversal',
+        type: 'OPERATING',
+        amount: itcReversalAmount,
+        date: return_date,
+        paidTo: 'GST Authority (Input Tax Credit Reversal)',
+        notes: `Section 17(5)(h) ITC Reversal: Debit Note #${debit_note_number} (CGST: ₹${cgstAmount}, SGST: ₹${sgstAmount}, IGST: ₹${igstAmount})`,
+        paymentMode: 'CASH'
+      });
+    }
+  }
+
+  const record = {
+    id,
+    debit_note_number,
+    debitNoteNo: debit_note_number,
+    vendor_id: vendorId,
+    supplierId: vendorId,
+    vendor_name: vendorName,
+    supplierName: vendorName,
+    purchase_bill_id: creditData.purchase_bill_id || creditData.purchaseBillId || null,
+    purchaseBillId: creditData.purchase_bill_id || creditData.purchaseBillId || null,
+    originalBillNo: creditData.originalBillNo || creditData.original_bill_no || 'Direct',
+    originalBillDate: creditData.originalBillDate || return_date,
+    return_date,
+    date: return_date,
+    reason: creditData.reason || 'Expired Stock',
+    notes: creditData.notes || '',
+    subtotal,
+    taxableAmount: subtotal,
+    cgst_amount: cgstAmount,
+    sgst_amount: sgstAmount,
+    igst_amount: igstAmount,
+    total_tax: totalTax,
+    taxAmount: totalTax,
+    total_credit_amount: totalCredit,
+    totalDebitAmount: totalCredit,
+    remaining_credit_balance,
+    status: remaining_credit_balance === 0 && totalCredit > 0 && status === 'Open' ? 'Closed' : status,
+    reverseItc,
+    itcReversalAmount,
+    items: processedItems,
+    createdAt: existingCredit?.createdAt || now,
+    updatedAt: now
+  };
+
+  let updatedList;
+  if (existingIndex >= 0) {
+    updatedList = existingReturns.map(r => r.id === id ? record : r);
+  } else {
+    updatedList = [record, ...existingReturns];
+  }
+
+  setStorageData(STORAGE_KEYS.PURCHASE_RETURNS, updatedList);
+
+  logAuditAction(
+    existingIndex >= 0 ? 'VENDOR_DEBIT_NOTE_UPDATED' : 'VENDOR_DEBIT_NOTE_ISSUED',
+    'Purchase Returns & Claims',
+    `${status === 'Draft' ? 'Draft' : 'Issued'} Vendor Debit Note #${debit_note_number} for ₹${totalCredit.toLocaleString('en-IN')} to ${vendorName} (ITC Reversed: ₹${itcReversalAmount})`
+  );
+
+  autoCloudSync();
+
+  // If auto-apply was requested against the purchase bill:
+  if (creditData.autoApplyToBill && record.purchase_bill_id && status === 'Open' && record.remaining_credit_balance > 0) {
+    applyVendorCreditToBills(record.id, [{
+      purchaseBillId: record.purchase_bill_id,
+      amountApplied: record.remaining_credit_balance
+    }]);
+  }
+
+  return record;
+};
+
+/**
+ * Apply Vendor Credit to unpaid or partially paid purchase bills (Settlement)
+ */
+export const applyVendorCreditToBills = (vendorCreditId, allocations = []) => {
+  const credits = fetchVendorCredits();
+  const credit = credits.find(c => c.id === vendorCreditId);
+  if (!credit) return { success: false, message: 'Vendor Credit / Debit Note not found' };
+  if (credit.status === 'Void') return { success: false, message: 'Cannot apply a Void Debit Note' };
+
+  let remaining = Number(credit.remaining_credit_balance) || 0;
+  if (remaining <= 0) return { success: false, message: 'No remaining credit balance available on this Debit Note' };
+
+  const purchases = fetchPurchases();
+  const existingAllocs = getStorageData(STORAGE_KEYS.VENDOR_CREDIT_ALLOCATIONS, []);
+  const newAllocs = [];
+  let totalApplied = 0;
+
+  const updatedPurchases = purchases.map(bill => {
+    const alloc = allocations.find(a => a.purchaseBillId === bill.id);
+    if (!alloc || Number(alloc.amountApplied) <= 0) return bill;
+
+    const requestedAmount = Number(alloc.amountApplied);
+    const grandTotal = Number(bill.grandTotal || 0);
+    const prevPaid = Number(bill.paidAmount || 0);
+    const prevDue = bill.balanceAmount !== undefined ? Number(bill.balanceAmount) : (bill.amountDue !== undefined ? Number(bill.amountDue) : Math.max(0, grandTotal - prevPaid));
+
+    if (prevDue <= 0) return bill;
+
+    // Apply minimum of requested, remaining credit, and bill due balance
+    const applicable = Math.min(requestedAmount, remaining, prevDue);
+    if (applicable <= 0) return bill;
+
+    remaining = Math.round((remaining - applicable) * 100) / 100;
+    totalApplied += applicable;
+
+    const newPaid = Math.round((prevPaid + applicable) * 100) / 100;
+    const newDue = Math.max(0, Math.round((grandTotal - newPaid) * 100) / 100);
+    const paymentStatus = newDue === 0 ? 'PAID' : 'PARTIAL';
+
+    newAllocs.push({
+      id: 'vca_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      vendor_credit_id: credit.id,
+      debit_note_number: credit.debit_note_number,
+      purchase_bill_id: bill.id,
+      bill_no: bill.billNo || bill.id,
+      amount_applied: applicable,
+      applied_date: new Date().toISOString()
+    });
+
+    return {
+      ...bill,
+      paidAmount: newPaid,
+      balanceAmount: newDue,
+      amountDue: newDue,
+      paymentStatus,
+      updatedAt: new Date().toISOString()
+    };
+  });
+
+  if (totalApplied === 0) {
+    return { success: false, message: 'No amounts were applied to bills.' };
+  }
+
+  // Update Vendor Credit record
+  const updatedRemainingBalance = Math.max(0, Math.round((Number(credit.remaining_credit_balance) - totalApplied) * 100) / 100);
+  const updatedStatus = updatedRemainingBalance === 0 ? 'Closed' : credit.status;
+
+  const rawReturns = getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []);
+  const updatedReturns = rawReturns.map(r => r.id === credit.id ? {
+    ...r,
+    remaining_credit_balance: updatedRemainingBalance,
+    status: updatedStatus,
+    updatedAt: new Date().toISOString()
+  } : r);
+
+  setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
+  setStorageData(STORAGE_KEYS.PURCHASE_RETURNS, updatedReturns);
+  setStorageData(STORAGE_KEYS.VENDOR_CREDIT_ALLOCATIONS, [...newAllocs, ...existingAllocs]);
+
+  logAuditAction(
+    'VENDOR_CREDIT_APPLIED',
+    'Purchases & Claims',
+    `Applied ₹${totalApplied.toLocaleString('en-IN')} credit from Debit Note #${credit.debit_note_number} to ${newAllocs.length} purchase bill(s). Remaining Balance: ₹${updatedRemainingBalance.toLocaleString('en-IN')}`
+  );
+
+  autoCloudSync();
+  return {
+    success: true,
+    totalApplied,
+    remainingBalance: updatedRemainingBalance,
+    status: updatedStatus,
+    allocations: newAllocs
+  };
+};
+
+/**
+ * Void a Vendor Credit (Debit Note)
+ * Preserves sequential numbering (DN-0001), restores inventory stock, restores vendor ledger, and rolls back allocations.
+ */
+export const voidVendorCredit = (vendorCreditId, reason = 'Voided by user') => {
+  const credits = fetchVendorCredits();
+  const credit = credits.find(c => c.id === vendorCreditId);
+  if (!credit) return { success: false, message: 'Vendor Credit not found' };
+  if (credit.status === 'Void') return { success: false, message: 'Debit Note is already void' };
+
+  const totalCredit = Number(credit.total_credit_amount) || 0;
+
+  // 1. If it was Open or Closed, restore inventory stock and log movement
+  if (credit.status === 'Open' || credit.status === 'Closed') {
+    (credit.items || []).forEach(item => {
+      const qty = Number(item.return_quantity || item.qty) || 0;
+      if (item.productId && qty > 0) {
+        updateProductStock(item.productId, qty, `Void Debit Note (#${credit.debit_note_number}) - Stock Restored`);
+        logStockMovement({
+          productId: item.productId,
+          productName: item.productName,
+          type: 'INWARD',
+          qty,
+          unitCost: item.unit_purchase_price,
+          reason: `Void Debit Note (#${credit.debit_note_number}) - Stock Restored`,
+          referenceNo: credit.debit_note_number
+        });
+      }
+    });
+
+    // 2. Restore vendor payable balance
+    if (credit.vendor_id) {
+      updatePartyBalance(credit.vendor_id, totalCredit);
+    }
+
+    // 3. Rollback any allocations made to purchase bills
+    const allAllocs = getStorageData(STORAGE_KEYS.VENDOR_CREDIT_ALLOCATIONS, []);
+    const creditAllocs = allAllocs.filter(a => a.vendor_credit_id === credit.id);
+
+    if (creditAllocs.length > 0) {
+      const purchases = fetchPurchases();
+      const updatedPurchases = purchases.map(bill => {
+        const matchingAllocs = creditAllocs.filter(a => a.purchase_bill_id === bill.id);
+        if (matchingAllocs.length === 0) return bill;
+
+        const sumToRevert = matchingAllocs.reduce((s, a) => s + (Number(a.amount_applied) || 0), 0);
+        const grandTotal = Number(bill.grandTotal || 0);
+        const currentPaid = Number(bill.paidAmount || 0);
+        const restoredPaid = Math.max(0, currentPaid - sumToRevert);
+        const restoredDue = Math.min(grandTotal, Math.max(0, grandTotal - restoredPaid));
+        const paymentStatus = restoredPaid <= 0 ? 'UNPAID' : (restoredDue <= 0 ? 'PAID' : 'PARTIAL');
+
+        return {
+          ...bill,
+          paidAmount: restoredPaid,
+          balanceAmount: restoredDue,
+          amountDue: restoredDue,
+          paymentStatus,
+          updatedAt: new Date().toISOString()
+        };
+      });
+      setStorageData(STORAGE_KEYS.PURCHASES, updatedPurchases);
+
+      // Remove allocations for this credit note
+      const remainingAllocs = allAllocs.filter(a => a.vendor_credit_id !== credit.id);
+      setStorageData(STORAGE_KEYS.VENDOR_CREDIT_ALLOCATIONS, remainingAllocs);
+    }
+  }
+
+  // 4. Mark status as Void (preserving sequential numbering)
+  const rawReturns = getStorageData(STORAGE_KEYS.PURCHASE_RETURNS, []);
+  const updatedReturns = rawReturns.map(r => r.id === credit.id ? {
+    ...r,
+    status: 'Void',
+    remaining_credit_balance: 0,
+    voidReason: reason,
+    voidedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  } : r);
+
+  setStorageData(STORAGE_KEYS.PURCHASE_RETURNS, updatedReturns);
+
+  logAuditAction(
+    'VENDOR_DEBIT_NOTE_VOIDED',
+    'Purchases & Claims',
+    `Voided Debit Note #${credit.debit_note_number} (Reason: ${reason}). Stock and vendor payable balance restored.`
+  );
+
+  autoCloudSync();
+  return { success: true };
+};
+
+/**
+ * Backward compatibility wrapper for createPurchaseReturnDebitNote
+ */
 export const createPurchaseReturnDebitNote = ({
   supplierId,
   supplierName,
   originalBillNo,
   originalBillDate,
   items = [],
-  reason = 'EXPIRED_STOCK', // 'EXPIRED_STOCK' | 'DEFECTIVE' | 'OVER_DELIVERY'
+  reason = 'EXPIRED_STOCK',
   reverseItc = true,
   notes = ''
 }) => {
-  const existingReturns = fetchPurchaseReturns();
-  const year = new Date().getFullYear();
-  const debitNoteNo = `DN/${year}/${1001 + existingReturns.length}`;
-  const now = new Date().toISOString();
-
-  let totalTaxable = 0;
-  let totalTax = 0;
-  let totalDebitAmount = 0;
-
-  // Process items & decrement inventory
-  const processedItems = items.map(item => {
-    const qty = Number(item.qty || item.quantity) || 1;
-    const rate = Number(item.purchasePrice || item.rate) || 0;
-    const gstRate = Number(item.gstRate) || 5;
-    const lineTaxable = qty * rate;
-    const lineTax = (lineTaxable * gstRate) / 100;
-    const lineTotal = lineTaxable + lineTax;
-
-    totalTaxable += lineTaxable;
-    totalTax += lineTax;
-    totalDebitAmount += lineTotal;
-
-    // 1. Deduct stock from sellable godown
-    if (item.productId) {
-      updateProductStock(item.productId, -qty, `Vendor Return / Debit Note (${debitNoteNo})`);
-    }
-
-    // 2. Consume from lot if lotId exists
-    if (item.lotId) {
-      consumeStockLotsForSale([{ productId: item.productId, lotId: item.lotId, qty }]);
-    }
-
-    return {
-      productId: item.productId,
-      productName: item.productName || item.name,
-      batchNo: item.batchNo || '',
-      expiryDate: item.expiryDate || '',
-      qty,
-      purchasePrice: rate,
-      gstRate,
-      taxableAmount: Math.round(lineTaxable * 100) / 100,
-      taxAmount: Math.round(lineTax * 100) / 100,
-      totalAmount: Math.round(lineTotal * 100) / 100,
-      reason: item.reason || reason
-    };
-  });
-
-  // Section 17(5)(h) ITC Reversal handling
-  const itcReversalAmount = reverseItc ? Math.round(totalTax * 100) / 100 : 0;
-
-  const debitNoteRecord = {
-    id: 'pr_' + Date.now(),
-    debitNoteNo,
-    date: now,
-    supplierId: supplierId || null,
-    supplierName: supplierName || 'Vendor / Manufacturer',
-    originalBillNo: originalBillNo || 'PUR-000',
-    originalBillDate: originalBillDate || now.split('T')[0],
+  return saveVendorCredit({
+    vendor_id: supplierId,
+    vendor_name: supplierName,
+    originalBillNo,
+    originalBillDate,
+    items,
     reason,
-    items: processedItems,
-    taxableAmount: Math.round(totalTaxable * 100) / 100,
-    taxAmount: Math.round(totalTax * 100) / 100,
-    totalDebitAmount: Math.round(totalDebitAmount * 100) / 100,
     reverseItc,
-    itcReversalAmount,
-    status: 'ISSUED',
     notes,
-    createdAt: now
-  };
-
-  // Adjust Vendor Accounts Payable (credit party balance if supplier tracked)
-  if (supplierId) {
-    updatePartyBalance(supplierId, -Math.round(totalDebitAmount * 100) / 100);
-  }
-
-  // If Section 17(5)(h) ITC Reversal is active, log an expense entry for the reversed ITC
-  if (itcReversalAmount > 0) {
-    saveExpense({
-      category: 'GST Section 17(5)(h) ITC Reversal',
-      type: 'OPERATING',
-      amount: itcReversalAmount,
-      date: now.split('T')[0],
-      paidTo: 'GST Authority (Input Tax Credit Reversal)',
-      notes: `Section 17(5)(h) ITC Reversal on Expired/Scrapped Stock: Debit Note #${debitNoteNo} (Tax: ₹${itcReversalAmount})`,
-      paymentMode: 'CASH'
-    });
-  }
-
-  const updatedReturns = [debitNoteRecord, ...existingReturns];
-  setStorageData(STORAGE_KEYS.PURCHASE_RETURNS, updatedReturns);
-
-  logAuditAction(
-    'VENDOR_DEBIT_NOTE_ISSUED',
-    'Purchase Returns & Claims',
-    `Issued Vendor Debit Note #${debitNoteNo} for ₹${debitNoteRecord.totalDebitAmount.toLocaleString('en-IN')} to ${debitNoteRecord.supplierName} (ITC Reversal: ₹${itcReversalAmount})`
-  );
-
-  autoCloudSync();
-  return debitNoteRecord;
+    status: 'Open'
+  });
 };
 
 // =========================================================================

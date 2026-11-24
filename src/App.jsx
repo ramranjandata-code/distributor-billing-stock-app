@@ -614,6 +614,7 @@ export default function App() {
             <Inventory 
               products={products}
               refreshAllData={refreshAllData}
+              setActiveTab={navigateToTab}
               t={translate}
             />
           )}

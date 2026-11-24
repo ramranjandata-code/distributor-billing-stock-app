@@ -55,7 +55,7 @@ export default function Navigation({
     { id: 'billing', label: 'Invoicing', icon: Receipt, badge: 'POS', badgeColor: 'badge-success' },
     { id: 'invoices', label: 'Invoices', icon: FileText },
     { id: 'returns', label: 'Returns (RMA)', icon: RotateCcw },
-    { id: 'purchase_returns', label: 'Vendor Claims', icon: ShieldAlert },
+    { id: 'purchase_returns', label: 'Vendor Returns', icon: ShieldAlert },
     { id: 'inventory', label: t('inventory') || 'Inventory', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount} Low` : null, badgeColor: 'badge-danger' },
     { id: 'parties', label: t('parties') || 'Parties', icon: Users },
     { id: 'banking', label: t('banking') || 'Banking', icon: Building2, badge: 'Live', badgeColor: 'badge-success' },

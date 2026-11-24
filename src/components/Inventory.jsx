@@ -51,10 +51,11 @@ import {
   FileText,
   Eye,
   Printer,
-  Receipt
+  Receipt,
+  RotateCcw
 } from 'lucide-react';
 
-export default function Inventory({ products, refreshAllData, defaultSubTab = 'stock' }) {
+export default function Inventory({ products, refreshAllData, defaultSubTab = 'stock', setActiveTab }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [warehouseFilter, setWarehouseFilter] = useState('ALL');
@@ -1272,6 +1273,16 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
     }, 300);
   };
 
+  const handleCreateVendorReturnFromBill = (bill) => {
+    if (!bill) return;
+    if (typeof setActiveTab === 'function') {
+      setActiveTab('purchase_returns');
+    }
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('distro_create_vendor_return', { detail: bill }));
+    }, 120);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       
@@ -2061,6 +2072,16 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                                 style={{ padding: '5px 8px' }}
                               >
                                 <Printer size={15} color="var(--text-muted)" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleCreateVendorReturnFromBill(bill)}
+                                className="btn btn-secondary btn-sm"
+                                title="Create Vendor Return / Debit Note"
+                                style={{ padding: '5px 8px', color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }}
+                              >
+                                <RotateCcw size={15} />
                               </button>
 
                               <button
@@ -4585,6 +4606,31 @@ Fortune Sunlite Refined Oil 1L, 24, 115.00, 140.00, LOT-FO-2026, 2027-05-15`;
                 >
                   <Printer size={15} />
                   <span>Print Bill</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const b = viewingPurchaseBill;
+                    setViewingPurchaseBill(null);
+                    handleCreateVendorReturnFromBill(b);
+                  }}
+                  className="btn btn-secondary btn-sm"
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    fontSize: '0.76rem', 
+                    padding: '6px 14px', 
+                    color: '#dc2626', 
+                    borderColor: '#fecaca', 
+                    background: '#fef2f2', 
+                    fontWeight: '700' 
+                  }}
+                  title="Create Vendor Return / Debit Note against this purchase bill"
+                >
+                  <RotateCcw size={15} />
+                  <span>Create Return / Debit Note</span>
                 </button>
 
                 {isPurchaseBillEditable(viewingPurchaseBill) && (

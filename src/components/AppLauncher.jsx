@@ -103,12 +103,12 @@ export default function AppLauncher({
     },
     {
       id: 'purchase_returns',
-      name: 'Vendor Claims & Returns',
+      name: 'Vendor Returns & Debit Notes',
       category: 'Stock',
-      description: 'Expired Stock Claims, Vendor Debit Notes & Section 17(5)(h) ITC Reversals',
+      description: 'Vendor Credits, Sequential GST Debit Notes, Stock Deductions & Bill Adjustments',
       gradient: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
       shadowColor: 'rgba(217, 119, 6, 0.25)',
-      badge: 'Debit Notes',
+      badge: 'Vendor Credits',
       badgeBg: '#fef3c7',
       badgeColor: '#b45309',
       icon: (

@@ -55,6 +55,7 @@ import {
   getProductPackagingInfo,
   formatCartonStock,
   fetchSalesReturns,
+  fetchVendorCredits,
   InvoiceHistoryLogger
 } from '../utils/storage';
 import { 
@@ -509,6 +510,21 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
     });
     return list;
   }, [gstActiveInvoices, gstMonthReturns]);
+
+  const allVendorCredits = useMemo(() => fetchVendorCredits(), []);
+  const gstMonthVendorCredits = useMemo(() => {
+    return allVendorCredits.filter(vc => vc && vc.status !== 'Void' && isDateInGstPeriod(vc.return_date || vc.date || vc.createdAt, gstFpMonth));
+  }, [allVendorCredits, gstFpMonth]);
+
+  const gstMonthItcReversed = useMemo(() => {
+    return gstMonthVendorCredits.reduce((acc, vc) => {
+      acc.cgst += Number(vc.cgst_amount || 0);
+      acc.sgst += Number(vc.sgst_amount || 0);
+      acc.igst += Number(vc.igst_amount || 0);
+      acc.total += Number(vc.itcReversalAmount || vc.total_tax || 0);
+      return acc;
+    }, { cgst: 0, sgst: 0, igst: 0, total: 0 });
+  }, [gstMonthVendorCredits]);
 
   const gstB2bInvoices = useMemo(() => {
     return gstMonthRegularInvoices.filter(inv => 
@@ -3112,6 +3128,50 @@ export default function Reports({ invoices = [], products = [], parties = [], bu
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstTaxTotals.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                       <td style={{ padding: '10px', textAlign: 'right', color: '#059669' }}>₹{gstTaxTotals.totalTax.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* GSTR-3B Table 4(B): Eligible & Reversed ITC */}
+            <div className="glass-card" style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '800', margin: 0 }}>
+                  ⚖️ GSTR-3B Table 4(B): ITC Reversed under Section 17(5)(h) & Debit Notes ({gstFpMonth})
+                </h3>
+                <span className="badge badge-warning" style={{ fontSize: '0.74rem' }}>
+                  {gstMonthVendorCredits.length} Debit Note(s)
+                </span>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.86rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                      <th style={{ padding: '10px' }}>ITC Reversal Category</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Integrated Tax (₹)</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Central Tax (₹)</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>State/UT Tax (₹)</th>
+                      <th style={{ padding: '10px', textAlign: 'right' }}>Total Reversed (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '10px', fontWeight: '700' }}>
+                        (1) As per rules 42 & 43 of CGST Rules and section 17(5)(h) (Expired / Damaged / Returned Goods)
+                      </td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstMonthItcReversed.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstMonthItcReversed.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstMonthItcReversed.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right', fontWeight: '800', color: '#b45309' }}>₹{gstMonthItcReversed.total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr style={{ background: '#fef3c7', fontWeight: '800' }}>
+                      <td style={{ padding: '10px' }}>Total ITC Reversal Claimed on GSTR-3B</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstMonthItcReversed.igst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstMonthItcReversed.cgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right' }}>₹{gstMonthItcReversed.sgst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '10px', textAlign: 'right', color: '#92400e' }}>₹{gstMonthItcReversed.total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
                     </tr>
                   </tbody>
                 </table>
